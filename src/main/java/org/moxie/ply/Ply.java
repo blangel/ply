@@ -26,7 +26,11 @@ public class Ply {
         } else if ("init".equals(args[0])) {
             Init.invoke(args);
         } else {
-            
+            for (String script : args) {
+                if (!Exec.invoke(script)) {
+                    System.exit(1);
+                }
+            }
         }
         System.exit(0);
     }
