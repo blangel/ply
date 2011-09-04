@@ -30,7 +30,7 @@ public final class Output {
         TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), "[\u001b[1m\u001b[1;33mply\u001b[0m]"));
         TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), "[\u001b[1m\u001b[1;31merr!\u001b[0m]"));
         TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), "[\u001b[1m\u001b[1;33mwarn\u001b[0m]"));
-        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), "[\u001b[1m\u001b[1;36minfo\u001b[0m]"));
+        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), "[\u001b[1m\u001b[1;34minfo\u001b[0m]"));
         TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), "\u001b[0m"));
         TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), "\u001b[1m"));
         TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), "\u001b[2m"));

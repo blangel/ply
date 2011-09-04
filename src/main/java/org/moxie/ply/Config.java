@@ -160,7 +160,7 @@ public final class Config {
         Map<String, Prop> properties = getResolvedProperties();
         Prop prop = properties.get(name);
         if (prop != null) {
-            Output.print("Property ^b^%s^r^ = ^blue^%s^r^ [ ^" + ("global"
+            Output.print("Property ^b^%s^r^ = ^cyan^%s^r^ [ ^" + ("global"
                     .equals(prop.context) ? "white" : "green") + "^%s^r^ ]", name, prop.value, prop.context);
         } else {
             Output.print("No property ^b^%s^r^ in either local or global context.", name);
@@ -174,9 +174,9 @@ public final class Config {
         Collections.sort(keys);
         for (String key : keys) {
             Prop prop = properties.get(key);
-            Output.print("\t^b^%s^r^ = ^blue^%s^r^" + ("local".equals(prop.context) ? " ^green^*^r^" : ""), key, prop.value);
+            Output.print("\t^b^%s^r^ = ^cyan^%s^r^" + ("local".equals(prop.context) ? " ^green^*^r^" : ""), key, prop.value);
         }
-        Output.print("^green^*^r^ indicates property is set within the local context.");
+        Output.print("^green^*^r^ indicates property is set within the ^b^local^r^ context.");
     }
 
     private static Map<String, Prop> getResolvedProperties() {
