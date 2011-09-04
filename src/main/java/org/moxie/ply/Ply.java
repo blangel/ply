@@ -19,6 +19,7 @@ public class Ply {
             usage();
             System.exit(0);
         }
+        Output.initColor();
         if ("--usage".equals(args[0])) {
             usage();
         } else if ("config".equals(args[0])) {

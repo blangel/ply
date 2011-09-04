@@ -49,6 +49,7 @@ public final class Config {
         MANDATORY_GLOBAL_PROPS.setProperty("test.src.dir", "src/test");
         MANDATORY_GLOBAL_PROPS.setProperty("build.dir", "build/main");
         MANDATORY_GLOBAL_PROPS.setProperty("test.build.dir", "build/test");
+        // ensure output is loaded first
         getResolvedProperties();
         // ensure MANDATORY_GLOBAL_PROPS exist (for an individual run
         // doesn't actually matter where it comes from, local or global, a newly init-ed project will eventually
@@ -179,6 +180,9 @@ public final class Config {
     }
 
     private static Map<String, Prop> getResolvedProperties() {
+        if (!RESOLVED_PROPS.isEmpty()) {
+            return RESOLVED_PROPS;
+        }
         Properties globalProperties = new Properties();
         try {
             globalProperties.load(new FileInputStream(GLOBAL_PROPS_FILE));
@@ -188,7 +192,13 @@ public final class Config {
             // auto-recover
             Output.print("^warn^ recreating global properties file.");
             recreateGlobalPropertiesFile();
-            System.exit(1);
+            try {
+                globalProperties.load(new FileInputStream(GLOBAL_PROPS_FILE));
+            } catch (IOException ioe2) {
+                Output.print("^error^ cannot load global properties file.");
+                Output.print(ioe2);
+                System.exit(1);
+            }
         }
         Properties localProperties = new Properties();
         if (LOCAL_PROPS_FILE.exists()) {

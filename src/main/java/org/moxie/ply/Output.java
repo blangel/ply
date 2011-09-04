@@ -43,6 +43,9 @@ public final class Output {
         TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), "\u001b[1;35m"));
         TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), "\u001b[1;36m"));
         TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), "\u001b[1;37m"));
+    }
+
+    static void initColor() {
         Config.Prop colorProp = Config.get("color");
         boolean color = (colorProp == null || !"false".equals(colorProp.value));
         if (!color) {
@@ -63,7 +66,6 @@ public final class Output {
             TERM_CODES.put("cyan", new TermCode(TERM_CODES.get("cyan").pattern, ""));
             TERM_CODES.put("white", new TermCode(TERM_CODES.get("white").pattern, ""));
         }
-
     }
 
     public static void print(String message, Object ... args) {

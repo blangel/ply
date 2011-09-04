@@ -26,8 +26,17 @@ public class Init {
         Config.LOCAL_CONFIG_DIR.mkdirs();
         try {
             Config.LOCAL_PROPS_FILE.createNewFile();
-            // TODO - remove, here now while creating and global/local are same directory.
-            Properties localProperties = Config.MANDATORY_GLOBAL_PROPS;
+            Properties localProperties = new Properties();
+            File projectDirectory = new File(".");
+            String path = projectDirectory.getCanonicalPath();
+            if (path.endsWith(File.separator)) {
+                path = path.substring(0, path.length() - 1);
+            }
+            int lastPathIndex = path.lastIndexOf(File.separator);
+            if (lastPathIndex != -1) {
+                path = path.substring(lastPathIndex + 1);
+            }
+            localProperties.put("project.name", path);
             localProperties.store(new FileOutputStream(Config.LOCAL_PROPS_FILE), null);
         } catch (IOException ioe) {
             Output.print("^error^ could not create the local ply.properties file.");

@@ -39,12 +39,13 @@ public final class Exec {
     public static boolean invoke(String script) {
         String color = COLOR_SWAP.get();
         try {
+            Output.print("^info^ invoking ^" + color + "^%s^r^...", script);
             Process process = new ProcessBuilder(splitScript(script)).redirectErrorStream(true).start();
             InputStream processStdout = process.getInputStream();
             BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
             String processStdoutLine;
             while ((processStdoutLine = lineReader.readLine()) != null) {
-                Output.print("^ply^ [^" + color + "^%s^r^] %s", script, processStdoutLine);
+                Output.print("[^" + color + "^%s^r^] %s", script, processStdoutLine);
             }
             int result = process.waitFor();
             if (result == 0) {
