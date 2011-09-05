@@ -95,6 +95,19 @@ public final class Config {
         return getResolvedProperties().get(name);
     }
 
+    public static String filter(String value) {
+        if ((value == null) || (!value.contains("${"))) {
+            return value;
+        }
+        Map<String, Prop> props = getResolvedProperties();
+        for (String name : props.keySet()) {
+            if (value.contains("${" + name + "}")) {
+                value = value.replaceAll("\\$\\{" + name + "\\}", filter(props.get(name).value));
+            }
+        }
+        return value;
+    }
+
     private static void recreateGlobalPropertiesFile() {
         Config.GLOBAL_CONFIG_DIR.mkdirs();
         try {
@@ -107,6 +120,10 @@ public final class Config {
     }
 
     private static void setProperty(boolean global, String name, String value) {
+        if (name.contains("*")) {
+            Output.print("^warn^ property names cannot contain ^b^*^r^", name);
+            return;
+        }
         File propertiesFile = (global ? GLOBAL_PROPS_FILE : LOCAL_PROPS_FILE);
         Properties properties = new Properties();
         try {
@@ -158,6 +175,14 @@ public final class Config {
 
     private static void printPropertyValue(String name) {
         Map<String, Prop> properties = getResolvedProperties();
+        if (name.contains("*")) {
+            printPropertyValueByWildcardName(name, properties);
+        } else {
+            printPropertyValueByName(name, properties);
+        }
+    }
+
+    private static void printPropertyValueByName(String name, Map<String, Prop> properties) {
         Prop prop = properties.get(name);
         if (prop != null) {
             Output.print("Property ^b^%s^r^ = ^cyan^%s^r^ [ ^" + ("global"
@@ -167,8 +192,46 @@ public final class Config {
         }
     }
 
+    private static void printPropertyValueByWildcardName(String name, Map<String, Prop> properties) {
+        Map<String, Prop> resolvedProps = getPropertyValuesByWildcardName(name, properties);
+        if (resolvedProps.isEmpty()) {
+            Output.print("No property matched ^b^%s^r^ in either local or global context.", name);
+        } else {
+            printPropertyValue(resolvedProps);
+        }
+    }
+
+    private static Map<String, Prop> getPropertyValuesByWildcardName(String name, Map<String, Prop> properties) {
+        Map<String, Prop> resolvedProps = new HashMap<String, Prop>();
+        if (name.startsWith("*")) {
+            name = name.substring(1);
+            for (String propName : properties.keySet()) {
+                if (propName.endsWith(name)) {
+                    resolvedProps.put(propName, properties.get(propName));
+                }
+            }
+        } else if (name.endsWith("*")) {
+            name = name.substring(0, name.length() - 1);
+            for (String propName : properties.keySet()) {
+                if (propName.startsWith(name)) {
+                    resolvedProps.put(propName, properties.get(propName));
+                }
+            }
+        } else {
+            String startsWithName = name.substring(0, name.indexOf("*") + 1);
+            Map<String, Prop> startsWithProps = getPropertyValuesByWildcardName(startsWithName, properties);
+            String endsWithName = name.substring(name.indexOf("*"));
+            resolvedProps = getPropertyValuesByWildcardName(endsWithName, startsWithProps);
+        }
+        return resolvedProps;
+    }
+
     private static void printPropertyValues() {
         Map<String, Prop> properties = getResolvedProperties();
+        printPropertyValue(properties);
+    }
+
+    private static void printPropertyValue(Map<String, Prop> properties) {
         Output.print("Properties:");
         List<String> keys = new ArrayList<String>(properties.keySet());
         Collections.sort(keys);
