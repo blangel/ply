@@ -9,15 +9,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Date: 9/2/11
  * Time: 11:09 AM
  *
- * Handles getting and setting of global as well as project specific properties.
+ * Handles getting global and local properties as well as setting of local properties.
  * Config usage is:
- * <pre>ply config [--usage] [--global] <get|set|remove></pre>
+ * <pre>ply config [--usage] [--context] <get|set|remove></pre>
  * where {@literal --usage} prints the usage screen and command {@literal get}
- * takes a name and prints the current value of the property and command {@literal set} takes a name and a value
- * parameter and sets the property named {@literal name} to {@literal value} within the context where the context
- * is either the current project or the global context if option {@literal --global} is present. Command {@literal remove}
- * will remove the named property from within the given context (note, not all global properties are allowed to be
- * removed).
+ * takes a name and prints the current value of the property for the given {@literal context}. Command {@literal set}
+ * takes a name and a value parameter and sets the property named {@literal name} to {@literal value} within the context.
+ * Command {@literal remove} will remove the named property from within the given context.  For the about operations,
+ * if no context is given then the default {@literal ply} is assumed).
  */
 public final class Config {
 
@@ -326,11 +325,11 @@ public final class Config {
     }
 
     private static void usage() {
-        Output.print("ply config [--usage] [--global] <^b^command^r^>");
+        Output.print("ply config [--usage] [--context] <^b^command^r^>");
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^get [name]^r^\t: prints the value of the property (if not specified all properties are printed)");
-        Output.print("    ^b^set <name> <value>^r^\t: sets the value of property within the context (global or local depending upon --global option presence).");
-        Output.print("    ^b^remove <name>^r^\t: removes the property from the context (global or local depending upon --global option presence)");
+        Output.print("    ^b^set <name> <value>^r^\t: sets the value of property within the context (the default context is ^b^ply^r^).");
+        Output.print("    ^b^remove <name>^r^\t: removes the property from the context (the default context is ^b^ply^r^)");
     }
 
 }
