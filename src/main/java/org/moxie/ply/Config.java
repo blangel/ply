@@ -32,23 +32,39 @@ public final class Config {
 
     private static final String INSTALL_DIRECTORY = System.getProperty("ply.home");
 
+    private static final String PLY_VERSION = System.getProperty("ply.version");
+
     static final Properties MANDATORY_GLOBAL_PROPS = new Properties();
 
     private static final Map<String, Prop> RESOLVED_PROPS = new HashMap<String, Prop>();
 
-    public static final File GLOBAL_CONFIG_DIR = new File(INSTALL_DIRECTORY + "/config/");
+    public static final String CONFIG_DIR_NAME = "config";
 
-    public static final File GLOBAL_PROPS_FILE = new File(INSTALL_DIRECTORY + "/config/ply.properties");
+    public static final String SCRIPTS_DIR_NAME = "scripts";
 
-    public static final File LOCAL_CONFIG_DIR = new File("./.ply/config/");
+    public static final String PROP_FILE_NAME = "ply.properties";
 
-    public static final File LOCAL_PROPS_FILE = new File("./.ply/config/ply.properties");
+    public static final File GLOBAL_CONFIG_DIR = new File(INSTALL_DIRECTORY + File.separator + CONFIG_DIR_NAME);
+
+    public static final File GLOBAL_SCRIPTS_DIR = new File(INSTALL_DIRECTORY + File.separator + SCRIPTS_DIR_NAME);
+
+    public static final File GLOBAL_PROPS_FILE = new File(INSTALL_DIRECTORY + File.separator + CONFIG_DIR_NAME + File.separator + PROP_FILE_NAME);
+
+    public static final File LOCAL_CONFIG_DIR;
+
+    public static final File LOCAL_PROPS_FILE;
 
     static {
+        LOCAL_CONFIG_DIR = resolveLocalDir();
+        String localConfigDirPath = LOCAL_CONFIG_DIR.getPath();
+        LOCAL_PROPS_FILE = new File(localConfigDirPath + (localConfigDirPath.endsWith(File.separator) ? "" : File.separator)
+                                    + PROP_FILE_NAME);
         MANDATORY_GLOBAL_PROPS.setProperty("src.dir", "src/main");
         MANDATORY_GLOBAL_PROPS.setProperty("test.src.dir", "src/test");
         MANDATORY_GLOBAL_PROPS.setProperty("build.dir", "build/main");
         MANDATORY_GLOBAL_PROPS.setProperty("test.build.dir", "build/test");
+        MANDATORY_GLOBAL_PROPS.setProperty("scripts.dir", "scripts");
+        MANDATORY_GLOBAL_PROPS.setProperty("init", "ply-init-" + PLY_VERSION + ".jar");
         // ensure output is loaded first
         getResolvedProperties();
         // ensure MANDATORY_GLOBAL_PROPS exist (for an individual run
@@ -61,6 +77,25 @@ public final class Config {
                 setProperty(true, mandatoryKey, value);
             }
         }
+    }
+    private static File resolveLocalDir() {
+        String root = "/.ply/" + CONFIG_DIR_NAME;
+        String defaultPath = "./.ply/" + CONFIG_DIR_NAME;
+        String path = defaultPath;
+        File ply = new File(path);
+        try {
+            while (!ply.exists() && !root.equals(ply.getCanonicalPath())) {
+                path = "../" + path;
+                ply = new File(path);
+            }
+            if (root.equals(ply.getCanonicalPath())) {
+                return new File(defaultPath);
+            }
+        } catch (IOException ioe) {
+            Output.print(ioe);
+            return new File(defaultPath);
+        }
+        return ply;
     }
 
     public static void invoke(String args[]) {
@@ -93,6 +128,10 @@ public final class Config {
 
     public static Prop get(String name) {
         return getResolvedProperties().get(name);
+    }
+
+    static Map<String, Prop> getAllResolvedProperties() {
+        return Collections.unmodifiableMap(getResolvedProperties());
     }
 
     public static String filter(String value) {
@@ -274,6 +313,9 @@ public final class Config {
             for (String key : localProperties.stringPropertyNames()) {
                 globalProperties.setProperty(key, (String) localProperties.get(key));
             }
+        } else {
+            Output.print("^error^ not a ply project (or any of the parent directories), please initialize first ^b^ply init^r^.");
+            System.exit(1);
         }
         for (String key : globalProperties.stringPropertyNames()) {
             Prop prop = new Prop((String) globalProperties.get(key), (localProperties.containsKey(key) ? "local" : "global"));

@@ -1,13 +1,7 @@
 package org.moxie.ply;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Queue;
+import java.io.*;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,9 +11,11 @@ import java.util.regex.Pattern;
  * Time: 9:09 PM
  *
  * Executes build scripts.  The determination of where/which build script to execute is as follows:
- * -1- check for an executable in the current directory.
- * -2- if not found, check the scripts directory under the install directory
- * -3- else fail
+ * -1- First resolve the script via the {@link Config} properties in case it is aliased.
+ * -2- For each resolved script (from -1-), check for an executable in the {@literal scripts.dir}
+ * -3- If not there, check for an executable in the ply.scripts.dir.
+ * -4- If not there, check for executable directly (via the path)
+ * -4- else fail
  */
 public final class Exec {
 
@@ -39,26 +35,36 @@ public final class Exec {
 
     public static boolean invoke(String script) {
         String[] cmdArgs = splitScript(script);
-        List<String[]> resolvedCmds = resolve(cmdArgs[0], cmdArgs);
+        String originalScript = cmdArgs[0];
+        List<String[]> resolvedCmds = resolve(originalScript, cmdArgs);
         for (String[] resolvedCmd : resolvedCmds) {
-            if (!invoke(resolvedCmd)) {
+            if (!invoke(originalScript, resolvedCmd)) {
                 return false;
             }
         }
         return true;
     }
 
-    private static boolean invoke(String[] cmdArgs) {
+    private static boolean invoke(String originalScriptName, String[] cmdArgs) {
         String color = COLOR_SWAP.get();
+        cmdArgs[0] = resolveExecutable(cmdArgs[0]);
+        cmdArgs = handleNonNativeExecutable(cmdArgs);
         String script = buildScriptName(cmdArgs);
         try {
             Output.print("^info^ invoking ^" + color + "^%s^r^", script);
-            Process process = new ProcessBuilder(cmdArgs).redirectErrorStream(true).start();
+            ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true);
+            Map<String, String> environment = processBuilder.environment();
+            Map<String, Config.Prop> properties = Config.getAllResolvedProperties();
+            for (String propKey : properties.keySet()) {
+                Config.Prop prop = properties.get(propKey);
+                environment.put(propKey, prop.value);
+            }
+            Process process = processBuilder.start();
             InputStream processStdout = process.getInputStream();
             BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
             String processStdoutLine;
             while ((processStdoutLine = lineReader.readLine()) != null) {
-                Output.print("[^" + color + "^%s^r^] %s", script, processStdoutLine);
+                Output.print("[^" + color + "^%s^r^] %s", originalScriptName, processStdoutLine);
             }
             int result = process.waitFor();
             if (result == 0) {
@@ -158,6 +164,54 @@ public final class Exec {
         }
         buffer.replace(buffer.length() - 1, buffer.length(), "");
         return buffer.toString();
+    }
+
+    private static String resolveExecutable(String script) {
+        String originalScript = script;
+        String localScriptsDir = Config.get("scripts.dir").value;
+        script = (localScriptsDir.endsWith(File.separator) ? localScriptsDir :
+                localScriptsDir + File.separator) + script;
+        File scriptFile = new File(script);
+        if (scriptFile.exists() && scriptFile.canExecute()) {
+            return script;
+        } else if (scriptFile.exists()) {
+            Output.print("^warn^ ^b^%s^r^ exists but is not executable, skipping.", scriptFile.getPath());
+        }
+        try {
+            script = Config.GLOBAL_SCRIPTS_DIR.getCanonicalPath() + File.separator + originalScript;
+            scriptFile = new File(script);
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+        if (scriptFile.exists() && scriptFile.canExecute()) {
+            return script;
+        } else if (scriptFile.exists()) {
+            Output.print("^warn^ ^b^%s^r^ exists but is not executable, skipping.", scriptFile.getPath());
+        }
+        return originalScript;
+    }
+
+    /**
+     * Translates {@code cmdArray[0]} into an executable statement if it needs an invoker like a VM.
+     * The whole command array needs to be processed as parameters to the VM may need to be inserted
+     * into the command array.
+     * @param cmdArray to translate
+     * @return the translated command array.
+     */
+    private static String[] handleNonNativeExecutable(String[] cmdArray) {
+        String script = cmdArray[0];
+        if (script.endsWith(".jar")) {
+            // add the appropriate java command
+            script = System.getProperty("ply.java");
+            String[] newCmdArray = new String[cmdArray.length + 2];
+            newCmdArray[0] = script;
+            newCmdArray[1] = "-jar";
+            for (int i = 0; i < cmdArray.length; i++) {
+                newCmdArray[i + 2] = cmdArray[i];
+            }
+            cmdArray = newCmdArray;
+        }
+        return cmdArray;
     }
 
 }

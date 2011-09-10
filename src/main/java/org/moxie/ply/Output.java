@@ -25,24 +25,25 @@ public final class Output {
 
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
     static {
+        boolean withinTerminal = (System.getenv("TERM") != null);
         // first place color values (in case call to Config tries to print, at least have something in
         // TERM_CODES with which to strip messages.
-        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), "[\u001b[1m\u001b[1;33mply\u001b[0m]"));
-        TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), "[\u001b[1m\u001b[1;31merr!\u001b[0m]"));
-        TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), "[\u001b[1m\u001b[1;33mwarn\u001b[0m]"));
-        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), "[\u001b[1m\u001b[1;34minfo\u001b[0m]"));
-        TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), "\u001b[0m"));
-        TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), "\u001b[1m"));
-        TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), "\u001b[2m"));
-        TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), "\u001b[7m"));
-        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), "\u001b[1;30m"));
-        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"), "\u001b[1;31m"));
-        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), "\u001b[1;32m"));
-        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), "\u001b[1;33m"));
-        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), "\u001b[1;34m"));
-        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), "\u001b[1;35m"));
-        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), "\u001b[1;36m"));
-        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), "\u001b[1;37m"));
+        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), withinTerminal ? "[\u001b[1m\u001b[1;33mply\u001b[0m]" : "[ply]"));
+        TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), withinTerminal ? "[\u001b[1m\u001b[1;31merr!\u001b[0m]" : "[err!]"));
+        TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), withinTerminal ? "[\u001b[1m\u001b[1;33mwarn\u001b[0m]" : "[warn]"));
+        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), withinTerminal ? "[\u001b[1m\u001b[1;34minfo\u001b[0m]" : "[info]"));
+        TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), withinTerminal ? "\u001b[0m" : ""));
+        TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), withinTerminal ? "\u001b[1m" : ""));
+        TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), withinTerminal ? "\u001b[2m" : ""));
+        TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), withinTerminal ? "\u001b[7m" : ""));
+        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), withinTerminal ? "\u001b[1;30m" : ""));
+        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"), withinTerminal ? "\u001b[1;31m" : ""));
+        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), withinTerminal ? "\u001b[1;32m" : ""));
+        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), withinTerminal ? "\u001b[1;33m" : ""));
+        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), withinTerminal ? "\u001b[1;34m" : ""));
+        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), withinTerminal ? "\u001b[1;35m" : ""));
+        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), withinTerminal ? "\u001b[1;36m" : ""));
+        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), withinTerminal ? "\u001b[1;37m" : ""));
     }
 
     static void initColor() {
@@ -69,11 +70,12 @@ public final class Output {
     }
 
     public static void print(String message, Object ... args) {
+        String formatted = String.format(message, args);
         for (String key : TERM_CODES.keySet()) {
             TermCode termCode = TERM_CODES.get(key);
-            message = termCode.pattern.matcher(message).replaceAll(termCode.output);
+            formatted = termCode.pattern.matcher(formatted).replaceAll(termCode.output);
         }
-        System.out.printf(message + "\n", args);
+        System.out.println(formatted);
     }
 
     public static void print(Throwable t) {
