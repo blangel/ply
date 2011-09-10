@@ -65,6 +65,7 @@ public final class Config {
         MANDATORY_GLOBAL_PROPS.setProperty("test.build.dir", "build/test");
         MANDATORY_GLOBAL_PROPS.setProperty("scripts.dir", "scripts");
         MANDATORY_GLOBAL_PROPS.setProperty("init", "ply-init-" + PLY_VERSION + ".jar");
+        MANDATORY_GLOBAL_PROPS.setProperty("clean", "ply-clean-" + PLY_VERSION + ".jar");
         // ensure output is loaded first
         getResolvedProperties();
         // ensure MANDATORY_GLOBAL_PROPS exist (for an individual run
