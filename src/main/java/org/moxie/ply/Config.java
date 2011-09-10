@@ -328,8 +328,9 @@ public final class Config {
         Output.print("ply config [--usage] [--context] <^b^command^r^>");
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^get [name]^r^\t: prints the value of the property (if not specified all properties are printed)");
-        Output.print("    ^b^set <name> <value>^r^\t: sets the value of property within the context (the default context is ^b^ply^r^).");
-        Output.print("    ^b^remove <name>^r^\t: removes the property from the context (the default context is ^b^ply^r^)");
+        Output.print("    ^b^set <name> <value>^r^\t: sets the value of property within the context.");
+        Output.print("    ^b^remove <name>^r^\t: removes the property from the context");
+        Output.print("  the default context is ^b^ply^r^");
     }
 
 }
