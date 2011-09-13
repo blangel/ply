@@ -334,38 +334,39 @@ public final class Config {
             Output.print("No context ^b^%s^r^ found.", context);
             return;
         }
-        printPropertyValue("Property ", context, name, props);
+
+        printPropertyValue(String.format("From ^b^%s^r^ property ", context), context, name, props);
     }
 
     /**
      * Prints the value of property named {@code name} within context {@code context} for the given
      * resolved properties {@code resolvedProps}.
      * This method also resolves wildcards within {@code name} if any.
-     * @param suffix to print before the property name and value
+     * @param prefix to print before the property name and value
      * @param context the name of the context for which to look for a property named {@code name}.
      * @param name the name of the property to print
      * @param resolvedProps the resolved properties to look within.
      */
-    private void printPropertyValue(String suffix, String context, String name, Map<String, Prop> resolvedProps) {
+    private void printPropertyValue(String prefix, String context, String name, Map<String, Prop> resolvedProps) {
         if (name.contains("*")) {
-            printPropertyValueByWildcardName(suffix, context, name, resolvedProps);
+            printPropertyValueByWildcardName(prefix, context, name, resolvedProps);
         } else {
-            printPropertyValueByName(suffix, context, name, resolvedProps);
+            printPropertyValueByName(prefix, context, name, resolvedProps);
         }
     }
 
     /**
      * Prints the value of property named {@code name} within context {@code context} for the given
      * resolved properties {@code resolvedProps}.
-     * @param suffix to print before the property name and value
+     * @param prefix to print before the property name and value
      * @param context the name of the context for which to look for a property named {@code name}.
      * @param name the name of the property to print
      * @param resolvedProps the resolved properties to look within.
      */
-    private void printPropertyValueByName(String suffix, String context, String name, Map<String, Prop> resolvedProps) {
+    private void printPropertyValueByName(String prefix, String context, String name, Map<String, Prop> resolvedProps) {
         Prop prop = resolvedProps.get(name);
         if (prop != null) {
-            Output.print("%s^b^%s^r^ = ^cyan^%s^r^ [ ^b^%s^r^ ]^green^%s^r^", suffix, name, prop.value, context, (!prop.localOverride ? "*" : ""));
+            Output.print("%s^b^%s^r^ = ^cyan^%s^r^ ^green^%s^r^", prefix, name, prop.value, (!prop.localOverride ? "*" : ""));
         } else {
             Output.print("No property ^b^%s^r^ in context ^b^%s^r^.", name, context);
         }
@@ -388,7 +389,7 @@ public final class Config {
             Output.print("No context ^b^%s^r^ found.", context);
             return hasGlobal;
         }
-        Output.print("Properties in ^b^%s^r^", context);
+        Output.print("Properties from ^b^%s^r^", context);
         for (String name : props.keySet()) {
             printPropertyValue("\t", context, name, props);
             Prop prop = props.get(name);
@@ -416,30 +417,30 @@ public final class Config {
 
     /**
      * Prints all properties within {@code properties}
-     * @param suffix the suffix to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
+     * @param prefix the prefix to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
      * @param context the context to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
      * @param properties to print
      */
-    private void printPropertyValues(String suffix, String context, Map<String, Prop> properties) {
+    private void printPropertyValues(String prefix, String context, Map<String, Prop> properties) {
         for (String propertyName : properties.keySet()) {
-            printPropertyValueByName(suffix, context, propertyName, properties);
+            printPropertyValueByName(prefix, context, propertyName, properties);
         }
     }
 
     /**
      * Resolves {@code name} to the list of property names matching it within the {@code context} for the given
      * {@code properties}.
-     * @param suffix the suffix to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
+     * @param prefix the prefix to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
      * @param context to resolve {@code name}
      * @param name the wildcard-ed name to resolve
      * @param properties from which to resolve {@code name}
      */
-    private void printPropertyValueByWildcardName(String suffix, String context, String name, Map<String, Prop> properties) {
+    private void printPropertyValueByWildcardName(String prefix, String context, String name, Map<String, Prop> properties) {
         Map<String, Prop> resolvedProps = getPropertyValuesByWildcardName(name, properties);
         if (resolvedProps.isEmpty()) {
             Output.print("No property matched ^b^%s^r^ in any context.", name);
         } else {
-            printPropertyValues(suffix, context, resolvedProps);
+            printPropertyValues(prefix, context, resolvedProps);
         }
     }
 
