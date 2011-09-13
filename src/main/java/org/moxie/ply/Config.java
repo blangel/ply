@@ -1,7 +1,9 @@
 package org.moxie.ply;
 
 import java.io.*;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -20,67 +22,133 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class Config {
 
-    public static final class Prop {
+    /**
+     * A representation of a single property including the context from which it came and whether
+     * it is a local override.
+     */
+    static final class Prop {
+        final String name;
         final String value;
         final String context;
-        private Prop(String value, String context) {
-            this.value = value;
+        final boolean localOverride;
+        private Prop(String context, String name, String value, boolean localOverride) {
             this.context = context;
+            this.name = name;
+            this.value = value;
+            this.localOverride = localOverride;
         }
     }
 
+    /**
+     * The singleton holder object.
+     */
+    private static final class ConfigHolder {
+        private static final Config INSTANCE = new Config();
+        private static Config getInstance() {
+            return INSTANCE;
+        }
+    }
+
+    /**
+     * A {@link FilenameFilter} for {@link Properties} files.
+     */
+    private static final FilenameFilter PROPERTIES_FILENAME_FILTER = new FilenameFilter() {
+        @Override public boolean accept(File dir, String name) {
+            return name.endsWith(".properties");
+        }
+    };
+
+    /**
+     * The directory in which ply is installed, passed in by the invoking script.
+     */
     private static final String INSTALL_DIRECTORY = System.getProperty("ply.home");
 
+    /**
+     * The current version of the ply program, passed in by the invoking script.
+     */
     private static final String PLY_VERSION = System.getProperty("ply.version");
 
-    static final Properties MANDATORY_GLOBAL_PROPS = new Properties();
+    /**
+     * When no context is specified, this context will be used.
+     */
+    public static final String DEFAULT_CONTEXT = "ply";
 
-    private static final Map<String, Prop> RESOLVED_PROPS = new HashMap<String, Prop>();
+    /**
+     * The configuration directory (in which property files are stored) for the install.
+     */
+    public static final File GLOBAL_CONFIG_DIR = new File(INSTALL_DIRECTORY + File.separator + "config");
 
-    public static final String CONFIG_DIR_NAME = "config";
+    /**
+     * The scripts directory for the install.
+     */
+    public static final File GLOBAL_SCRIPTS_DIR = new File(INSTALL_DIRECTORY + File.separator + "scripts");
 
-    public static final String SCRIPTS_DIR_NAME = "scripts";
+    /**
+     * The local configuration directory (local to the init-ed project).
+     */
+    public static final File LOCAL_CONFIG_DIR = resolveLocalDir();
 
-    public static final String PROP_FILE_NAME = "ply.properties";
-
-    public static final File GLOBAL_CONFIG_DIR = new File(INSTALL_DIRECTORY + File.separator + CONFIG_DIR_NAME);
-
-    public static final File GLOBAL_SCRIPTS_DIR = new File(INSTALL_DIRECTORY + File.separator + SCRIPTS_DIR_NAME);
-
-    public static final File GLOBAL_PROPS_FILE = new File(INSTALL_DIRECTORY + File.separator + CONFIG_DIR_NAME + File.separator + PROP_FILE_NAME);
-
-    public static final File LOCAL_CONFIG_DIR;
-
-    public static final File LOCAL_PROPS_FILE;
-
-    static {
-        LOCAL_CONFIG_DIR = resolveLocalDir();
-        String localConfigDirPath = LOCAL_CONFIG_DIR.getPath();
-        LOCAL_PROPS_FILE = new File(localConfigDirPath + (localConfigDirPath.endsWith(File.separator) ? "" : File.separator)
-                                    + PROP_FILE_NAME);
-        MANDATORY_GLOBAL_PROPS.setProperty("src.dir", "src/main");
-        MANDATORY_GLOBAL_PROPS.setProperty("test.src.dir", "src/test");
-        MANDATORY_GLOBAL_PROPS.setProperty("build.dir", "build/main");
-        MANDATORY_GLOBAL_PROPS.setProperty("test.build.dir", "build/test");
-        MANDATORY_GLOBAL_PROPS.setProperty("scripts.dir", "scripts");
-        MANDATORY_GLOBAL_PROPS.setProperty("init", "ply-init-" + PLY_VERSION + ".jar");
-        MANDATORY_GLOBAL_PROPS.setProperty("clean", "ply-clean-" + PLY_VERSION + ".jar");
-        // ensure output is loaded first
-        getResolvedProperties();
-        // ensure MANDATORY_GLOBAL_PROPS exist (for an individual run
-        // doesn't actually matter where it comes from, local or global, a newly init-ed project will eventually
-        // replace missing mandatory props in the global context)
-        for (String mandatoryKey : MANDATORY_GLOBAL_PROPS.stringPropertyNames()) {
-            if (!RESOLVED_PROPS.containsKey(mandatoryKey)) {
-                String value = (String) MANDATORY_GLOBAL_PROPS.get(mandatoryKey);
-                Output.print("^error^ mandatory property ^b^%s^r^ missing, setting ^b^%s^r^ = ^blue^%s^r^ in global.", mandatoryKey, mandatoryKey, value);
-                setProperty(true, mandatoryKey, value);
-            }
-        }
+    /**
+     * Invokes the configuration script with the given {@code args}.
+     * @param args to the configuration script
+     */
+    public static void invoke(String args[]) {
+        get()._invoke(args);
     }
+
+    /**
+     * @param context in which to get {@code name}
+     * @param name of the property to get
+     * @return the value for the property named {@code name} within context {@code context} or null if none exists.
+     */
+    public static String get(String context, String name) {
+        return get()._get(context, name);
+    }
+
+    /**
+     * @param name of the property to get
+     * @return the value for the property named {@code name} within the default context, {@link #DEFAULT_CONTEXT},
+     *         or null if none exists.
+     */
+    public static String get(String name) {
+        return get()._get(name);
+    }
+
+    /**
+     * Filters {@code value} by resolving all unix-style properties defined within against the resolved properties
+     * of this configuration.
+     * @param value to filter
+     * @return the filtered value
+     */
+    public static String filter(String value) {
+        return get()._filter(value);
+    }
+
+    /**
+     * Returns the resolved properties for use as environmental variables.  By convention,
+     * the context and the property name will be combined to form the environmental variable name.
+     * The combination consists of the context concatenated with the property name by a '.'.  For example,
+     * for context 'ply' and property name 'color' the concatenation would be 'ply.color'.
+     * @return the resolved properties for use as environmental variables.
+     */
+    static Map<String, Prop> getResolvedEnvironmentalProperties() {
+        return get()._getResolvedEnvironmentalProperties();
+    }
+
+    /**
+     * @return the singleton instance of this class.
+     */
+    private static Config get() {
+        return ConfigHolder.getInstance();
+    }
+
+    /**
+     * This directory has to be resolved as ply can be invoked from within a nested directory.
+     * @return the resolved local ply configuration directory
+     */
     private static File resolveLocalDir() {
-        String root = "/.ply/" + CONFIG_DIR_NAME;
-        String defaultPath = "./.ply/" + CONFIG_DIR_NAME;
+        String root = "/.ply/config";
+        String defaultPath = "./.ply/config";
         String path = defaultPath;
         File ply = new File(path);
         try {
@@ -98,148 +166,391 @@ public final class Config {
         return ply;
     }
 
-    public static void invoke(String args[]) {
-        if ((args == null) || (args.length < 2)) {
+    /**
+     * A mapping of context name to a mapping of property name to {@link Prop} object.
+     */
+    private final Map<String, Map<String, Prop>> contextToResolvedProperty = new HashMap<String, Map<String, Prop>>();
+
+    /**
+     * Flag to indicate if the properties map has been initialized yet.
+     */
+    private final AtomicBoolean hasBeenResolved = new AtomicBoolean(false);
+
+    private Config() { }
+
+    private void _invoke(String args[]) {
+        if ((args == null) || (args.length < 2) || "--usage".equals(args[1])) {
             usage();
             return;
         }
-        if ("--usage".equals(args[1])) {
-            usage();
-        } else {
-            boolean global = "--global".equals(args[1]);
-            if ((args.length >= (global ? 3 : 2)) && "get".equals(args[global ? 2 : 1])) {
-                // has name to retrieve
-                if (args.length == (global ? 4 : 3)) {
-                    printPropertyValue(args[global ? 3 : 2]);
-                }
-                // no name, print all
-                else {
-                    printPropertyValues();
-                }
-            } else if ((args.length == (global ? 5 : 4)) && "set".equals(args[global ? 2 : 1])) {
-                setProperty(global, args[global ? 3 : 2], args[global ? 4 : 3]);
-            } else if ((args.length == (global ? 4 : 3)) && "remove".equals(args[global ? 2 : 1])) {
-                removeProperty(global, args[global ? 3: 2]);
-            } else {
-                usage();
+        boolean explicitlyDefinedContext = args[1].startsWith("--");
+        String context = explicitlyDefinedContext ? args[1].substring(2) : DEFAULT_CONTEXT;
+        if ((args.length >= (explicitlyDefinedContext ? 3 : 2))
+                && "get".equals(args[explicitlyDefinedContext ? 2 : 1])) {
+            resolveProperties();
+            // has name to retrieve
+            if (args.length == (explicitlyDefinedContext ? 4 : 3)) {
+                printPropertyValue(context, args[explicitlyDefinedContext ? 3 : 2]);
             }
+            // no name, but has context
+            else if (explicitlyDefinedContext) {
+                printPropertyValues(context);
+            }
+            // no name, print all
+            else {
+                printPropertyValues();
+            }
+        } else if ((args.length == (explicitlyDefinedContext ? 5 : 4))
+                && "set".equals(args[explicitlyDefinedContext ? 2 : 1])) {
+            setProperty(context, args[explicitlyDefinedContext ? 3 : 2], args[explicitlyDefinedContext ? 4 : 3]);
+        } else if ((args.length == (explicitlyDefinedContext ? 4 : 3))
+                && "remove".equals(args[explicitlyDefinedContext ? 2 : 1])) {
+            removeProperty(context, args[explicitlyDefinedContext ? 3: 2]);
+        } else {
+            usage();
         }
     }
 
-    public static Prop get(String name) {
-        return getResolvedProperties().get(name);
+    /**
+     * @param context in which to get {@code name}
+     * @param name of the property to get
+     * @return the value for the property named {@code name} within context {@code context} or null if none exists.
+     */
+    private String _get(String context, String name) {
+        resolveProperties();
+        Map<String, Prop> props = contextToResolvedProperty.get(context);
+        Prop prop = (props == null ? null : props.get(name));
+        return (prop == null ? null : prop.value);
     }
 
-    static Map<String, Prop> getAllResolvedProperties() {
-        return Collections.unmodifiableMap(getResolvedProperties());
+    /**
+     * @param name of the property to get
+     * @return the value for the property named {@code name} within the default context, {@link #DEFAULT_CONTEXT},
+     *         or null if none exists.
+     */
+    private String _get(String name) {
+        return _get(DEFAULT_CONTEXT, name);
     }
 
-    public static String filter(String value) {
+    /**
+     * Filters {@code value} by resolving all unix-style properties defined within against the resolved properties
+     * of this configuration.
+     * @param value to filter
+     * @return the filtered value
+     */
+    private String _filter(String value) {
         if ((value == null) || (!value.contains("${"))) {
             return value;
         }
-        Map<String, Prop> props = getResolvedProperties();
-        for (String name : props.keySet()) {
-            if (value.contains("${" + name + "}")) {
-                value = value.replaceAll("\\$\\{" + name + "\\}", filter(props.get(name).value));
+        resolveProperties();
+        for (String context : contextToResolvedProperty.keySet()) {
+            Map<String, Prop> props = contextToResolvedProperty.get(context);
+            for (String name : props.keySet()) {
+                if (value.contains("${" + name + "}")) {
+                    value = value.replaceAll("\\$\\{" + name + "\\}", filter(props.get(name).value));
+                }
             }
         }
         return value;
     }
 
-    private static void recreateGlobalPropertiesFile() {
-        Config.GLOBAL_CONFIG_DIR.mkdirs();
-        try {
-            Config.GLOBAL_PROPS_FILE.createNewFile();
-            MANDATORY_GLOBAL_PROPS.store(new FileOutputStream(Config.GLOBAL_PROPS_FILE), null);
-        } catch (IOException ioe) {
-            Output.print("^error^ could not create global properties file.");
-            Output.print(ioe);
-        }
-    }
-
-    private static void setProperty(boolean global, String name, String value) {
+    /**
+     * Sets property named {@code name} to {@code value} within context {@code context}.
+     * Note, property names containing '*' are not allowed.
+     * @param context of the property to set
+     * @param name the name of the property to set
+     * @param value the value of the property to set
+     */
+    private void setProperty(String context, String name, String value) {
         if (name.contains("*")) {
             Output.print("^warn^ property names cannot contain ^b^*^r^", name);
             return;
         }
-        File propertiesFile = (global ? GLOBAL_PROPS_FILE : LOCAL_PROPS_FILE);
+        File propertiesFile = getContextPropertyFile(context);
         Properties properties = new Properties();
         try {
+            if (!propertiesFile.exists()) {
+                propertiesFile.createNewFile();
+            }
             properties.load(new FileInputStream(propertiesFile));
             properties.setProperty(name, value);
             properties.store(new FileOutputStream(propertiesFile), null);
-        } catch (FileNotFoundException fnfe) {
-            Output.print("^error^ %s properties file not found!", (global ? "global" : "local"));
-            Output.print(fnfe);
         } catch (IOException ioe) {
-            Output.print("^error^ could not interact with %s properties file!", (global ? "global" : "local"));
+            Output.print("^error^ could not interact with %s properties file!", context);
             Output.print(ioe);
         }
-        RESOLVED_PROPS.put(name, new Prop(value, (global ? "global" : "local")));
+        // if already resolved, keep in sync.
+        if (hasBeenResolved.get()) {
+            Map<String, Prop> contextProps = contextToResolvedProperty.get(context);
+            if (contextProps == null) {
+                contextProps = new HashMap<String, Prop>();
+                contextToResolvedProperty.put(context, contextProps);
+            }
+            contextProps.put(name, new Prop(context, name, value, true));
+        }
     }
 
-    private static void removeProperty(boolean global, String name) {
-        Map<String, Prop> resolvedProperties = getResolvedProperties();
-        if (!resolvedProperties.containsKey(name)) {
-            Output.print("No property ^b^%s^r^ in either local or global context.", name);
+    /**
+     * Removes property named {@code name} from context {@code context}.
+     * @param context of the property to remove
+     * @param name the name of the property to remove
+     */
+    private void removeProperty(String context, String name) {
+        File propertiesFile = getContextPropertyFile(context);
+        if (!propertiesFile.exists()) {
+            Output.print("No property ^b^%s^r^ in context ^b^%s^r^.", name, context);
             return;
         }
-        // never allow mandatory properties to be deleted from global
-        if (global && MANDATORY_GLOBAL_PROPS.containsKey(name)) {
-            Output.print("^warn^ cannot remove a mandatory property from global.");
-            return;
-        }
-        resolvedProperties.remove(name);
         Properties properties = new Properties();
         try {
-            properties.load(new FileInputStream(global ? GLOBAL_PROPS_FILE : LOCAL_PROPS_FILE));
+            properties.load(new FileInputStream(propertiesFile));
             properties.remove(name);
-            properties.store(new FileOutputStream(global ? GLOBAL_PROPS_FILE : LOCAL_PROPS_FILE), null);
-            // ensure integrity, allow deleting of mandatory overrides within local but replace with that from global
-            if (!global && MANDATORY_GLOBAL_PROPS.containsKey(name)) {
-                properties = new Properties();
-                properties.load(new FileInputStream(GLOBAL_PROPS_FILE));
-                if (properties.contains(name)) {
-                    setProperty(true, name, (String) properties.get(name));
-                } else {
-                    setProperty(true, name, (String) MANDATORY_GLOBAL_PROPS.get(name));
-                }
+            if (properties.isEmpty()) {
+                propertiesFile.delete();
+            } else {
+                properties.store(new FileOutputStream(propertiesFile), null);
             }
         } catch (IOException ioe) {
-            Output.print("^error^ Error interacting with file.");
+            Output.print("^error^ Error interacting with ^b^%s^r^ property file.", context);
             Output.print(ioe);
         }
+        // if already resolved, keep in sync.
+        if (hasBeenResolved.get()) {
+            Map<String, Prop> contextProps = contextToResolvedProperty.get(context);
+            if (contextProps != null) {
+                contextProps.remove(name);
+            }
+        }
     }
 
-    private static void printPropertyValue(String name) {
-        Map<String, Prop> properties = getResolvedProperties();
+    /**
+     * Prints the value of property named {@code name} within context {@code context}.
+     * @param context the name of the context for which to look for a property named {@code name}.
+     * @param name the name of the property to print.
+     */
+    private void printPropertyValue(String context, String name) {
+        Map<String, Prop> props = contextToResolvedProperty.get(context);
+        if (props == null) {
+            Output.print("No context ^b^%s^r^ found.", context);
+            return;
+        }
+        printPropertyValue("Property ", context, name, props);
+    }
+
+    /**
+     * Prints the value of property named {@code name} within context {@code context} for the given
+     * resolved properties {@code resolvedProps}.
+     * This method also resolves wildcards within {@code name} if any.
+     * @param suffix to print before the property name and value
+     * @param context the name of the context for which to look for a property named {@code name}.
+     * @param name the name of the property to print
+     * @param resolvedProps the resolved properties to look within.
+     */
+    private void printPropertyValue(String suffix, String context, String name, Map<String, Prop> resolvedProps) {
         if (name.contains("*")) {
-            printPropertyValueByWildcardName(name, properties);
+            printPropertyValueByWildcardName(suffix, context, name, resolvedProps);
         } else {
-            printPropertyValueByName(name, properties);
+            printPropertyValueByName(suffix, context, name, resolvedProps);
         }
     }
 
-    private static void printPropertyValueByName(String name, Map<String, Prop> properties) {
-        Prop prop = properties.get(name);
+    /**
+     * Prints the value of property named {@code name} within context {@code context} for the given
+     * resolved properties {@code resolvedProps}.
+     * @param suffix to print before the property name and value
+     * @param context the name of the context for which to look for a property named {@code name}.
+     * @param name the name of the property to print
+     * @param resolvedProps the resolved properties to look within.
+     */
+    private void printPropertyValueByName(String suffix, String context, String name, Map<String, Prop> resolvedProps) {
+        Prop prop = resolvedProps.get(name);
         if (prop != null) {
-            Output.print("Property ^b^%s^r^ = ^cyan^%s^r^ [ ^" + ("global"
-                    .equals(prop.context) ? "white" : "green") + "^%s^r^ ]", name, prop.value, prop.context);
+            Output.print("%s^b^%s^r^ = ^cyan^%s^r^ [ ^b^%s^r^ ]^green^%s^r^", suffix, name, prop.value, context, (!prop.localOverride ? "*" : ""));
         } else {
-            Output.print("No property ^b^%s^r^ in either local or global context.", name);
+            Output.print("No property ^b^%s^r^ in context ^b^%s^r^.", name, context);
         }
     }
 
-    private static void printPropertyValueByWildcardName(String name, Map<String, Prop> properties) {
+    /**
+     * Prints all the properties within {@code context}.
+     * @param context the name of the context for which to print properties.
+     */
+    private void printPropertyValues(String context) {
+        boolean hasGlobal = printPropertyValuesForContext(context);
+        if (hasGlobal) {
+            Output.print("^green^*^r^ indicates system property.");
+        }
+    }
+    private boolean printPropertyValuesForContext(String context) {
+        boolean hasGlobal = false;
+        Map<String, Prop> props = contextToResolvedProperty.get(context);
+        if (props == null) {
+            Output.print("No context ^b^%s^r^ found.", context);
+            return hasGlobal;
+        }
+        Output.print("Properties in ^b^%s^r^", context);
+        for (String name : props.keySet()) {
+            printPropertyValue("\t", context, name, props);
+            Prop prop = props.get(name);
+            if (!prop.localOverride) {
+                hasGlobal = true;
+            }
+        }
+        return hasGlobal;
+    }
+
+    /**
+     * Prints all property values within all contexts.
+     */
+    private void printPropertyValues() {
+        boolean hasGlobal = false;
+        for (String context : contextToResolvedProperty.keySet()) {
+            if (printPropertyValuesForContext(context)) {
+                hasGlobal = true;
+            }
+        }
+        if (hasGlobal) {
+            Output.print("^green^*^r^ indicates system property.");
+        }
+    }
+
+    /**
+     * Prints all properties within {@code properties}
+     * @param suffix the suffix to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
+     * @param context the context to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
+     * @param properties to print
+     */
+    private void printPropertyValues(String suffix, String context, Map<String, Prop> properties) {
+        for (String propertyName : properties.keySet()) {
+            printPropertyValueByName(suffix, context, propertyName, properties);
+        }
+    }
+
+    /**
+     * Resolves {@code name} to the list of property names matching it within the {@code context} for the given
+     * {@code properties}.
+     * @param suffix the suffix to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
+     * @param context to resolve {@code name}
+     * @param name the wildcard-ed name to resolve
+     * @param properties from which to resolve {@code name}
+     */
+    private void printPropertyValueByWildcardName(String suffix, String context, String name, Map<String, Prop> properties) {
         Map<String, Prop> resolvedProps = getPropertyValuesByWildcardName(name, properties);
         if (resolvedProps.isEmpty()) {
-            Output.print("No property matched ^b^%s^r^ in either local or global context.", name);
+            Output.print("No property matched ^b^%s^r^ in any context.", name);
         } else {
-            printPropertyValue(resolvedProps);
+            printPropertyValues(suffix, context, resolvedProps);
         }
     }
 
+    /**
+     * Returns the resolved properties for use as environmental variables.  By convention,
+     * the context and the property name will be combined to form the environmental variable name.
+     * The combination consists of the context concatenated with the property name by a '.'.  For example,
+     * for context 'ply' and property name 'color' the concatenation would be 'ply.color'.
+     * @return the resolved properties for use as environmental variables.
+     */
+    private Map<String, Prop> _getResolvedEnvironmentalProperties() {
+        resolveProperties();
+        Map<String, Prop> environmentalProperties = new HashMap<String, Prop>();
+        for (String context : contextToResolvedProperty.keySet()) {
+            Map<String, Prop> contextProps = contextToResolvedProperty.get(context);
+            for (String name : contextProps.keySet()) {
+                environmentalProperties.put(context + "." + name, contextProps.get(name));
+            }
+        }
+        return environmentalProperties;
+    }
+
+    /**
+     * Resolves the properties from the global and project-local property files.
+     */
+    private void resolveProperties() {
+        if (hasBeenResolved.getAndSet(true)) {
+            return;
+        }
+        // first add the properties from the install directory.
+        if (!GLOBAL_CONFIG_DIR.exists()) {
+            Output.print("^error^ the ply install directory is corrupt, please re-install.");
+            System.exit(1);
+        }
+        resolvePropertiesFromDirectory(GLOBAL_CONFIG_DIR, false);
+        // now override with the local project's config directory.
+        if (!LOCAL_CONFIG_DIR.exists()) {
+            Output.print("^error^ not a ply project (or any of the parent directories), please initialize first ^b^ply init^r^.");
+            System.exit(1);
+        }
+        resolvePropertiesFromDirectory(LOCAL_CONFIG_DIR, true);
+    }
+
+    /**
+     * Iterates over the property files within {@code fromDirectory} and calls
+     * {@link #resolvePropertiesFromFile(String, Properties, boolean)} on each (provided the file is not a directory).
+     * @param fromDirectory the directory from which to resolve properties.
+     * @param local true if the {@code fromDirectory} is the local configuration directory
+     * @see {@link #PROPERTIES_FILENAME_FILTER}
+     */
+    private void resolvePropertiesFromDirectory(File fromDirectory, boolean local) {
+        for (File subFile : fromDirectory.listFiles(PROPERTIES_FILENAME_FILTER)) {
+            if (!subFile.isDirectory()) {
+                String fileName = subFile.getName();
+                int index = fileName.indexOf(".properties");
+                if (index == -1) {
+                    Output.print("^error^ Properties file name filter accepted file which doesn't end in ^b^.properties^r^.");
+                    continue;
+                }
+                String context = fileName.substring(0, index);
+                Properties properties = new Properties();
+                try {
+                    properties.load(new FileInputStream(subFile));
+                    resolvePropertiesFromFile(context, properties, local);
+                } catch (IOException ioe) {
+                    Output.print("^warn^ Skipping property file ^b^%s^r^", subFile.getPath());
+                    Output.print(ioe);
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads the properties from {@code properties} into the {@link #contextToResolvedProperty} mapping for {@code context}
+     * @param context associated with {@code properties}
+     * @param properties the loaded properties file
+     * @param local true if the {@code properties} is from the local configuration directory
+     */
+    private void resolvePropertiesFromFile(String context, Properties properties, boolean local) {
+        Map<String, Prop> contextProperties = contextToResolvedProperty.get(context);
+        if (contextProperties == null) {
+            contextProperties = new HashMap<String, Prop>(properties.size(), 1.0f);
+            contextToResolvedProperty.put(context, contextProperties);
+        }
+        for (String propertyName : properties.stringPropertyNames()) {
+            contextProperties.put(propertyName, new Prop(context, propertyName, properties.getProperty(propertyName), local));
+        }
+    }
+
+    private static File getContextPropertyFile(String context) {
+        String localConfigPath = LOCAL_CONFIG_DIR.getPath();
+        return new File(localConfigPath + (localConfigPath.endsWith(File.separator) ? "" : File.separator)
+                + context + ".properties");
+    }
+
+    private static void usage() {
+        Output.print("ply config [--usage] [--context] <^b^command^r^>");
+        Output.print("  where ^b^command^r^ is either:");
+        Output.print("    ^b^get [name]^r^\t: prints the value of the property (if not specified all properties are printed)");
+        Output.print("    ^b^set <name> <value>^r^\t: sets the value of property within the context.");
+        Output.print("    ^b^remove <name>^r^\t: removes the property from the context");
+        Output.print("  the default context is ^b^ply^r^");
+    }
+
+    /**
+     * Resolves the wildcard references within {@code name} creating a new map of matching properties from the
+     * given {@code properties}.  The returned map will be a subset of {@code properties}.
+     * @param name with wildcard references which need to be resolved.
+     * @param properties from which to resolve
+     * @return the resolved map of properties matching the wildcard-ed {@code name}
+     */
     private static Map<String, Prop> getPropertyValuesByWildcardName(String name, Map<String, Prop> properties) {
         Map<String, Prop> resolvedProps = new HashMap<String, Prop>();
         if (name.startsWith("*")) {
@@ -263,74 +574,6 @@ public final class Config {
             resolvedProps = getPropertyValuesByWildcardName(endsWithName, startsWithProps);
         }
         return resolvedProps;
-    }
-
-    private static void printPropertyValues() {
-        Map<String, Prop> properties = getResolvedProperties();
-        printPropertyValue(properties);
-    }
-
-    private static void printPropertyValue(Map<String, Prop> properties) {
-        Output.print("Properties:");
-        List<String> keys = new ArrayList<String>(properties.keySet());
-        Collections.sort(keys);
-        for (String key : keys) {
-            Prop prop = properties.get(key);
-            Output.print("\t^b^%s^r^ = ^cyan^%s^r^" + ("local".equals(prop.context) ? " ^green^*^r^" : ""), key, prop.value);
-        }
-        Output.print("^green^*^r^ indicates property is set within the ^b^local^r^ context.");
-    }
-
-    private static Map<String, Prop> getResolvedProperties() {
-        if (!RESOLVED_PROPS.isEmpty()) {
-            return RESOLVED_PROPS;
-        }
-        Properties globalProperties = new Properties();
-        try {
-            globalProperties.load(new FileInputStream(GLOBAL_PROPS_FILE));
-        } catch (IOException ioe) {
-            Output.print("^error^ global properties file not found!");
-            Output.print(ioe);
-            // auto-recover
-            Output.print("^warn^ recreating global properties file.");
-            recreateGlobalPropertiesFile();
-            try {
-                globalProperties.load(new FileInputStream(GLOBAL_PROPS_FILE));
-            } catch (IOException ioe2) {
-                Output.print("^error^ cannot load global properties file.");
-                Output.print(ioe2);
-                System.exit(1);
-            }
-        }
-        Properties localProperties = new Properties();
-        if (LOCAL_PROPS_FILE.exists()) {
-            try {
-                localProperties.load(new FileInputStream(LOCAL_PROPS_FILE));
-            } catch (IOException ioe) {
-                Output.print("^error^ local properties file not found!");
-                Output.print(ioe);
-            }
-            for (String key : localProperties.stringPropertyNames()) {
-                globalProperties.setProperty(key, (String) localProperties.get(key));
-            }
-        } else {
-            Output.print("^error^ not a ply project (or any of the parent directories), please initialize first ^b^ply init^r^.");
-            System.exit(1);
-        }
-        for (String key : globalProperties.stringPropertyNames()) {
-            Prop prop = new Prop((String) globalProperties.get(key), (localProperties.containsKey(key) ? "local" : "global"));
-            RESOLVED_PROPS.put(key, prop);
-        }
-        return RESOLVED_PROPS;
-    }
-
-    private static void usage() {
-        Output.print("ply config [--usage] [--context] <^b^command^r^>");
-        Output.print("  where ^b^command^r^ is either:");
-        Output.print("    ^b^get [name]^r^\t: prints the value of the property (if not specified all properties are printed)");
-        Output.print("    ^b^set <name> <value>^r^\t: sets the value of property within the context.");
-        Output.print("    ^b^remove <name>^r^\t: removes the property from the context");
-        Output.print("  the default context is ^b^ply^r^");
     }
 
 }

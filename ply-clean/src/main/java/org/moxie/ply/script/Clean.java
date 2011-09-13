@@ -12,7 +12,7 @@ import java.io.File;
 public class Clean {
 
     public static void main(String[] args) {
-        String buildDirPath = System.getenv("build.dir");
+        String buildDirPath = System.getenv("ply.build.dir");
         File buildDir = new File(buildDirPath);
         if (buildDir.exists()) {
             delete(buildDir);

@@ -1,9 +1,9 @@
 package org.moxie.ply;
 
 import java.io.*;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * User: blangel
@@ -54,7 +54,7 @@ public final class Exec {
             Output.print("^info^ invoking ^" + color + "^%s^r^", script);
             ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true);
             Map<String, String> environment = processBuilder.environment();
-            Map<String, Config.Prop> properties = Config.getAllResolvedProperties();
+            Map<String, Config.Prop> properties = Config.getResolvedEnvironmentalProperties();
             for (String propKey : properties.keySet()) {
                 Config.Prop prop = properties.get(propKey);
                 environment.put(propKey, prop.value);
@@ -92,10 +92,10 @@ public final class Exec {
      */
     private static List<String[]> resolve(String command, String[] cmdArgs) {
         List<String[]> resolved = new ArrayList<String[]>();
-        Config.Prop prop = Config.get(command);
+        String prop = Config.get(command);
         if (prop != null) {
-            Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^", command, prop.value);
-            String[] splitResolved = splitScript(prop.value);
+            Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^", command, prop);
+            String[] splitResolved = splitScript(prop);
             // TODO - recur resolve(String) on resolved
             for (String split : splitResolved) {
                 String[] args = splitScript(split);
@@ -168,7 +168,7 @@ public final class Exec {
 
     private static String resolveExecutable(String script) {
         String originalScript = script;
-        String localScriptsDir = Config.get("scripts.dir").value;
+        String localScriptsDir = Config.get("scripts.dir");
         script = (localScriptsDir.endsWith(File.separator) ? localScriptsDir :
                 localScriptsDir + File.separator) + script;
         File scriptFile = new File(script);

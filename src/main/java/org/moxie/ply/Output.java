@@ -47,8 +47,8 @@ public final class Output {
     }
 
     static void initColor() {
-        Config.Prop colorProp = Config.get("color");
-        boolean color = (colorProp == null || !"false".equals(colorProp.value));
+        String colorProp = Config.get("color");
+        boolean color = (colorProp == null || !"false".equals(colorProp));
         if (!color) {
             TERM_CODES.put("ply", new TermCode(TERM_CODES.get("ply").pattern, "[ply]"));
             TERM_CODES.put("error", new TermCode(TERM_CODES.get("error").pattern, "[err!]"));
