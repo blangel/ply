@@ -84,9 +84,14 @@ public final class Config {
     public static final File GLOBAL_SCRIPTS_DIR = new File(INSTALL_DIRECTORY + File.separator + "scripts");
 
     /**
+     * The local project directory (local to the init-ed project).
+     */
+    public static final File LOCAL_PROJECT_DIR = resolveLocalDir();
+
+    /**
      * The local configuration directory (local to the init-ed project).
      */
-    public static final File LOCAL_CONFIG_DIR = resolveLocalDir();
+    public static final File LOCAL_CONFIG_DIR = resolveLocalConfigDir(LOCAL_PROJECT_DIR);
 
     /**
      * Invokes the configuration script with the given {@code args}.
@@ -144,11 +149,11 @@ public final class Config {
 
     /**
      * This directory has to be resolved as ply can be invoked from within a nested directory.
-     * @return the resolved local ply configuration directory
+     * @return the resolved local ply project directory
      */
     private static File resolveLocalDir() {
-        String root = "/.ply/config";
-        String defaultPath = "./.ply/config";
+        String root = "/.ply/";
+        String defaultPath = "./.ply/";
         String path = defaultPath;
         File ply = new File(path);
         try {
@@ -164,6 +169,16 @@ public final class Config {
             return new File(defaultPath);
         }
         return ply;
+    }
+
+    private static File resolveLocalConfigDir(File resolvedLocalProjectDir) {
+        try {
+            String path = resolvedLocalProjectDir.getCanonicalPath();
+            return new File(path.endsWith(File.separator) ? path + "config" : path + File.separator + "config");
+        } catch (IOException ioe) {
+            Output.print(ioe);
+            return new File(resolvedLocalProjectDir.getPath() + "config");
+        }
     }
 
     /**
@@ -498,6 +513,8 @@ public final class Config {
                 environmentalProperties.put(context + "." + name, contextProps.get(name));
             }
         }
+        // now add some synthetic properties like the local ply directory location.
+        environmentalProperties.put("ply.project.dir", new Prop("ply", "project.dir", LOCAL_PROJECT_DIR.getPath(), true));
         return environmentalProperties;
     }
 

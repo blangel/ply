@@ -5,6 +5,7 @@ import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * User: blangel
@@ -24,31 +25,72 @@ public class FileChangeDetector {
 
     public static void main(String[] args) {
         String buildDirPath = System.getenv("ply.build.dir");
+        String localProjectPath = System.getenv("ply.project.dir");
+        String fileChangedConfigDirPath = localProjectPath + (localProjectPath.endsWith(File.separator) ? "" : File.separator)
+                                        + "filechangedetector/";
+        File fileChangedConfigDir = new File(fileChangedConfigDirPath);
+        File changedPropertiesFile = new File(fileChangedConfigDirPath + (fileChangedConfigDirPath.endsWith(File.separator) ? "" : File.separator)
+                + "changed.properties");
         File buildDir = new File(buildDirPath);
         File lastSrcChanged = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
                 + "src-changed.properties");
         String srcDirPath = System.getenv("ply.src.dir");
         File srcDir = new File(srcDirPath);
+        Properties existing = new Properties();
         if (!lastSrcChanged.exists()) {
             buildDir.mkdirs();
-            computeFromClean(lastSrcChanged, srcDir);
+            try {
+                lastSrcChanged.createNewFile();
+            } catch (IOException ioe) {
+                System.out.println("^error^ " + ioe.getMessage());
+            }
         } else {
-            // todo
+            FileInputStream fileInputStream = null;
+            try {
+                fileInputStream = new FileInputStream(lastSrcChanged);
+                existing.load(fileInputStream);
+            } catch (IOException ioe) {
+                System.out.println("^error^ " + ioe.getMessage());
+            } finally {
+                try {
+                    if (fileInputStream != null) {
+                        fileInputStream.close();
+                    }
+                } catch (IOException ioe) {
+                    // ignore
+                }
+            }
         }
+        try {
+            fileChangedConfigDir.mkdir();
+            changedPropertiesFile.createNewFile();
+        } catch (IOException ioe) {
+            System.out.println("^error^ " + ioe.getMessage());
+        }
+        computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing);
     }
 
-    private static void computeFromClean(File lastSrcChanged, File srcDir) {
+    private static void computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir, Properties existing) {
+        Properties changedList = new Properties();
         Properties properties = new Properties();
-	Properties existing = new Properties();
+        FileOutputStream changedListFileOutputStream = null;
         FileOutputStream propertiesFileOutputStream = null;
-        collectAllFileChanges(srcDir, properties, existing);
+        collectAllFileChanges(srcDir, changedList, properties, existing);
         try {
-            lastSrcChanged.createNewFile();
+            changedListFileOutputStream = new FileOutputStream(changedPropertiesFile);
+            changedList.store(changedListFileOutputStream, null);
             propertiesFileOutputStream = new FileOutputStream(lastSrcChanged);
             properties.store(propertiesFileOutputStream, null);
         } catch (IOException ioe) {
             System.out.println("^error^ " + ioe.getMessage());
         } finally {
+            try {
+                if (changedListFileOutputStream != null) {
+                    changedListFileOutputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
             try {
                 if (propertiesFileOutputStream != null) {
                     propertiesFileOutputStream.close();
@@ -59,39 +101,82 @@ public class FileChangeDetector {
         }
     }
 
-    private static void collectAllFileChanges(File from, Properties into, Properties existing) {
+    private static void collectAllFileChanges(File from, Properties changedList, Properties into, Properties existing) {
         String epochTime = String.valueOf(System.currentTimeMillis());
         for (File file : from.listFiles()) {
             if (file.isDirectory()) {
-                collectAllFileChanges(file, into);
+                collectAllFileChanges(file, changedList, into, existing);
             } else {
-                FileInputStream fileInputStream = null;
                 try {
-                    MessageDigest hash = MessageDigest.getInstance("SHA1");
-                    fileInputStream = new FileInputStream(file);
-                    DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, hash);
-                    byte[] buffer = new byte[4096];
-                    while (digestInputStream.read(buffer, 0, 4096) != -1) { }
-                    byte[] sha1 = hash.digest();
-                    into.setProperty(file.getCanonicalPath(), epochTime + "," + toHexString(sha1));
-                } catch (NoSuchAlgorithmException nsae) {
-                    throw new AssertionError(nsae);
-                } catch (FileNotFoundException fnfe) {
-                    throw new AssertionError(fnfe);
+                    AtomicReference<String> sha1HashRef = new AtomicReference<String>();
+                    String path = file.getCanonicalPath();
+                    if (hasChanged(file, existing, sha1HashRef)) {
+                        String sha1Hash = (sha1HashRef.get() == null ? computeSha1Hash(file) : sha1HashRef.get());
+                        into.setProperty(path, epochTime + "," + sha1Hash);
+                        changedList.setProperty(path, "");
+                    } else {
+                        into.setProperty(path, existing.getProperty(path));
+                    }
                 } catch (IOException ioe) {
                     System.out.println("^error^ " + ioe.getMessage());
-                } finally {
-                    try {
-                        if (fileInputStream != null) {
-                            fileInputStream.close();
-                        }
-                    } catch (IOException ioe) {
-                        // ignore
-                    }
                 }
-
             }
         }
+    }
+
+    private static boolean hasChanged(File file, Properties existing, AtomicReference<String> computedSha1) {
+        try {
+            String propertyValue;
+            if ((propertyValue = existing.getProperty(file.getCanonicalPath())) == null) {
+                return true;
+            }
+            String[] split = propertyValue.split("\\,");
+            if (split.length != 2) {
+                System.out.println("^warn^ corrupted src-changed.properties file, recomputing.");
+                return true;
+            }
+            long timestamp = Long.valueOf(split[0]);
+            if (file.lastModified() > timestamp) {
+                return true;
+            }
+            String oldHashAsHex = split[1];
+            String asHex = computeSha1Hash(file);
+            computedSha1.set(asHex);
+            return !asHex.equals(oldHashAsHex);
+        } catch (IOException ioe) {
+            throw new AssertionError(ioe);
+        } catch (NumberFormatException nfe) {
+            System.out.println("^warn^ corrupted src-changed.properties file, recomputing.");
+            return true;
+        }
+    }
+
+    private static String computeSha1Hash(File file) {
+        FileInputStream fileInputStream = null;
+        try {
+            MessageDigest hash = MessageDigest.getInstance("SHA1");
+            fileInputStream = new FileInputStream(file);
+            DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, hash);
+            byte[] buffer = new byte[4096];
+            while (digestInputStream.read(buffer, 0, 4096) != -1) { }
+            byte[] sha1 = hash.digest();
+            return toHexString(sha1);
+        } catch (NoSuchAlgorithmException nsae) {
+            throw new AssertionError(nsae);
+        } catch (FileNotFoundException fnfe) {
+            throw new AssertionError(fnfe);
+        } catch (IOException ioe) {
+            System.out.println("^error^ " + ioe.getMessage());
+        } finally {
+            try {
+                if (fileInputStream != null) {
+                    fileInputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
+        }
+        return ""; // error!
     }
 
     private static String toHexString(byte[] array) {
