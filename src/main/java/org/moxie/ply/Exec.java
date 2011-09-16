@@ -4,6 +4,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * User: blangel
@@ -59,6 +60,7 @@ public final class Exec {
                 Config.Prop prop = properties.get(propKey);
                 environment.put(propKey, prop.value);
             }
+            // the Process thread reaps the child if the parent is terminated
             Process process = processBuilder.start();
             InputStream processStdout = process.getInputStream();
             BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));

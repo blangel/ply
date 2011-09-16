@@ -267,17 +267,36 @@ public final class Config {
             return;
         }
         File propertiesFile = getContextPropertyFile(context);
+        FileInputStream propertiesFileInputStream = null;
+        FileOutputStream propertiesFileOutputStream = null;
         Properties properties = new Properties();
         try {
             if (!propertiesFile.exists()) {
                 propertiesFile.createNewFile();
             }
-            properties.load(new FileInputStream(propertiesFile));
+            propertiesFileInputStream = new FileInputStream(propertiesFile);
+            properties.load(propertiesFileInputStream);
             properties.setProperty(name, value);
-            properties.store(new FileOutputStream(propertiesFile), null);
+            propertiesFileOutputStream = new FileOutputStream(propertiesFile);
+            properties.store(propertiesFileOutputStream, null);
         } catch (IOException ioe) {
             Output.print("^error^ could not interact with %s properties file!", context);
             Output.print(ioe);
+        } finally {
+            try {
+                if (propertiesFileInputStream != null) {
+                    propertiesFileInputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
+            try {
+                if (propertiesFileOutputStream != null) {
+                    propertiesFileOutputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
         }
         // if already resolved, keep in sync.
         if (hasBeenResolved.get()) {
@@ -302,17 +321,36 @@ public final class Config {
             return;
         }
         Properties properties = new Properties();
+        FileInputStream propertiesFileInputStream = null;
+        FileOutputStream propertiesFileOutputStream = null;
         try {
-            properties.load(new FileInputStream(propertiesFile));
+            propertiesFileInputStream = new FileInputStream(propertiesFile);
+            properties.load(propertiesFileInputStream);
             properties.remove(name);
             if (properties.isEmpty()) {
                 propertiesFile.delete();
             } else {
-                properties.store(new FileOutputStream(propertiesFile), null);
+                propertiesFileOutputStream = new FileOutputStream(propertiesFile);
+                properties.store(propertiesFileOutputStream, null);
             }
         } catch (IOException ioe) {
             Output.print("^error^ Error interacting with ^b^%s^r^ property file.", context);
             Output.print(ioe);
+        } finally {
+            try {
+                if (propertiesFileInputStream != null) {
+                    propertiesFileInputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
+            try {
+                if (propertiesFileOutputStream != null) {
+                    propertiesFileOutputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
         }
         // if already resolved, keep in sync.
         if (hasBeenResolved.get()) {
@@ -477,11 +515,11 @@ public final class Config {
         }
         resolvePropertiesFromDirectory(GLOBAL_CONFIG_DIR, false);
         // now override with the local project's config directory.
-        if (!LOCAL_CONFIG_DIR.exists()) {
-            Output.print("^error^ not a ply project (or any of the parent directories), please initialize first ^b^ply init^r^.");
-            System.exit(1);
+        if (LOCAL_CONFIG_DIR.exists()) {
+            resolvePropertiesFromDirectory(LOCAL_CONFIG_DIR, true);
+        } else {
+            Output.print("^warn^ not a ply project (or any of the parent directories), please initialize first ^b^ply init^r^.");
         }
-        resolvePropertiesFromDirectory(LOCAL_CONFIG_DIR, true);
     }
 
     /**
@@ -502,12 +540,22 @@ public final class Config {
                 }
                 String context = fileName.substring(0, index);
                 Properties properties = new Properties();
+                FileInputStream propertiesFileInputStream = null;
                 try {
-                    properties.load(new FileInputStream(subFile));
+                    propertiesFileInputStream = new FileInputStream(subFile);
+                    properties.load(propertiesFileInputStream);
                     resolvePropertiesFromFile(context, properties, local);
                 } catch (IOException ioe) {
                     Output.print("^warn^ Skipping property file ^b^%s^r^", subFile.getPath());
                     Output.print(ioe);
+                } finally {
+                    try {
+                        if (propertiesFileInputStream != null) {
+                            propertiesFileInputStream.close();
+                        }
+                    } catch (IOException ioe) {
+                        // ignore
+                    }
                 }
             }
         }

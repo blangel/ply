@@ -24,7 +24,7 @@ public class Ply {
             usage();
         } else if ("config".equals(args[0])) {
             Config.invoke(args);
-        }else {
+        } else {
             for (String script : args) {
                 if (!Exec.invoke(script)) {
                     System.exit(1);
