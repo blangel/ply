@@ -152,8 +152,8 @@ public final class Config {
      * @return the resolved local ply project directory
      */
     private static File resolveLocalDir() {
-        String root = "/.ply/";
-        String defaultPath = "./.ply/";
+        String root = "/.ply";
+        String defaultPath = "./.ply";
         String path = defaultPath;
         File ply = new File(path);
         try {
