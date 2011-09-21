@@ -58,7 +58,7 @@ public final class Exec {
             Map<String, Config.Prop> properties = Config.getResolvedEnvironmentalProperties();
             for (String propKey : properties.keySet()) {
                 Config.Prop prop = properties.get(propKey);
-                environment.put(propKey, prop.value);
+                environment.put(propKey, Config.filter(prop.value));
             }
             // the Process thread reaps the child if the parent is terminated
             Process process = processBuilder.start();

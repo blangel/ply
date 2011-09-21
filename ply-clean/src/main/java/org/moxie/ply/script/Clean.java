@@ -7,19 +7,29 @@ import java.io.File;
  * Date: 9/9/11
  * Time: 8:57 PM
  *
- * Removes the build.dir directory.
+ * Removes the {@literal ply.build.dir} directory.
  */
 public class Clean {
 
     public static void main(String[] args) {
-        String buildDirPath = System.getenv("ply.build.dir");
+        Clean clean = new Clean(System.getenv("ply.build.dir"));
+        clean.invoke();
+    }
+
+    private final String buildDirPath;
+
+    private Clean(String buildDirPath) {
+        this.buildDirPath = buildDirPath;
+    }
+
+    private void invoke() {
         File buildDir = new File(buildDirPath);
         if (buildDir.exists()) {
             delete(buildDir);
         }
     }
 
-    private static void delete(File file) {
+    private void delete(File file) {
         if (file.isDirectory()) {
             for (File subFile : file.listFiles()) {
                 delete(subFile);

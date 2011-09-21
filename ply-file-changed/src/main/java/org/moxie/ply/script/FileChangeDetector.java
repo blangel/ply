@@ -14,25 +14,21 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * Determines which files within {@literal ply.src.dir} have changed since last invocation.
  * The information used to determine if a file has changed is saved in the {@literal ply.build.dir} in a file named
- * {@literal src-changed.properties}.  The list of files which have changed since last invocation is stored in a file
- * named {@literal changed.properties} in directory {@literal ${project.root.dir}/.ply/filechangedetector/}.
+ * {@literal src-changed-meta.properties}.  The list of files which have changed since last invocation is stored in a file
+ * named {@literal src-changed.properties} in directory {@literal ply.build.dir}.
  * The information used to determine change is stored relative to {@literal ply.build.dir} to allow for cleans to
- * force a full-recompilation.  The format of the {@literal src-changed.properties} file is file-path=timestamp,sha1-hash
- * and the format of the {@literal changed.properties} is simply a listing of file paths which have changed.
+ * force a full-recompilation.  The format of the {@literal src-changed-meta.properties} file is file-path=timestamp,sha1-hash
+ * and the format of the {@literal src-changed.properties} is simply a listing of file paths which have changed.
  *
  */
 public class FileChangeDetector {
 
     public static void main(String[] args) {
         String buildDirPath = System.getenv("ply.build.dir");
-        String localProjectPath = System.getenv("ply.project.dir");
-        String fileChangedConfigDirPath = localProjectPath + (localProjectPath.endsWith(File.separator) ? "" : File.separator)
-                                        + "filechangedetector/";
-        File fileChangedConfigDir = new File(fileChangedConfigDirPath);
-        File changedPropertiesFile = new File(fileChangedConfigDirPath + (fileChangedConfigDirPath.endsWith(File.separator) ? "" : File.separator)
-                + "changed.properties");
         File buildDir = new File(buildDirPath);
         File lastSrcChanged = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
+                + "src-changed-meta.properties");
+        File changedPropertiesFile = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
                 + "src-changed.properties");
         String srcDirPath = System.getenv("ply.src.dir");
         File srcDir = new File(srcDirPath);
@@ -62,7 +58,6 @@ public class FileChangeDetector {
             }
         }
         try {
-            fileChangedConfigDir.mkdir();
             changedPropertiesFile.createNewFile();
         } catch (IOException ioe) {
             System.out.println("^error^ " + ioe.getMessage());
@@ -132,12 +127,12 @@ public class FileChangeDetector {
             }
             String[] split = propertyValue.split("\\,");
             if (split.length != 2) {
-                System.out.println("^warn^ corrupted src-changed.properties file, recomputing.");
+                System.out.println("^warn^ corrupted src-changed-meta.properties file, recomputing.");
                 return true;
             }
             long timestamp = Long.valueOf(split[0]);
-            if (file.lastModified() > timestamp) {
-                return true;
+            if (file.lastModified() == timestamp) {
+                return false;
             }
             String oldHashAsHex = split[1];
             String asHex = computeSha1Hash(file);
@@ -146,7 +141,7 @@ public class FileChangeDetector {
         } catch (IOException ioe) {
             throw new AssertionError(ioe);
         } catch (NumberFormatException nfe) {
-            System.out.println("^warn^ corrupted src-changed.properties file, recomputing.");
+            System.out.println("^warn^ corrupted src-changed-meta.properties file, recomputing.");
             return true;
         }
     }
