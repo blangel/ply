@@ -1,13 +1,7 @@
 package org.moxie.ply.script;
 
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.ToolProvider;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import javax.tools.*;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -158,11 +152,65 @@ public class CompilerScript {
             System.out.println("Nothing to compile, everything is up to date.");
             return;
         }
-        JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
-        StandardJavaFileManager fileManager = javac.getStandardFileManager(null, null, null);
-        Iterable<? extends JavaFileObject> sourceFiles = fileManager.getJavaFileObjects(sourceFilePaths.toArray(new String[sourceFilePaths.size()]));
+        File sourceDir = new File(srcDir);
+        String tmpSrcPath;
+        try {
+            tmpSrcPath = sourceDir.getCanonicalPath();
+            if (!tmpSrcPath.endsWith(File.separator)) {
+                tmpSrcPath = tmpSrcPath + File.separator;
+            }
+        } catch (IOException ioe) {
+            throw new AssertionError(ioe);
+        }
+        final String srcPath = tmpSrcPath;
+        DiagnosticListener<JavaFileObject> diagnosticListener = new DiagnosticListener<JavaFileObject>() {
+            @Override public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
+                String kind = "", pad = " ", color = "blue";
+                switch (diagnostic.getKind()) {
+                    case ERROR:
+                        kind = "error";
+                        pad = "  ";
+                        color = "red";
+                        break;
+                    case MANDATORY_WARNING:
+                    case WARNING:
+                        kind = "warning";
+                        color = "yellow";
+                        break;
+                    default:
+                        kind = "message";
+                }
+                String className = diagnostic.getSource().toUri().toString();
+                className = className.replace(srcPath, "").replace(".java", "").replaceAll(File.separator, ".").replace("$", ".");
 
-        JavaCompiler.CompilationTask compilationTask = javac.getTask(null, null, null, getCompilerArgs(), null, sourceFiles);
+                String lineNumber = String.valueOf(diagnostic.getLineNumber());
+
+                String message = diagnostic.getMessage(null);
+                int index = message.lastIndexOf(kind + ": ");
+                if (index != -1) {
+                    message = message.substring(index + kind.length() + 2);
+                } else {
+                    index = message.lastIndexOf(lineNumber + ": ");
+                    if (index != -1) {
+                        message = message.substring(index + lineNumber.length() + 2);
+                    }
+                }
+                message = message.replaceAll("\\n", " ");
+                message = message.replaceAll(" found   :", "; found^b^");
+                message = message.replaceAll("required:", "^r^required^b^");
+                message = message.replaceAll("\\[unchecked\\] ", "");
+                message = message.replaceAll(" symbol  :", ";^b^");
+                message = message.replaceAll("location:", "^r^in^b^");
+
+                System.out.printf("^%s^^i^%s%s%s^r^ %s^r^ @ line ^b^%s^r^ in ^b^%s^r^\n", color, pad, kind, pad,
+                                  message, lineNumber, className);
+            }
+        };
+        JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
+        StandardJavaFileManager fileManager = javac.getStandardFileManager(diagnosticListener, null, null);
+        Iterable<? extends JavaFileObject> sourceFiles = fileManager.getJavaFileObjects(sourceFilePaths.toArray(new String[sourceFilePaths.size()]));
+        StringWriter extraPrintStatements = new StringWriter();
+        JavaCompiler.CompilationTask compilationTask = javac.getTask(extraPrintStatements, fileManager, diagnosticListener, getCompilerArgs(), null, sourceFiles);
         boolean result = compilationTask.call();
         // TODO - print errors.
     }

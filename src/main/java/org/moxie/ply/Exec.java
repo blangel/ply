@@ -208,9 +208,7 @@ public final class Exec {
             String[] newCmdArray = new String[cmdArray.length + 2];
             newCmdArray[0] = script;
             newCmdArray[1] = "-jar";
-            for (int i = 0; i < cmdArray.length; i++) {
-                newCmdArray[i + 2] = cmdArray[i];
-            }
+            System.arraycopy(cmdArray, 0, newCmdArray, 2, cmdArray.length);
             cmdArray = newCmdArray;
         }
         return cmdArray;
