@@ -153,66 +153,37 @@ public class CompilerScript {
             return;
         }
         File sourceDir = new File(srcDir);
-        String tmpSrcPath;
+        String srcPath;
         try {
-            tmpSrcPath = sourceDir.getCanonicalPath();
-            if (!tmpSrcPath.endsWith(File.separator)) {
-                tmpSrcPath = tmpSrcPath + File.separator;
+            srcPath = sourceDir.getCanonicalPath();
+            if (!srcPath.endsWith(File.separator)) {
+                srcPath = srcPath + File.separator;
             }
         } catch (IOException ioe) {
             throw new AssertionError(ioe);
         }
-        final String srcPath = tmpSrcPath;
-        DiagnosticListener<JavaFileObject> diagnosticListener = new DiagnosticListener<JavaFileObject>() {
-            @Override public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
-                String kind = "", pad = " ", color = "blue";
-                switch (diagnostic.getKind()) {
-                    case ERROR:
-                        kind = "error";
-                        pad = "  ";
-                        color = "red";
-                        break;
-                    case MANDATORY_WARNING:
-                    case WARNING:
-                        kind = "warning";
-                        color = "yellow";
-                        break;
-                    default:
-                        kind = "message";
-                }
-                String className = diagnostic.getSource().toUri().toString();
-                className = className.replace(srcPath, "").replace(".java", "").replaceAll(File.separator, ".").replace("$", ".");
-
-                String lineNumber = String.valueOf(diagnostic.getLineNumber());
-
-                String message = diagnostic.getMessage(null);
-                int index = message.lastIndexOf(kind + ": ");
-                if (index != -1) {
-                    message = message.substring(index + kind.length() + 2);
-                } else {
-                    index = message.lastIndexOf(lineNumber + ": ");
-                    if (index != -1) {
-                        message = message.substring(index + lineNumber.length() + 2);
-                    }
-                }
-                message = message.replaceAll("\\n", " ");
-                message = message.replaceAll(" found   :", "; found^b^");
-                message = message.replaceAll("required:", "^r^required^b^");
-                message = message.replaceAll("\\[unchecked\\] ", "");
-                message = message.replaceAll(" symbol  :", ";^b^");
-                message = message.replaceAll("location:", "^r^in^b^");
-
-                System.out.printf("^%s^^i^%s%s%s^r^ %s^r^ @ line ^b^%s^r^ in ^b^%s^r^\n", color, pad, kind, pad,
-                                  message, lineNumber, className);
-            }
-        };
+        FormattedDiagnosticListener diagnosticListener = new FormattedDiagnosticListener(srcPath);
         JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
         StandardJavaFileManager fileManager = javac.getStandardFileManager(diagnosticListener, null, null);
         Iterable<? extends JavaFileObject> sourceFiles = fileManager.getJavaFileObjects(sourceFilePaths.toArray(new String[sourceFilePaths.size()]));
         StringWriter extraPrintStatements = new StringWriter();
         JavaCompiler.CompilationTask compilationTask = javac.getTask(extraPrintStatements, fileManager, diagnosticListener, getCompilerArgs(), null, sourceFiles);
         boolean result = compilationTask.call();
-        // TODO - print errors.
+        for (String error : diagnosticListener.getErrors()) {
+            System.out.println(error);
+        }
+        for (String warning : diagnosticListener.getWarnings()) {
+            System.out.println(warning);
+        }
+        for (String notes : diagnosticListener.getNotes()) {
+            System.out.println(notes);
+        }
+        if (extraPrintStatements.getBuffer().length() > 0) {
+            System.out.println(extraPrintStatements.toString());
+        }
+        if (!result) {
+            System.exit(1);
+        }
     }
 
     private List<String> getCompilerArgs() {

@@ -4,7 +4,6 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * User: blangel
@@ -72,9 +71,9 @@ public final class Exec {
             if (result == 0) {
                 return true;
             }
-            Output.print("^error^ script ^" + color + "^%s^r^ failed [ result = %d ].", script, result);
+            Output.print("^error^ script ^" + color + "^%s^r^ failed [ result = %d ].", originalScriptName, result);
         } catch (IOException ioe) {
-            Output.print("^error^ executing script ^" + color + "^%s^r^", script);
+            Output.print("^error^ executing script ^" + color + "^%s^r^", originalScriptName);
             Output.print(ioe);
         } catch (InterruptedException ie) {
             Output.print(ie);
