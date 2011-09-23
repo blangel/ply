@@ -11,10 +11,10 @@ import java.util.Map;
  * Time: 9:09 PM
  *
  * Executes build scripts.  The determination of where/which build script to execute is as follows:
- * -1- First resolve the script via the {@link Config} properties in case it is aliased.
+ * -1- First resolve the script via the {@literal scripts} context {@link Config} properties in case it is aliased.
  * -2- For each resolved script (from -1-), check for an executable in the {@literal scripts.dir}
- * -3- If not there, check for an executable in the ply.scripts.dir.
- * -4- If not there, check for executable directly (via the path)
+ * -3- If not there, check for an executable in the installation's scripts directory.
+ * -4- If not there, check for executable directly (via the system path)
  * -5- else fail
  */
 public final class Exec {
