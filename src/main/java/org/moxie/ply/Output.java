@@ -10,10 +10,14 @@ import java.util.regex.Pattern;
  * Time: 5:06 PM
  *
  * Defines the output mechanism within the {@literal Ply} application.
- * Support for colored VT-100 terminal output is controlled by the property {@literal color}.
+ * Support for colored VT-100 terminal output is controlled by the property {@literal color} within the
+ * default context, {@literal ply}.
  */
 public final class Output {
 
+    /**
+     * A regex {@link Pattern} paired with its corresponding output string.
+     */
     private static final class TermCode {
         private final Pattern pattern;
         private final String output;
@@ -23,6 +27,9 @@ public final class Output {
         }
     }
 
+    /**
+     * A mapping of easily identifiable words to a {@link TermCode} object for colored output.
+     */
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
     static {
         boolean withinTerminal = (System.getenv("TERM") != null);
@@ -46,6 +53,10 @@ public final class Output {
         TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), withinTerminal ? "\u001b[1;37m" : ""));
     }
 
+    /**
+     * Remaps the {@link #TERM_CODES} appropriately if the {@literal color} property is false.
+     * Requires property resolution and so is post-static initialization.
+     */
     static void initColor() {
         String colorProp = Config.get("color");
         boolean color = (colorProp == null || !"false".equals(colorProp));
@@ -81,7 +92,4 @@ public final class Output {
     public static void print(Throwable t) {
         Output.print("^error^ Message: ^i^^red^%s^r^", (t == null ? "" : t.getMessage()));
     }
-
-
-
 }

@@ -15,7 +15,7 @@ import java.util.Map;
  * -2- For each resolved script (from -1-), check for an executable in the {@literal scripts.dir}
  * -3- If not there, check for an executable in the ply.scripts.dir.
  * -4- If not there, check for executable directly (via the path)
- * -4- else fail
+ * -5- else fail
  */
 public final class Exec {
 
