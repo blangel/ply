@@ -82,8 +82,8 @@ public final class Exec {
     }
 
     /**
-     * Looks up {@code command} in the {@link Config} properties to see if it is an alias for another
-     * command (or chain of commands).
+     * Looks up {@code command} in the {@literal scripts} context of {@link Config} properties to see if it is an alias
+     * for another command (or chain of commands).
      *
      * @param command to resolve
      * @param cmdArgs the arguments to {@code command} where {@code cmdArgs[0] == command} per convention of {@link Process}
@@ -93,7 +93,7 @@ public final class Exec {
      */
     private static List<String[]> resolve(String command, String[] cmdArgs) {
         List<String[]> resolved = new ArrayList<String[]>();
-        String prop = Config.get(command);
+        String prop = Config.get("scripts", command);
         if (prop != null) {
             Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^", command, prop);
             String[] splitResolved = splitScript(prop);
