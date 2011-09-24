@@ -1,5 +1,6 @@
 package org.moxie.ply;
 
+import javax.management.StringValueExp;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,12 +14,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * Handles getting global and local properties as well as setting of local properties.
  * Config usage is:
- * <pre>ply config [--usage] [--context] <get|set|remove></pre>
+ * <pre>ply config [--usage] [--context] <get|set|remove|append|prepend></pre>
  * where {@literal --usage} prints the usage screen and command {@literal get}
  * takes a name and prints the current value of the property for the given {@literal context}. Command {@literal set}
  * takes a name and a value parameter and sets the property named {@literal name} to {@literal value} within the context.
- * Command {@literal remove} will remove the named property from within the given context.  For the about operations,
- * if no context is given then the default {@literal ply} is assumed).
+ * Command {@literal remove} will remove the named property from within the given context.
+ * Command {@literal append} will append the value to the named property's existing value (or create new if a value
+ * doesn't exist) within the given context. Command {@literal prepend} will prepend the value to the named property's
+ * existing value (or create new if a value doesn't exist) within the given context.
+ * For the about operations, if no context is given then the default {@literal ply} is assumed).
  */
 public final class Config {
 
@@ -218,6 +222,12 @@ public final class Config {
         } else if ((args.length == (explicitlyDefinedContext ? 5 : 4))
                 && "set".equals(args[explicitlyDefinedContext ? 2 : 1])) {
             setProperty(context, args[explicitlyDefinedContext ? 3 : 2], args[explicitlyDefinedContext ? 4 : 3]);
+        } else if ((args.length == (explicitlyDefinedContext ? 5 : 4))
+                && "append".equals(args[explicitlyDefinedContext ? 2 : 1])) {
+            appendProperty(context, args[explicitlyDefinedContext ? 3 : 2], args[explicitlyDefinedContext ? 4 : 3]);
+        } else if ((args.length == (explicitlyDefinedContext ? 5 : 4))
+                && "prepend".equals(args[explicitlyDefinedContext ? 2 : 1])) {
+            prependProperty(context, args[explicitlyDefinedContext ? 3 : 2], args[explicitlyDefinedContext ? 4 : 3]);
         } else if ((args.length == (explicitlyDefinedContext ? 4 : 3))
                 && "remove".equals(args[explicitlyDefinedContext ? 2 : 1])) {
             removeProperty(context, args[explicitlyDefinedContext ? 3: 2]);
@@ -322,6 +332,36 @@ public final class Config {
             }
             contextProps.put(name, new Prop(context, name, value, true));
         }
+    }
+
+    /**
+     * Appends {@code value} to the property named {@code name} in context {@code context}.
+     * If no existing property exists for {@code name} within {@code context} a new one will be created.
+     * @param context of the property to which to append
+     * @param name of the property
+     * @param value to append
+     */
+    private void appendProperty(String context, String name, String value) {
+        String existingValue = get(context, name);
+        if (existingValue == null) {
+            existingValue = "";
+        }
+        setProperty(context, name, (existingValue + " " + value).trim());
+    }
+
+    /**
+     * Prepends {@code value} to the property named {@code name} in context {@code context}.
+     * If no existing property exists for {@code name} within {@code context} a new one will be created.
+     * @param context of the property to which to append
+     * @param name of the property
+     * @param value to append
+     */
+    private void prependProperty(String context, String name, String value) {
+        String existingValue = get(context, name);
+        if (existingValue == null) {
+            existingValue = "";
+        }
+        setProperty(context, name, (value + " " + existingValue).trim());
     }
 
     /**
@@ -606,6 +646,8 @@ public final class Config {
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^get [name]^r^\t: prints the value of the property (if not specified all properties are printed)");
         Output.print("    ^b^set <name> <value>^r^\t: sets the value of property within the context.");
+        Output.print("    ^b^append <name> <value>^r^\t: appends the value to property within the context");
+        Output.print("    ^b^prepend <name> <value>^r^\t: prepends the value to property within the context");
         Output.print("    ^b^remove <name>^r^\t: removes the property from the context");
         Output.print("  the default context is ^b^ply^r^");
     }
