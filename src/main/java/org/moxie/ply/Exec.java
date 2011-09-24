@@ -1,9 +1,7 @@
 package org.moxie.ply;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * User: blangel
@@ -18,6 +16,35 @@ import java.util.Map;
  * -5- else fail
  */
 public final class Exec {
+
+    private static class SuperArray<T> implements Iterable<T> {
+
+        private final List<T[]> arrays = new ArrayList<T[]>();
+
+        private void add(T[] array) {
+            arrays.add(array);
+        }
+
+        private void augment(int index, int secondaryIndex, T[] augmentation) {
+            
+        }
+
+        @Override public Iterator<T> iterator() {
+            return new Iterator<T>() {
+                @Override public boolean hasNext() {
+                    return false;
+                }
+
+                @Override public T next() {
+                    return null;
+                }
+
+                @Override public void remove() {
+
+                }
+            };
+        }
+    }
 
     /**
      * Swap between colors when displaying script names (so that chained script invocations' output is
@@ -36,7 +63,10 @@ public final class Exec {
     public static boolean invoke(String script) {
         String[] cmdArgs = splitScript(script);
         String originalScript = cmdArgs[0];
-        List<String[]> resolvedCmds = resolve(originalScript, cmdArgs);
+        List<String[]> resolvedCmds = new ArrayList<String[]>();
+        Set<String> encountered = new HashSet<String>();
+        resolveAlias(cmdArgs, resolvedCmds, encountered);
+//        List<String[]> resolvedCmds = resolve(originalScript, cmdArgs);
         for (String[] resolvedCmd : resolvedCmds) {
             if (!invoke(originalScript, resolvedCmd)) {
                 return false;
@@ -82,35 +112,42 @@ public final class Exec {
     }
 
     /**
-     * Looks up {@code command} in the {@literal scripts} context of {@link Config} properties to see if it is an alias
+     * Looks up {@code args[0]} in the {@literal scripts} context of {@link Config} properties to see if it is an alias
      * for another command (or chain of commands).
      *
-     * @param command to resolve
-     * @param cmdArgs the arguments to {@code command} where {@code cmdArgs[0] == command} per convention of {@link Process}
-     * @return the list of resolved commands (as {@code command} could be aliased as multiple commands) where
+     * @param args the script and arguments to it where {@code args[0]} is the script per convention of {@link Process}
+     * @param resolvedArgs the list of resolved scripts (as {@code args[0]} could be aliased as multiple commands) where
      *         each command's arguments have been filtered ({@literal ${xx}} is replaced by property named {@literal xx}
      *         from {@link Config#get(String)}).
+     * @param encountered set of scripts already encountered while trying to resolve aliases.  Used to keep track
+     *         of possible circular references.
      */
-    private static List<String[]> resolve(String command, String[] cmdArgs) {
-        List<String[]> resolved = new ArrayList<String[]>();
-        String prop = Config.get("scripts", command);
-        if (prop != null) {
-            Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^", command, prop);
-            String[] splitResolved = splitScript(prop);
-            // TODO - recur resolve(String) on resolved
-            for (String split : splitResolved) {
-                String[] args = splitScript(split);
-                String[] combined = combine(args, 0, args.length, cmdArgs, 1, cmdArgs.length - 1);
-                filter(combined);
-                resolved.add(combined);
-            }
-        } else {
-            filter(cmdArgs);
-            resolved.add(cmdArgs);
+    private static void resolveAlias(String[] args, List<String[]> resolvedArgs, Set<String> encountered) {
+        String script = args[0];
+        if (encountered.contains(script)) {
+            Output.print("^error^ script contains a circular reference to another script [ %s ].", script);
+            System.exit(1);
         }
-        return resolved;
+        encountered.add(script);
+        String resolved = Config.get("scripts", script);
+        if (resolved == null) {
+            filter(args);
+            resolvedArgs.add(args);
+            return;
+        }
+        Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^", script, resolved);
+        String[] splitResolved = splitScript(resolved);
+        for (String split : splitResolved) {
+            String[] splitArgs = splitScript(split);
+            String[] combined = combine(splitArgs, 0, splitArgs.length, args, 1, args.length - 1);
+            resolveAlias(combined, resolvedArgs, encountered);
+        }
     }
 
+    /**
+     * Runs {@link Config#filter(String)} on each value within {@code array}
+     * @param array to filter
+     */
     private static void filter(String[] array) {
         for (int i = 0; i < array.length; i++) {
             array[i] = Config.filter(array[i]);
