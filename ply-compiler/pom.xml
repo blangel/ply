@@ -34,19 +34,19 @@
                     <target>1.6</target>
                 </configuration>
             </plugin>
-	    <plugin>
-	      <groupId>org.apache.maven.plugins</groupId>
-	      <artifactId>maven-jar-plugin</artifactId>
-	      <version>2.3.2</version>
-	      <configuration>
-		<archive>
-		  <manifest>
-		    <addClasspath>true</addClasspath>
-		    <mainClass>org.moxie.ply.script.CompilerScript</mainClass>
-		  </manifest>
-		</archive>
-	      </configuration>
-	    </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>org.moxie.ply.script.CompilerScript</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-idea-plugin</artifactId>

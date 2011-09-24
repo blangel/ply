@@ -555,6 +555,7 @@ public final class Config {
         }
         // now add some synthetic properties like the local ply directory location.
         environmentalProperties.put("ply.project.dir", new Prop("ply", "project.dir", LOCAL_PROJECT_DIR.getPath(), true));
+        environmentalProperties.put("ply.java", new Prop("ply", "java", System.getProperty("ply.java"), true));
         return environmentalProperties;
     }
 

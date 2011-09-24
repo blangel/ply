@@ -17,35 +17,6 @@ import java.util.*;
  */
 public final class Exec {
 
-    private static class SuperArray<T> implements Iterable<T> {
-
-        private final List<T[]> arrays = new ArrayList<T[]>();
-
-        private void add(T[] array) {
-            arrays.add(array);
-        }
-
-        private void augment(int index, int secondaryIndex, T[] augmentation) {
-            
-        }
-
-        @Override public Iterator<T> iterator() {
-            return new Iterator<T>() {
-                @Override public boolean hasNext() {
-                    return false;
-                }
-
-                @Override public T next() {
-                    return null;
-                }
-
-                @Override public void remove() {
-
-                }
-            };
-        }
-    }
-
     /**
      * Swap between colors when displaying script names (so that chained script invocations' output is
      * easily distinguishable).
@@ -66,7 +37,6 @@ public final class Exec {
         List<String[]> resolvedCmds = new ArrayList<String[]>();
         Set<String> encountered = new HashSet<String>();
         resolveAlias(cmdArgs, resolvedCmds, encountered);
-//        List<String[]> resolvedCmds = resolve(originalScript, cmdArgs);
         for (String[] resolvedCmd : resolvedCmds) {
             if (!invoke(originalScript, resolvedCmd)) {
                 return false;
