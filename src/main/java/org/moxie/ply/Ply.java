@@ -25,11 +25,16 @@ public class Ply {
         } else if ("config".equals(args[0])) {
             Config.invoke(args);
         } else {
+            long start = System.currentTimeMillis();
+            Output.print("^ply^ building ^b^" + Config.get("ply", "project.name") + "^r^, " + Config.get("ply", "version"));
             for (String script : args) {
                 if (!Exec.invoke(script)) {
                     System.exit(1);
                 }
             }
+            long end = System.currentTimeMillis();
+            float seconds = ((end - start) / 1000.0f);
+            Output.print("^ply^ Finished in ^b^" + String.format("%.3f", seconds) + " seconds^r^.");
         }
         System.exit(0);
     }

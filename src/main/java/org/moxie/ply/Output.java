@@ -35,7 +35,7 @@ public final class Output {
         boolean withinTerminal = (System.getenv("TERM") != null);
         // first place color values (in case call to Config tries to print, at least have something in
         // TERM_CODES with which to strip messages.
-        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), withinTerminal ? "[\u001b[1m\u001b[1;33mply\u001b[0m]" : "[ply]"));
+        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), withinTerminal ? "[\u001b[1m\u001b[0;33mply\u001b[0m]" : "[ply]"));
         TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), withinTerminal ? "[\u001b[1m\u001b[1;31merr!\u001b[0m]" : "[err!]"));
         TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), withinTerminal ? "[\u001b[1m\u001b[1;33mwarn\u001b[0m]" : "[warn]"));
         TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), withinTerminal ? "[\u001b[1m\u001b[1;34minfo\u001b[0m]" : "[info]"));
