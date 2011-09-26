@@ -29,6 +29,9 @@ import java.util.Set;
  * is a property=value of manifest.Implementation-Vendor=Moxie in the package-jar.properties file then there will be
  * an entry in the manifest for 'Implementation-Vendor' with value 'Moxie'.
  * Any manifest property with a null or empty-string value will not be included in the manifest.
+ *
+ * TODO
+ *   - Handle resources
  */
 public class JarPackageScript {
 
