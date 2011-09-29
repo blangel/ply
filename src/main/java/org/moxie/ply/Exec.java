@@ -211,10 +211,13 @@ public final class Exec {
         if (script.endsWith(".jar")) {
             // add the appropriate java command
             script = System.getProperty("ply.java");
-            String[] newCmdArray = new String[cmdArray.length + 2];
+            String[] newCmdArray = new String[cmdArray.length + 5];
             newCmdArray[0] = script;
-            newCmdArray[1] = "-jar";
-            System.arraycopy(cmdArray, 0, newCmdArray, 2, cmdArray.length);
+            newCmdArray[1] = "-client";
+            newCmdArray[2] = "-Xms32M";
+            newCmdArray[3] = "-Xmx32M";
+            newCmdArray[4] = "-jar";
+            System.arraycopy(cmdArray, 0, newCmdArray, 5, cmdArray.length);
             cmdArray = newCmdArray;
         }
         return cmdArray;
