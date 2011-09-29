@@ -561,6 +561,7 @@ public final class Config {
 
     /**
      * Resolves the properties from the global and project-local property files.
+     * @throws IllegalStateException if the local properties directory cannot be found.
      */
     private void resolveProperties() {
         if (hasBeenResolved.getAndSet(true)) {
@@ -576,7 +577,7 @@ public final class Config {
         if (LOCAL_CONFIG_DIR.exists()) {
             resolvePropertiesFromDirectory(LOCAL_CONFIG_DIR, true);
         } else {
-            Output.print("^warn^ not a ply project (or any of the parent directories), please initialize first ^b^ply init^r^.");
+            throw new IllegalStateException("^warn^ not a ply project (or any of the parent directories), please initialize first ^b^ply init^r^.");
         }
     }
 

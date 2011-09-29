@@ -8,9 +8,10 @@ package org.moxie.ply;
  * The main entry point.
  * Ply is intended to be invoked on a {@literal Unix} command line with the following options:
  * <pre>ply [--usage] <command></pre>
- * where {@literal --usage} prints the usage screen and command is either {@literal config}
+ * where {@literal --usage} prints the usage screen and command is either {@literal config} or {@literal init}
  *  or represents the actual chain of commands to invoke.
  * The options for {@literal config} are defined in {@link Config}.
+ * The options for {@literal init} are defined in {@link Init}.
  */
 public class Ply {
 
@@ -19,11 +20,19 @@ public class Ply {
             usage();
             System.exit(0);
         }
-        Output.initColor();
+        try {
+            Output.initColor();
+        } catch (IllegalStateException ise) { // thrown to indicate there is no local properties directory
+            if (!"init".equals(args[0])) {
+                Output.print(ise.getMessage());
+            }
+        }
         if ("--usage".equals(args[0])) {
             usage();
         } else if ("config".equals(args[0])) {
             Config.invoke(args);
+        } else if ("init".equals(args[0])) {
+            Init.invoke(args);
         } else {
             long start = System.currentTimeMillis();
             Output.print("^ply^ building ^b^" + Config.get("ply", "project.name") + "^r^, " + Config.get("ply", "version"));
@@ -45,6 +54,7 @@ public class Ply {
         Output.print("ply [--usage] <^b^command^r^>");
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^config^r^ <options>\t: see ^b^ply config --usage^r^");
+        Output.print("    ^b^init^r^");
         Output.print("    <^b^build-scripts^r^>\t: a space delimited list of build scripts; i.e., ^b^ply clean \"myscript opt1\" compile test^r^");
     }
 

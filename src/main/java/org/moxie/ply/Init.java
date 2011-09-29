@@ -1,4 +1,4 @@
-package org.moxie.ply.script;
+package org.moxie.ply;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,11 +14,11 @@ import java.util.Properties;
  */
 public class Init {
 
-    public static void main(String[] args) {
+    public static void invoke(String[] args) {
          // check for existing init.
         File ply = new File("./.ply");
         if (ply.exists()) {
-            System.out.print("^info^ current directory is already initialized.");
+            Output.print("^info^ current directory is already initialized.");
             return;
         }
         ply.mkdir();
@@ -41,8 +41,8 @@ public class Init {
             localProperties.put("project.name", path);
             localProperties.store(new FileOutputStream(propFile), null);
         } catch (IOException ioe) {
-            System.out.print("^error^ could not create the local ply.properties file.");
-            System.out.printf("^error^ Message: ^i^^red^%s^r^", ioe.getMessage());
+            Output.print("^error^ could not create the local ply.properties file.");
+            Output.print(ioe);
         }
     }
 
