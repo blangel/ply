@@ -5,9 +5,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -196,9 +194,13 @@ public class DependencyManager {
         } else if ((args.length > 1) && "remove-repo".equals(args[0])) {
             removeRepository(args[1]);
         } else if (args.length == 0) {
-            System.out.println("Resolving dependencies...");
-            resolveDependencies();
-            System.out.println("Resolved dependencies.");
+            Map<String, String> dependencies = getDependenciesFromEnv();
+            int size = dependencies.size();
+            if (size > 0) {
+                System.out.printf("Resolving ^b^%d^r^ dependenc%s for project ^b^%s^r^.\n", size, (size == 1 ? "y" : "ies"),
+                                    System.getenv("ply.project.name"));
+                resolveDependencies();
+            }
         } else {
             usage();
         }
@@ -288,12 +290,12 @@ public class DependencyManager {
     }
 
     private static void resolveDependencies() {
-        Properties dependencies = loadDependenciesFile();
+        Map<String, String> dependencies = getDependenciesFromEnv();
         AtomicReference<String> error = new AtomicReference<String>();
         List<RepositoryAtom> repositoryAtoms = createRepositoryList();
-        for (String dependencyKey : dependencies.stringPropertyNames()) {
+        for (String dependencyKey : dependencies.keySet()) {
             error.set(null);
-            String dependencyValue = dependencies.getProperty(dependencyKey);
+            String dependencyValue = dependencies.get(dependencyKey);
             DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + "::" + dependencyValue, error);
             if (dependencyAtom == null) {
                 System.out.printf("^warn^ Invalid dependency %s::%s; missing %s\n", dependencyKey, dependencyValue,
@@ -447,6 +449,18 @@ public class DependencyManager {
             }
         }
         return repositoryAtoms;
+    }
+
+    private static Map<String, String> getDependenciesFromEnv() {
+        Map<String, String> dependencies = new HashMap<String, String>();
+        for (String environmentKey : System.getenv().keySet()) {
+            if (environmentKey.startsWith("dependencies.")) {
+                String dependencyKey = environmentKey.replace("dependencies.", "");
+                String dependencyValue = System.getenv(environmentKey);
+                dependencies.put(dependencyKey, dependencyValue);
+            }
+        }
+        return dependencies;
     }
 
     private static Properties loadDependenciesFile() {
