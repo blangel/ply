@@ -21,7 +21,7 @@ public class Ply {
             System.exit(0);
         }
         try {
-            Output.initColor();
+            Output.init();
         } catch (IllegalStateException ise) { // thrown to indicate there is no local properties directory
             if (!"init".equals(args[0])) {
                 Output.print(ise.getMessage());

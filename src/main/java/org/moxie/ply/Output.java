@@ -1,7 +1,11 @@
 package org.moxie.ply;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -53,11 +57,15 @@ public final class Output {
         TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), withinTerminal ? "\u001b[1;37m" : ""));
     }
 
+    private static final AtomicReference<Boolean> warnLevel = new AtomicReference<Boolean>(true);
+    private static final AtomicReference<Boolean> infoLevel = new AtomicReference<Boolean>(true);
+
     /**
      * Remaps the {@link #TERM_CODES} appropriately if the {@literal color} property is false.
+     * Also figures out what log levels are available.
      * Requires property resolution and so is post-static initialization.
      */
-    static void initColor() {
+    static void init() {
         String colorProp = Config.get("color");
         boolean color = (colorProp == null || !"false".equals(colorProp));
         if (!color) {
@@ -78,13 +86,29 @@ public final class Output {
             TERM_CODES.put("cyan", new TermCode(TERM_CODES.get("cyan").pattern, ""));
             TERM_CODES.put("white", new TermCode(TERM_CODES.get("white").pattern, ""));
         }
+        String logLevelsProp = Config.get("log.levels");
+        if (!logLevelsProp.contains("warn")) {
+            warnLevel.set(false);
+        }
+        if (!logLevelsProp.contains("info")) {
+            infoLevel.set(false);
+        }
     }
 
     public static void print(String message, Object ... args) {
         String formatted = String.format(message, args);
+        // TODO - fix!  this case fails: ^cyan^warn^r^ if ^warn^ is evaluated first...really meant for ^cyan^ and ^r^
+        // TODO - to be resolved
         for (String key : TERM_CODES.keySet()) {
             TermCode termCode = TERM_CODES.get(key);
-            formatted = termCode.pattern.matcher(formatted).replaceAll(termCode.output);
+            Matcher matcher = termCode.pattern.matcher(formatted);
+            if (matcher.find()) {
+                if (("warn".equals(key) && !warnLevel.get()) || ("info".equals(key) && !infoLevel.get())) {
+                    // this is a log statement for a disabled log-level, skip.
+                    return;
+                }
+                formatted = matcher.replaceAll(termCode.output);
+            }
         }
         System.out.println(formatted);
     }
