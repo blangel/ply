@@ -259,7 +259,7 @@ public final class Config {
 
     /**
      * Filters {@code value} by resolving all unix-style properties defined within against the resolved properties
-     * of this configuration.
+     * of this configuration as well as the system environment variables (to capture things like {@literal PLY_HOME}).
      * @param value to filter
      * @return the filtered value
      */
@@ -274,6 +274,11 @@ public final class Config {
                 if (value.contains("${" + name + "}")) {
                     value = value.replaceAll("\\$\\{" + name + "\\}", filter(props.get(name).value));
                 }
+            }
+        }
+        for (String enivronmentProperty : System.getenv().keySet()) {
+            if (value.contains("${" + enivronmentProperty + "}")) {
+                value = value.replaceAll("\\$\\{" + enivronmentProperty + "\\}", System.getenv(enivronmentProperty));
             }
         }
         return value;
