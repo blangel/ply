@@ -2,9 +2,7 @@ package org.moxie.ply;
 
 import javax.management.StringValueExp;
 import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -488,7 +486,9 @@ public final class Config {
             return hasGlobal;
         }
         Output.print("Properties from ^b^%s^r^", context);
-        for (String name : props.keySet()) {
+        List<String> propertyNames = new ArrayList<String>(props.keySet());
+        Collections.sort(propertyNames);
+        for (String name : propertyNames) {
             printPropertyValue("\t", context, name, props);
             Prop prop = props.get(name);
             if (!prop.localOverride) {
@@ -503,7 +503,9 @@ public final class Config {
      */
     private void printPropertyValues() {
         boolean hasGlobal = false;
-        for (String context : contextToResolvedProperty.keySet()) {
+        List<String> contexts = new ArrayList<String>(contextToResolvedProperty.keySet());
+        Collections.sort(contexts);
+        for (String context : contexts) {
             if (printPropertyValuesForContext(context)) {
                 hasGlobal = true;
             }
@@ -520,7 +522,9 @@ public final class Config {
      * @param properties to print
      */
     private void printPropertyValues(String prefix, String context, Map<String, Prop> properties) {
-        for (String propertyName : properties.keySet()) {
+        List<String> propertyNames = new ArrayList<String>(properties.keySet());
+        Collections.sort(propertyNames);
+        for (String propertyName : propertyNames) {
             printPropertyValueByName(prefix, context, propertyName, properties);
         }
     }
