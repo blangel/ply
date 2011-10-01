@@ -1,5 +1,10 @@
 package org.moxie.ply.script;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -52,6 +57,11 @@ import java.util.concurrent.atomic.AtomicReference;
  * {@literal http://repo1.maven.org/maven2/org/apache/commons/1.3.2/commons-io-1.3.2.jar}.
  * The difference between the two is that with the {@literal maven} type the dependency's {@literal namespace}'s periods
  * are resolved to forward slashes as is convention in the {@literal Maven} build system.
+ *
+ * This script, run without arguments, will resolve all the dependencies listed in {@literal dependencies.properties}
+ * and store the values in file {@literal resolved-deps.properties} under the {@literal ply.build.dir}.  This file
+ * will contain local file references (local to the {@literal localRepo}) for dependencies and transitive dependencies
+ * so that compilation and packaging may succeed.
  *
  * The dependency script's usage is:
  * <pre>dep [--usage] [add|remove|add-repo|remove-repo]</pre>
@@ -198,8 +208,9 @@ public class DependencyManager {
             int size = dependencies.size();
             if (size > 0) {
                 System.out.printf("Resolving ^b^%d^r^ dependenc%s for project ^b^%s^r^.\n", size, (size == 1 ? "y" : "ies"),
-                                    System.getenv("ply.project.name"));
-                resolveDependencies();
+                        System.getenv("ply.project.name"));
+                Properties dependencyFiles = resolveDependencies(dependencies);
+                storeResolvedDependenciesFile(dependencyFiles);
             }
         } else {
             usage();
@@ -289,8 +300,9 @@ public class DependencyManager {
         }
     }
 
-    private static void resolveDependencies() {
-        Map<String, String> dependencies = getDependenciesFromEnv();
+    private static Properties resolveDependencies(Map<String, String> dependencies) {
+        Properties dependencyFiles = new Properties();
+
         AtomicReference<String> error = new AtomicReference<String>();
         List<RepositoryAtom> repositoryAtoms = createRepositoryList();
         for (String dependencyKey : dependencies.keySet()) {
@@ -302,15 +314,17 @@ public class DependencyManager {
                         error.get());
                 continue;
             }
-            resolveDependency(dependencyAtom, repositoryAtoms);
+            resolveDependency(dependencyAtom, repositoryAtoms, dependencyFiles);
         }
+
+        return dependencyFiles;
     }
 
     private static boolean resolveDependency(DependencyAtom dependencyAtom) {
-        return resolveDependency(dependencyAtom, createRepositoryList());
+        return resolveDependency(dependencyAtom, createRepositoryList(), new Properties());
     }
 
-    private static boolean resolveDependency(DependencyAtom dependencyAtom, List<RepositoryAtom> repositories) {
+    private static boolean resolveDependency(DependencyAtom dependencyAtom, List<RepositoryAtom> repositories, Properties dependencyFiles) {
         if (repositories.size() < 1) {
             throw new IllegalArgumentException("Need at least one repository!");
         }
@@ -327,24 +341,99 @@ public class DependencyManager {
         File localDepDirFile = new File(localDirPath.substring(7));
         File localDepFile = new File(localUrl.getFile());
         if (localDepFile.exists()) {
-            // TODO - transitive, as it could exist but they've been deleted from the repo
+            if (!dependencyFiles.contains(localDepFile.getPath())) {
+                dependencyFiles.put(localDepFile.getPath(), "");
+                // TODO - should this also resave the transitive deps file?
+                processTransitiveDependencies(dependencyAtom, localRepo, repositories,
+                                                "file://" + localDepDirFile.getPath(), dependencyFiles);
+
+            }
             return true;
         }
 
-        // now check each repo.
+        // not in the local-repo, check each other repo.
         for (RepositoryAtom remoteRepo : nonLocalRepos) {
-            String remotePath = getDependencyPathForRepo(dependencyAtom, remoteRepo);
+            String remotePathDir = getDependencyDirectoryPathForRepo(dependencyAtom, remoteRepo);
+            String remotePath = remotePathDir + File.separator + dependencyAtom.getArtifactName();
             URL remoteUrl = getUrl(remotePath);
             if (remoteUrl == null) {
                 continue;
             }
             if (copy(remoteUrl, localDepFile, localDepDirFile)) {
-                // TODO - transitive
+                if (!dependencyFiles.contains(localDepFile.getPath())) {
+                    dependencyFiles.put(localDepFile.getPath(), "");
+                    Properties transitiveDeps = processTransitiveDependencies(dependencyAtom, remoteRepo, repositories,
+                                                    remotePathDir, dependencyFiles);
+                    storeTransitiveDependenciesFile(transitiveDeps, localDepDirFile.getPath());
+                }
                 return true;
             }
         }
         System.out.printf("^warn^ Dependency ^b^%s^r^ not found in any repository.\n", dependencyAtom.toString());
         return false;
+    }
+
+    private static Properties processTransitiveDependencies(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom, List<RepositoryAtom> repositories,
+                                                      String repoDepDir, Properties resolvedDependencies) {
+        Properties transitiveDependencies = getTransitiveDependenciesFile(dependencyAtom, repositoryAtom, repoDepDir);
+        if (transitiveDependencies == null) {
+            System.out.printf("^warn^ No transitive dependencies file found for %s, ignoring.\n",
+                    dependencyAtom.toString());
+            return null;
+        }
+        AtomicReference<String> error = new AtomicReference<String>();
+        for (String dependency : transitiveDependencies.stringPropertyNames()) {
+            error.set(null);
+            String dependencyVersion = transitiveDependencies.getProperty(dependency);
+            DependencyAtom transitiveDependencyAtom = DependencyAtom.parse(dependency + "::" + dependencyVersion, error);
+            if (transitiveDependencyAtom == null) {
+                System.out.printf("^warn^ Transitive dependency %s::%s invalid; missing %s, skipping.\n", dependency,
+                        dependencyVersion, error.get());
+                continue;
+            }
+            resolveDependency(transitiveDependencyAtom, repositories, resolvedDependencies);
+        }
+        return transitiveDependencies;
+    }
+
+    private static Properties getTransitiveDependenciesFile(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
+                                                            String repoDepDir) {
+        if (repositoryAtom.getResolvedType() == RepositoryAtom.Type.ply) {
+            return getTransitiveDependenciesFromPlyRepo(repoDepDir + File.separator + "dependencies.properties");
+        } else {
+            String pomName = dependencyAtom.getArtifactName().replace(".jar", ".pom");
+            return getTransitiveDependenciesFromMavenRepo(repoDepDir + File.separator + pomName, repositoryAtom);
+        }
+    }
+
+    private static Properties getTransitiveDependenciesFromPlyRepo(String urlPath) {
+        InputStream inputStream = null;
+        try {
+            URL url = new URL(urlPath);
+            Properties properties = new Properties();
+            inputStream = new BufferedInputStream(url.openStream());
+            properties.load(inputStream);
+            return properties;
+        } catch (MalformedURLException murle) {
+            System.out.printf("^error^ %s\n", murle.getMessage());
+        } catch (IOException ioe) {
+            System.out.printf("^error^ %s\n", ioe.getMessage());
+            ioe.printStackTrace();
+        } finally {
+            try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
+        }
+        return null;
+    }
+
+    private static Properties getTransitiveDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
+        MavenPomParser mavenPomParser = new MavenPomParser.Default();
+        return mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
     }
 
     private static String getDependencyPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
@@ -443,7 +532,7 @@ public class DependencyManager {
                 RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
                 if (repo == null) {
                     System.out.printf("^warn^ Invalid repository declared %s, ignoring.\n", repoAtom);
-                } else {    
+                } else {
                     repositoryAtoms.add(repo);
                 }
             }
@@ -513,6 +602,21 @@ public class DependencyManager {
         String localDir = System.getenv("ply.project.dir");
         storeFile(repositories, localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "repositories.properties");
+    }
+
+    private static void storeResolvedDependenciesFile(Properties resolvedDependencies) {
+        String buildDirPath = System.getenv("ply.build.dir");
+        File buildDir = new File(buildDirPath);
+        buildDir.mkdirs();
+        storeFile(resolvedDependencies, buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
+                + "resolved-deps.properties");
+    }
+
+    private static void storeTransitiveDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {
+        File localRepoDepDir = new File(localRepoDepDirPath);
+        localRepoDepDir.mkdirs();
+        storeFile(transitiveDependencies, localRepoDepDirPath + (localRepoDepDirPath.endsWith(File.separator) ? "" : File.separator)
+                                                + "dependencies.properties");
     }
 
     private static void storeFile(Properties properties, String path) {
