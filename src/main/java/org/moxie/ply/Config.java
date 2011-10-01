@@ -209,18 +209,18 @@ public final class Config {
             if (args.length == (explicitlyDefinedContext ? 4 : 3)) {
                 String name = args[explicitlyDefinedContext ? 3 : 2];
                 if (!explicitlyDefinedContext) {
-                    printPropertyValue(name);
+                    print(name);
                 } else {
-                    printPropertyValue(context, name);
+                    print(context, name);
                 }
             }
             // no name, but has context
             else if (explicitlyDefinedContext) {
-                printPropertyValues(context);
+                printContext(context);
             }
             // no name, print all
             else {
-                printPropertyValues();
+                print();
             }
         } else if ((args.length == (explicitlyDefinedContext ? 5 : 4))
                 && "set".equals(args[explicitlyDefinedContext ? 2 : 1])) {
@@ -425,45 +425,84 @@ public final class Config {
     }
 
     /**
-     * Prints the value of property named {@code name} within all contexts.
-     * @param name the name of the property to print.
+     * Print all properties for all contexts.
      */
-    private void printPropertyValue(String name) {
-        for (String context : contextToResolvedProperty.keySet()) {
-            printPropertyValue(context, name);
-        }
+    private void print() {
+        print(getProperties());
     }
 
     /**
-     * Prints the value of property named {@code name} within context {@code context}.
-     * @param context the name of the context for which to look for a property named {@code name}.
-     * @param name the name of the property to print.
+     * Print all properties matching {@code name} from within any context.
+     * @param name to match (may include wildcard) from within any context.
      */
-    private void printPropertyValue(String context, String name) {
-        Map<String, Prop> props = contextToResolvedProperty.get(context);
-        if (props == null) {
-            Output.print("No context ^b^%s^r^ found.", context);
-            return;
-        }
-
-        printPropertyValue(String.format("From ^b^%s^r^ context; ", context), context, name, props);
-    }
-
-    /**
-     * Prints the value of property named {@code name} within context {@code context} for the given
-     * resolved properties {@code resolvedProps}.
-     * This method also resolves wildcards within {@code name} if any.
-     * @param prefix to print before the property name and value
-     * @param context the name of the context for which to look for a property named {@code name}.
-     * @param name the name of the property to print
-     * @param resolvedProps the resolved properties to look within.
-     */
-    private void printPropertyValue(String prefix, String context, String name, Map<String, Prop> resolvedProps) {
-        if (name.contains("*")) {
-            printPropertyValueByWildcardName(prefix, context, name, resolvedProps);
+    private void print(String name) {
+        Map<String, Map<String, Prop>> props = getProperties(name);
+        if (props.isEmpty()) {
+            Output.print("No property matched ^b^%s^r^ in any context.", name);
         } else {
-            printPropertyValueByName(prefix, context, name, resolvedProps);
+            print(props);
         }
+    }
+
+    private void printContext(String context) {
+        if (!contextToResolvedProperty.containsKey(context)) {
+            Output.print("No context ^b^%s^r^ found.", context);
+        } else {
+            printContext(context, contextToResolvedProperty.get(context));
+        }
+    }
+
+    /**
+     * Prints all properties matching {@code name} from context {@code context}
+     * @param context to look for properties matching {@code name} to print
+     * @param name to match (may include wildcard) from within {@code context}.
+     */
+    private void print(String context, String name) {
+        Map<String, Map<String, Prop>> props = getProperties(context, name);
+        if (props.isEmpty()) {
+            Output.print("No property matched ^b^%s^r^ in context ^b^%s^r^.", name, context);
+        } else {
+            print(props);
+        }
+    }
+
+    /**
+     * Print all contexts properties from within {@code props}
+     * @param props mapping of context to properties to print.
+     */
+    private void print(Map<String, Map<String, Prop>> props) {
+        boolean hasGlobal = false;
+        List<String> contexts = new ArrayList<String>(props.keySet());
+        Collections.sort(contexts);
+        for (String context : contexts) {
+            if (printContext(context, props.get(context))) {
+                hasGlobal = true;
+            }
+        }
+        if (hasGlobal) {
+            Output.print("^green^*^r^ indicates system property.");
+        }
+    }
+
+    /**
+     * Prints all {@code props} coming from the context, {@code context}.
+     * @param context from which the {@code props} come
+     * @param props to print
+     * @return true if any of the properties to print are global.
+     */
+    private boolean printContext(String context, Map<String, Prop> props) {
+        boolean hasGlobal = false;
+        Output.print("Properties from ^b^%s^r^", context);
+        List<String> propertyNames = new ArrayList<String>(props.keySet());
+        Collections.sort(propertyNames);
+        for (String name : propertyNames) {
+            printPropertyValueByName("\t", context, name, props);
+            Prop prop = props.get(name);
+            if (!prop.localOverride) {
+                hasGlobal = true;
+            }
+        }
+        return hasGlobal;
     }
 
     /**
@@ -484,81 +523,51 @@ public final class Config {
     }
 
     /**
-     * Prints all the properties within {@code context}.
-     * @param context the name of the context for which to print properties.
+     * @return all resolved properties from all contexts.
      */
-    private void printPropertyValues(String context) {
-        boolean hasGlobal = printPropertyValuesForContext(context);
-        if (hasGlobal) {
-            Output.print("^green^*^r^ indicates system property.");
-        }
+    private Map<String, Map<String, Prop>> getProperties() {
+        return Collections.unmodifiableMap(contextToResolvedProperty);
     }
-    private boolean printPropertyValuesForContext(String context) {
-        boolean hasGlobal = false;
+
+    /**
+     * @param name to match (may include a wildcard) within all contexts.
+     * @return a mapping of contexts to all their properties which match {@code name}
+     */
+    private Map<String, Map<String, Prop>> getProperties(String name) {
+        Map<String, Map<String, Prop>> resolved = new HashMap<String, Map<String, Prop>>();
+        for (String context : contextToResolvedProperty.keySet()) {
+            Map<String, Map<String, Prop>> props = getProperties(context, name);
+            if (!props.isEmpty() && (props.get(context) != null) && !props.get(context).isEmpty()) {
+                resolved.put(context, props.get(context));
+            }
+        }
+        return resolved;
+    }
+
+    /**
+     * @param context of the properties file to look within
+     * @param name to match (may include a wildcard).
+     * @return a mapping of {@code context} to all properties within the context which match {@code name}
+     */
+    private Map<String, Map<String, Prop>> getProperties(String context, String name) {
         Map<String, Prop> props = contextToResolvedProperty.get(context);
         if (props == null) {
             Output.print("No context ^b^%s^r^ found.", context);
-            return hasGlobal;
+            System.exit(1);
         }
-        Output.print("Properties from ^b^%s^r^", context);
-        List<String> propertyNames = new ArrayList<String>(props.keySet());
-        Collections.sort(propertyNames);
-        for (String name : propertyNames) {
-            printPropertyValue("\t", context, name, props);
-            Prop prop = props.get(name);
-            if (!prop.localOverride) {
-                hasGlobal = true;
-            }
-        }
-        return hasGlobal;
-    }
 
-    /**
-     * Prints all property values within all contexts.
-     */
-    private void printPropertyValues() {
-        boolean hasGlobal = false;
-        List<String> contexts = new ArrayList<String>(contextToResolvedProperty.keySet());
-        Collections.sort(contexts);
-        for (String context : contexts) {
-            if (printPropertyValuesForContext(context)) {
-                hasGlobal = true;
-            }
-        }
-        if (hasGlobal) {
-            Output.print("^green^*^r^ indicates system property.");
-        }
-    }
-
-    /**
-     * Prints all properties within {@code properties}
-     * @param prefix the prefix to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
-     * @param context the context to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
-     * @param properties to print
-     */
-    private void printPropertyValues(String prefix, String context, Map<String, Prop> properties) {
-        List<String> propertyNames = new ArrayList<String>(properties.keySet());
-        Collections.sort(propertyNames);
-        for (String propertyName : propertyNames) {
-            printPropertyValueByName(prefix, context, propertyName, properties);
-        }
-    }
-
-    /**
-     * Resolves {@code name} to the list of property names matching it within the {@code context} for the given
-     * {@code properties}.
-     * @param prefix the prefix to pass to {@link #printPropertyValueByName(String, String, String, java.util.Map)}
-     * @param context to resolve {@code name}
-     * @param name the wildcard-ed name to resolve
-     * @param properties from which to resolve {@code name}
-     */
-    private void printPropertyValueByWildcardName(String prefix, String context, String name, Map<String, Prop> properties) {
-        Map<String, Prop> resolvedProps = getPropertyValuesByWildcardName(name, properties);
-        if (resolvedProps.isEmpty()) {
-            Output.print("No property matched ^b^%s^r^ in context ^b^%s^r^.", name, context);
+        Map<String, Map<String, Prop>> resolved = new HashMap<String, Map<String, Prop>>(1);
+        Map<String, Prop> resolvedProps;
+        if (name.contains("*")) {
+            resolvedProps = getPropertyValuesByWildcardName(name, props);
         } else {
-            printPropertyValues(prefix, context, resolvedProps);
+            resolvedProps = new HashMap<String, Prop>(1);
+            if (props.containsKey(name)) {
+                resolvedProps.put(name, props.get(name));
+            }
         }
+        resolved.put(context, resolvedProps);
+        return resolved;
     }
 
     /**
