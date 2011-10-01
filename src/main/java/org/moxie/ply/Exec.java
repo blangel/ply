@@ -23,28 +23,33 @@ public final class Exec {
         List<String[]> resolvedCmds = new ArrayList<String[]>();
         Set<String> encountered = new HashSet<String>();
         resolveAlias(cmdArgs, resolvedCmds, encountered);
+        // all invoked scripts will be started from the parent of the '.ply' directory.
+        // this provides a consistent view of execution for all scripts.  if a script wants to actually know
+        // which directory from which the 'ply' command was invoked, look at 'parent.user.dir' environment property.
+        String plyDirPath = Config.LOCAL_PROJECT_DIR.getPath();
+        File projectRoot = new File(plyDirPath + (plyDirPath.endsWith(File.separator) ? "" : File.separator) + ".." + File.separator);
         for (String[] resolvedCmd : resolvedCmds) {
-            if (!invoke(originalScript, resolvedCmd)) {
+            if (!invoke(originalScript, resolvedCmd, projectRoot)) {
                 return false;
             }
         }
         return true;
     }
 
-    private static boolean invoke(String originalScriptName, String[] cmdArgs) {
+    private static boolean invoke(String originalScriptName, String[] cmdArgs, File projectRoot) {
         cmdArgs[0] = resolveExecutable(cmdArgs[0]);
         cmdArgs = handleNonNativeExecutable(cmdArgs);
         String script = buildScriptName(cmdArgs);
         try {
             Output.print("^dbug^ invoking %s", script);
-            ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true);
+            ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true).directory(projectRoot);
             Map<String, String> environment = processBuilder.environment();
             Map<String, Config.Prop> properties = Config.getResolvedEnvironmentalProperties();
             for (String propKey : properties.keySet()) {
                 Config.Prop prop = properties.get(propKey);
-                environment.put(propKey, Config.filter(prop.value));
+                environment.put(propKey, Config.filter(prop));
             }
-            // the Process thread reaps the child if the parent is terminated
+            // the Process thread reaps the child if the parent (this) is terminated
             Process process = processBuilder.start();
             InputStream processStdout = process.getInputStream();
             BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
@@ -100,12 +105,12 @@ public final class Exec {
     }
 
     /**
-     * Runs {@link Config#filter(String)} on each value within {@code array}
+     * Runs {@link Config#filter(Config.Prop)} on each value within {@code array}, the context will be scripts.
      * @param array to filter
      */
     private static void filter(String[] array) {
         for (int i = 0; i < array.length; i++) {
-            array[i] = Config.filter(array[i]);
+            array[i] = Config.filter(new Config.Prop("scripts", "", array[i], true));
         }
     }
 
@@ -161,7 +166,7 @@ public final class Exec {
 
     private static String resolveExecutable(String script) {
         String originalScript = script;
-        String localScriptsDir = Config.get("scripts.dir");
+        String localScriptsDir = Config.get("project", "scripts.dir");
         script = (localScriptsDir.endsWith(File.separator) ? localScriptsDir :
                 localScriptsDir + File.separator) + script;
         File scriptFile = new File(script);

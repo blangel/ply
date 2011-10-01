@@ -33,7 +33,7 @@ public final class Config {
         final String value;
         final String context;
         final boolean localOverride;
-        private Prop(String context, String name, String value, boolean localOverride) {
+        Prop(String context, String name, String value, boolean localOverride) {
             this.context = context;
             this.name = name;
             this.value = value;
@@ -127,7 +127,7 @@ public final class Config {
      * @param value to filter
      * @return the filtered value
      */
-    public static String filter(String value) {
+    public static String filter(Prop value) {
         return get()._filter(value);
     }
 
@@ -266,22 +266,34 @@ public final class Config {
      * @param value to filter
      * @return the filtered value
      */
-    private String _filter(String value) {
-        if ((value == null) || (!value.contains("${"))) {
-            return value;
+    private String _filter(Prop value) {
+        if ((value == null) || (!value.value.contains("${"))) {
+            return (value == null ? null : value.value);
         }
         resolveProperties();
+        String filtered = value.value;
+        // first attempt to resolve via the value's context.
+        filtered = filterBy(filtered, "", contextToResolvedProperty.get(value.context));
+        // also attempt to filter context-prefixed values
         for (String context : contextToResolvedProperty.keySet()) {
-            Map<String, Prop> props = contextToResolvedProperty.get(context);
-            for (String name : props.keySet()) {
-                if (value.contains("${" + name + "}")) {
-                    value = value.replaceAll("\\$\\{" + name + "\\}", filter(props.get(name).value));
-                }
-            }
+            filtered = filterBy(filtered, context + ".", contextToResolvedProperty.get(context));
         }
         for (String enivronmentProperty : System.getenv().keySet()) {
-            if (value.contains("${" + enivronmentProperty + "}")) {
-                value = value.replaceAll("\\$\\{" + enivronmentProperty + "\\}", System.getenv(enivronmentProperty));
+            if (filtered.contains("${" + enivronmentProperty + "}")) {
+                filtered = filtered.replaceAll("\\$\\{" + enivronmentProperty.replaceAll("\\.", "\\\\.") + "\\}",
+                                               System.getenv(enivronmentProperty));
+            }
+        }
+        Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^.", value.value, filtered);
+        return filtered;
+    }
+
+    private static String filterBy(String value, String prefix, Map<String, Prop> props) {
+        for (String name : props.keySet()) {
+            String toFind = prefix + name;
+            if (value.contains("${" + toFind + "}")) {
+                value = value.replaceAll("\\$\\{" + toFind.replaceAll("\\.", "\\\\.") + "\\}",
+                                               filter(props.get(name)));
             }
         }
         return value;
@@ -480,7 +492,7 @@ public final class Config {
             }
         }
         if (hasGlobal) {
-            Output.print("^green^*^r^ indicates system property.");
+            Output.print("^green^*^r^ indicates system-wide property.");
         }
     }
 
@@ -589,6 +601,9 @@ public final class Config {
         // now add some synthetic properties like the local ply directory location.
         environmentalProperties.put("ply.project.dir", new Prop("ply", "project.dir", LOCAL_PROJECT_DIR.getPath(), true));
         environmentalProperties.put("ply.java", new Prop("ply", "java", System.getProperty("ply.java"), true));
+        // scripts are always executed from the parent to '.ply/' directory, allow them to know where the 'ply' invocation
+        // actually occurred.
+        environmentalProperties.put("parent.user.dir", new Prop("parent", "user.dir", System.getProperty("user.dir"), true));
         return environmentalProperties;
     }
 

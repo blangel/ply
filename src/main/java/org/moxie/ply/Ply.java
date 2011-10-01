@@ -35,7 +35,7 @@ public class Ply {
             Init.invoke(args);
         } else {
             long start = System.currentTimeMillis();
-            Output.print("^ply^ building ^b^" + Config.get("ply", "project.name") + "^r^, " + Config.get("ply", "version"));
+            Output.print("^ply^ building ^b^" + Config.get("project", "name") + "^r^, " + Config.get("project", "version"));
             for (String script : args) {
                 if (!Exec.invoke(script)) {
                     System.exit(1);

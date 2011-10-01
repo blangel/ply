@@ -59,7 +59,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * are resolved to forward slashes as is convention in the {@literal Maven} build system.
  *
  * This script, run without arguments, will resolve all the dependencies listed in {@literal dependencies.properties}
- * and store the values in file {@literal resolved-deps.properties} under the {@literal ply.build.dir}.  This file
+ * and store the values in file {@literal resolved-deps.properties} under the {@literal project.build.dir}.  This file
  * will contain local file references (local to the {@literal localRepo}) for dependencies and transitive dependencies
  * so that compilation and packaging may succeed.
  *
@@ -208,7 +208,7 @@ public class DependencyManager {
             int size = dependencies.size();
             if (size > 0) {
                 System.out.printf("Resolving ^b^%d^r^ dependenc%s for ^b^%s^r^.\n", size, (size == 1 ? "y" : "ies"),
-                        System.getenv("ply.project.name"));
+                        System.getenv("project.name"));
                 Properties dependencyFiles = resolveDependencies(dependencies);
                 storeResolvedDependenciesFile(dependencyFiles);
             }
@@ -605,7 +605,7 @@ public class DependencyManager {
     }
 
     private static void storeResolvedDependenciesFile(Properties resolvedDependencies) {
-        String buildDirPath = System.getenv("ply.build.dir");
+        String buildDirPath = System.getenv("project.build.dir");
         File buildDir = new File(buildDirPath);
         buildDir.mkdirs();
         storeFile(resolvedDependencies, buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)

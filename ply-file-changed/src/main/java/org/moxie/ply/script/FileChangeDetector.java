@@ -12,11 +12,11 @@ import java.util.concurrent.atomic.AtomicReference;
  * Date: 9/12/11
  * Time: 9:20 PM
  *
- * Determines which files within {@literal ply.src.dir} have changed since last invocation.
- * The information used to determine if a file has changed is saved in the {@literal ply.build.dir} in a file named
+ * Determines which files within {@literal project.src.dir} have changed since last invocation.
+ * The information used to determine if a file has changed is saved in the {@literal project.build.dir} in a file named
  * {@literal src-changed-meta.properties}.  The list of files which have changed since last invocation is stored in a file
- * named {@literal src-changed.properties} in directory {@literal ply.build.dir}.
- * The information used to determine change is stored relative to {@literal ply.build.dir} to allow for cleans to
+ * named {@literal src-changed.properties} in directory {@literal project.build.dir}.
+ * The information used to determine change is stored relative to {@literal project.build.dir} to allow for cleans to
  * force a full-recompilation.  The format of the {@literal src-changed-meta.properties} file is file-path=timestamp,sha1-hash
  * and the format of the {@literal src-changed.properties} is simply a listing of file paths which have changed.
  *
@@ -24,13 +24,13 @@ import java.util.concurrent.atomic.AtomicReference;
 public class FileChangeDetector {
 
     public static void main(String[] args) {
-        String buildDirPath = System.getenv("ply.build.dir");
+        String buildDirPath = System.getenv("project.build.dir");
         File buildDir = new File(buildDirPath);
         File lastSrcChanged = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
                 + "src-changed-meta.properties");
         File changedPropertiesFile = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
                 + "src-changed.properties");
-        String srcDirPath = System.getenv("ply.src.dir");
+        String srcDirPath = System.getenv("project.src.dir");
         File srcDir = new File(srcDirPath);
         Properties existing = new Properties();
         if (!lastSrcChanged.exists()) {

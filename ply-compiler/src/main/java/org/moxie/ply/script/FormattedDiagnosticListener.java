@@ -64,6 +64,7 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
         message = message.replaceAll(" found   :", "; found^b^");
         message = message.replaceAll("required:", "^r^required^b^");
         message = message.replaceAll("\\[unchecked\\] ", "");
+        message = message.replaceAll("\\[serial\\] ", "");
         message = message.replaceAll(" symbol  :", ";^b^");
         message = message.replaceAll("location:", "^r^in^b^");
 

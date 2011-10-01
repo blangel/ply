@@ -9,22 +9,22 @@ import java.util.Set;
  * Date: 9/24/11
  * Time: 1:13 PM
  *
- * Packages all files within {@literal compiler.buildPath} into a jar file and stores within {@literal ply.build.dir}
+ * Packages all files within {@literal compiler.buildPath} into a jar file and stores within {@literal project.build.dir}
  * as {@literal package-jar.jar-name}.jar
  * The property file used to configure this script is {@literal package-jar.properties} and so the context is
  * {@literal package-jar}.
  * The following properties exist:
- * jarName=string [[default=${ply.artifact.name}]] (the name of the jar file to create [excluding the '.jar'])
+ * jarName=string [[default=${project.artifact.name}]] (the name of the jar file to create [excluding the '.jar'])
  * verbose=boolean [[default=false]] (print verbose output).
  * compress=boolean [[default=true]] (if true, the jar file will be compressed).
  * manifest.version=number [[default=1.0]] (the manifest version number to use).
  * manifest.createdBy=string [[default=ply]] (who created the manifest).
  * manifest.mainClass=string [[default=""]] (the main class to make the jar executable).
  * manifest.classPath=string [[default=""]] (the class path associated with the jar).
- * manifest.spec.title=string [[default=${ply.project.name}]] (the specification title).
- * manifest.spec.version=string [[default=${ply.version}]] (the specification version).
- * manifest.impl.title=string [[default=${ply.project.name}]] (the implementation title).
- * manifest.impl.version=string [[default=${ply.version}]] (the implementation title).
+ * manifest.spec.title=string [[default=${project.name}]] (the specification title).
+ * manifest.spec.version=string [[default=${project.version}]] (the specification version).
+ * manifest.impl.title=string [[default=${project.name}]] (the implementation title).
+ * manifest.impl.version=string [[default=${project.version}]] (the implementation title).
  * Additionally, any other project name starting with package-jar.manifest.* will be included.  For instance, if there
  * is a property=value of manifest.Implementation-Vendor=Moxie in the package-jar.properties file then there will be
  * an entry in the manifest for 'Implementation-Vendor' with value 'Moxie'.
@@ -145,13 +145,13 @@ public class JarPackageScript {
         }
         String jarName = System.getenv("package-jar.jarName");
         if (isEmpty(jarName)) {
-            System.out.println("^warn^ Property 'package-jar.jarName' was empty, defaulting to value of ${ply.artifact.name}.");
-            jarName = System.getenv("ply.artifact.name");
+            System.out.println("^warn^ Property 'package-jar.jarName' was empty, defaulting to value of ${project.artifact.name}.");
+            jarName = System.getenv("project.artifact.name");
             if (isEmpty(jarName)) {
-                System.out.println("^warn^ Property 'ply.artifact.name' was empty, defaulting to value of ${ply.project.name}.");
-                jarName = System.getenv("ply.artifact.name");
+                System.out.println("^warn^ Property 'project.artifact.name' was empty, defaulting to value of ${project.name}.");
+                jarName = System.getenv("project.artifact.name");
                 if (isEmpty(jarName)) {
-                    System.out.println("^warn^ Property 'ply.project.name' was empty, defaulting to 'no-name'.");
+                    System.out.println("^warn^ Property 'project.name' was empty, defaulting to 'no-name'.");
                     jarName = "no-name";
                 }
             }
@@ -164,11 +164,11 @@ public class JarPackageScript {
     }
 
     private static String getManifestFilePath() {
-        return System.getenv("ply.build.dir") + File.separator + "Manifest.mf";
+        return System.getenv("project.build.dir") + File.separator + "Manifest.mf";
     }
 
     private static String getJarFilePath(String jarName) {
-        return System.getenv("ply.build.dir") + File.separator + jarName;
+        return System.getenv("project.build.dir") + File.separator + jarName;
     }
 
     private static boolean isEmpty(String value) {

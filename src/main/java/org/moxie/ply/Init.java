@@ -25,7 +25,7 @@ public class Init {
         configDir.mkdirs();
         OutputStream outputStream = null;
         try {
-            File propFile = new File("./.ply/config/ply.properties");
+            File propFile = new File("./.ply/config/project.properties");
             propFile.createNewFile();
             Properties localProperties = new Properties();
             File projectDirectory = new File(".");
@@ -37,7 +37,9 @@ public class Init {
             if (lastPathIndex != -1) {
                 path = path.substring(lastPathIndex + 1);
             }
-            localProperties.put("project.name", path);
+            localProperties.put("namespace", path);
+            localProperties.put("name", path);
+            localProperties.put("version", "1.0");
             outputStream = new BufferedOutputStream(new FileOutputStream(propFile));
             localProperties.store(outputStream, null);
         } catch (IOException ioe) {
