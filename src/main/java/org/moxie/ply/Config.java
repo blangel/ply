@@ -189,6 +189,11 @@ public final class Config {
     private final Map<String, Map<String, Prop>> contextToResolvedProperty = new HashMap<String, Map<String, Prop>>();
 
     /**
+     * A mapping of pre-filtered values to filtered-values.
+     */
+    private final Map<String, String> filteredCache = new HashMap<String, String>();
+
+    /**
      * Flag to indicate if the properties map has been initialized yet.
      */
     private final AtomicBoolean hasBeenResolved = new AtomicBoolean(false);
@@ -270,6 +275,9 @@ public final class Config {
         if ((value == null) || (!value.value.contains("${"))) {
             return (value == null ? null : value.value);
         }
+        if (filteredCache.containsKey(value.value)) {
+            return filteredCache.get(value.value);
+        }
         resolveProperties();
         String filtered = value.value;
         // first attempt to resolve via the value's context.
@@ -285,6 +293,7 @@ public final class Config {
             }
         }
         Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^.", value.value, filtered);
+        filteredCache.put(value.value, filtered);
         return filtered;
     }
 
