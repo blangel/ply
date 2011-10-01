@@ -43,9 +43,9 @@ public class Ply {
             }
             long end = System.currentTimeMillis();
             float seconds = ((end - start) / 1000.0f);
-            long maxMem = Runtime.getRuntime().maxMemory() / 1024 / 1024;
+            long totalMem = Runtime.getRuntime().totalMemory() / 1024 / 1024;
             long freeMem = Runtime.getRuntime().freeMemory() / 1024 / 1024;
-            Output.print("^ply^ Finished in ^b^%.3f seconds^r^ using ^b^%d/%d MB^r^.", seconds, freeMem, maxMem);
+            Output.print("^ply^ Finished in ^b^%.3f seconds^r^ using ^b^%d/%d MB^r^.", seconds, (totalMem - freeMem), totalMem);
         }
         System.exit(0);
     }
