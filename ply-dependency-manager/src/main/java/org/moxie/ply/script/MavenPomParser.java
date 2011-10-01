@@ -9,7 +9,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -85,29 +84,29 @@ public interface MavenPomParser {
             // parent's per maven convention.
             AtomicReference<String> parentVersion = new AtomicReference<String>("");
             String localVersion = null;
+            // similar to the parent version, need to store the parent's groupId
+            AtomicReference<String> parentGroupId = new AtomicReference<String>("");
+            String localGroupId = null;
             for (int i = 0; i < pomChildren.getLength(); i++) {
                 Node child = pomChildren.item(i);
                 String nodeName = child.getNodeName();
-                if (!"dependencies".equals(nodeName)
-                        && !"properties".equals(nodeName)
-                        && !"parent".equals(nodeName)
-                        && !"version".equals(nodeName)) {
-                    continue;
-                }
                 if ("dependencies".equals(nodeName)) {
                     parseDependencies(child, parseResult);
                 } else if ("properties".equals(nodeName)) {
                     parseProperties(child, parseResult);
+                } else if ("groupId".equals(nodeName)) {
+                    localGroupId = child.getTextContent();
                 } else if ("version".equals(nodeName)) {
                     localVersion = child.getTextContent();
-                } else { // parent
-                    parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentVersion);
+                } else if ("parent".equals(nodeName)) { // parent
+                    parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentGroupId, parentVersion);
                 }
             }
+            parseResult.mavenProperties.put("project.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));
             parseResult.mavenProperties.put("project.version", (localVersion != null ? localVersion : parentVersion.get()));
             if (parentPomUrlPath != null) {
-                // filter project.version so that it is not overridden by the recursion on parent
-                filterVersion(parseResult);
+                // filter project.* so that they are not overridden by the recursion on parent
+                filterLocalProjectProperties(parseResult);
                 parse(parentPomUrlPath, repositoryAtom, parseResult);
             }
         }
@@ -159,29 +158,37 @@ public interface MavenPomParser {
             }
         }
 
-        // each reference to ${project.version} needs to be resolved prior to recurring on parent as it is relative
-        // to the current pom.  so, as opposed to the other properties which are unique across pom-hierarchy (TODO sans
-        // other project information), need to filter before each recursion.
-        private void filterVersion(ParseResult parseResult) {
-            if (!parseResult.mavenProperties.containsKey("project.version")) {
+        /**
+         * Each reference to ${project.*} needs to be resolved prior to recurring on parent as it is relative
+         * to the current pom.  So, as opposed to the other properties which are unique across pom-hierarchy (TODO sans
+         * other project information), need to filter before each recursion.
+         * @param parseResult to filter
+         */
+        private void filterLocalProjectProperties(ParseResult parseResult) {
+            if (!parseResult.mavenProperties.containsKey("project.version")
+                    && !parseResult.mavenProperties.containsKey("project.groupId")) {
                 return;
             }
             Map<String, String> filteredDeps = new HashMap<String, String>(parseResult.mavenDependencies.size());
             for (String dependencyKey : parseResult.mavenDependencies.keySet()) {
                 String filteredDependencyKey = dependencyKey;
                 String filteredDependencyValue = parseResult.mavenDependencies.get(dependencyKey);
-                if (filteredDependencyKey.contains("${project.version}")) {
-                    filteredDependencyKey = filteredDependencyKey.replaceAll("\\$\\{project\\.version\\}",
-                            parseResult.mavenProperties.get("project.version"));
-                }
-                if (filteredDependencyValue.contains("${project.version}")) {
-                    filteredDependencyValue = filteredDependencyValue.replaceAll("\\$\\{project\\.version\\}",
-                            parseResult.mavenProperties.get("project.version"));
-                }
+                filteredDependencyKey = filter(filteredDependencyKey, "project.version", parseResult.mavenProperties);
+                filteredDependencyKey = filter(filteredDependencyKey, "project.groupId", parseResult.mavenProperties);
+                filteredDependencyValue = filter(filteredDependencyValue, "project.version", parseResult.mavenProperties);
+                filteredDependencyValue = filter(filteredDependencyValue, "project.groupId", parseResult.mavenProperties);
                 filteredDeps.put(filteredDependencyKey, filteredDependencyValue);
             }
             parseResult.mavenDependencies.clear();
             parseResult.mavenDependencies.putAll(filteredDeps);
+        }
+
+        private static String filter(String toFilter, String filterValue, Map<String, String> replacementMap) {
+            if (toFilter.contains("${" + filterValue + "}")) {
+                return toFilter.replaceAll("\\$\\{" + filterValue.replaceAll("\\.", "\\\\.") + "\\}",
+                                           replacementMap.get(filterValue));
+            }
+            return toFilter;
         }
 
         private void parseProperties(Node propertiesNode, ParseResult parseResult) {
@@ -196,13 +203,14 @@ public interface MavenPomParser {
         }
 
         private String parseParentPomUrlPath(Node parent, DependencyManager.RepositoryAtom repositoryAtom,
-                                             AtomicReference<String> parentVersion) {
+                                             AtomicReference<String> parentGroupId, AtomicReference<String> parentVersion) {
             NodeList children = parent.getChildNodes();
             String groupId = "", artifactId = "", version = "";
             for (int i = 0; i < children.getLength(); i++) {
                 Node child = children.item(i);
                 if ("groupId".equals(child.getNodeName())) {
                     groupId = child.getTextContent();
+                    parentGroupId.set(groupId);
                 } else if ("artifactId".equals(child.getNodeName())) {
                     artifactId = child.getTextContent();
                 } else if ("version".equals(child.getNodeName())) {
