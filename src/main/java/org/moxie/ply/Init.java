@@ -1,8 +1,6 @@
 package org.moxie.ply;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.Properties;
 
 /**
@@ -25,6 +23,7 @@ public class Init {
         // now create the config options
         File configDir = new File("./.ply/config");
         configDir.mkdirs();
+        OutputStream outputStream = null;
         try {
             File propFile = new File("./.ply/config/ply.properties");
             propFile.createNewFile();
@@ -39,10 +38,19 @@ public class Init {
                 path = path.substring(lastPathIndex + 1);
             }
             localProperties.put("project.name", path);
-            localProperties.store(new FileOutputStream(propFile), null);
+            outputStream = new BufferedOutputStream(new FileOutputStream(propFile));
+            localProperties.store(outputStream, null);
         } catch (IOException ioe) {
             Output.print("^error^ could not create the local ply.properties file.");
             Output.print(ioe);
+        } finally {
+            try {
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
         }
     }
 

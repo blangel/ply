@@ -295,17 +295,17 @@ public final class Config {
             return;
         }
         File propertiesFile = getContextPropertyFile(context);
-        FileInputStream propertiesFileInputStream = null;
-        FileOutputStream propertiesFileOutputStream = null;
+        InputStream propertiesFileInputStream = null;
+        OutputStream propertiesFileOutputStream = null;
         Properties properties = new Properties();
         try {
             if (!propertiesFile.exists()) {
                 propertiesFile.createNewFile();
             }
-            propertiesFileInputStream = new FileInputStream(propertiesFile);
+            propertiesFileInputStream = new BufferedInputStream(new FileInputStream(propertiesFile));
             properties.load(propertiesFileInputStream);
             properties.setProperty(name, value);
-            propertiesFileOutputStream = new FileOutputStream(propertiesFile);
+            propertiesFileOutputStream = new BufferedOutputStream(new FileOutputStream(propertiesFile));
             properties.store(propertiesFileOutputStream, null);
         } catch (IOException ioe) {
             Output.print("^error^ could not interact with %s properties file!", context);
@@ -379,16 +379,16 @@ public final class Config {
             return;
         }
         Properties properties = new Properties();
-        FileInputStream propertiesFileInputStream = null;
-        FileOutputStream propertiesFileOutputStream = null;
+        InputStream propertiesFileInputStream = null;
+        OutputStream propertiesFileOutputStream = null;
         try {
-            propertiesFileInputStream = new FileInputStream(propertiesFile);
+            propertiesFileInputStream = new BufferedInputStream(new FileInputStream(propertiesFile));
             properties.load(propertiesFileInputStream);
             properties.remove(name);
             if (properties.isEmpty()) {
                 propertiesFile.delete();
             } else {
-                propertiesFileOutputStream = new FileOutputStream(propertiesFile);
+                propertiesFileOutputStream = new BufferedOutputStream(new FileOutputStream(propertiesFile));
                 properties.store(propertiesFileOutputStream, null);
             }
         } catch (IOException ioe) {
@@ -608,9 +608,9 @@ public final class Config {
                 }
                 String context = fileName.substring(0, index);
                 Properties properties = new Properties();
-                FileInputStream propertiesFileInputStream = null;
+                InputStream propertiesFileInputStream = null;
                 try {
-                    propertiesFileInputStream = new FileInputStream(subFile);
+                    propertiesFileInputStream = new BufferedInputStream(new FileInputStream(subFile));
                     properties.load(propertiesFileInputStream);
                     resolvePropertiesFromFile(context, properties, local);
                 } catch (IOException ioe) {

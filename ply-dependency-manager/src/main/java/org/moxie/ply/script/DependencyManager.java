@@ -486,7 +486,7 @@ public class DependencyManager {
             inputStream = new BufferedInputStream(from.openStream());
             outputStream = new BufferedOutputStream(new FileOutputStream(to));
 
-            byte[] buffer = new byte[2048];
+            byte[] buffer = new byte[8192];
             int read = 0;
             while ((read = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, read);
@@ -567,12 +567,12 @@ public class DependencyManager {
     private static Properties loadFile(String path) {
         Properties properties = new Properties();
         File file = new File(path);
-        FileInputStream fileInputStream = null;
+        InputStream fileInputStream = null;
         try {
             if (!file.exists()) {
                 file.createNewFile();
             }
-            fileInputStream = new FileInputStream(file);
+            fileInputStream = new BufferedInputStream(new FileInputStream(file));
             properties.load(fileInputStream);
         } catch (FileNotFoundException fnfe) {
             System.out.println(fnfe.getMessage());
@@ -621,12 +621,12 @@ public class DependencyManager {
 
     private static void storeFile(Properties properties, String path) {
         File file = new File(path);
-        FileOutputStream fileOutputStream = null;
+        OutputStream fileOutputStream = null;
         try {
             if (!file.exists()) {
                 file.createNewFile();
             }
-            fileOutputStream = new FileOutputStream(file);
+            fileOutputStream = new BufferedOutputStream(new FileOutputStream(file));
             properties.store(fileOutputStream, null);
         } catch (FileNotFoundException fnfe) {
             System.out.println(fnfe.getMessage());

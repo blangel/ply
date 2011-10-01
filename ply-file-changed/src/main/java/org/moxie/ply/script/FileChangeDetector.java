@@ -41,9 +41,9 @@ public class FileChangeDetector {
                 System.out.println("^error^ " + ioe.getMessage());
             }
         } else {
-            FileInputStream fileInputStream = null;
+            InputStream fileInputStream = null;
             try {
-                fileInputStream = new FileInputStream(lastSrcChanged);
+                fileInputStream = new BufferedInputStream(new FileInputStream(lastSrcChanged));
                 existing.load(fileInputStream);
             } catch (IOException ioe) {
                 System.out.println("^error^ " + ioe.getMessage());
@@ -68,13 +68,13 @@ public class FileChangeDetector {
     private static void computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir, Properties existing) {
         Properties changedList = new Properties();
         Properties properties = new Properties();
-        FileOutputStream changedListFileOutputStream = null;
-        FileOutputStream propertiesFileOutputStream = null;
+        OutputStream changedListFileOutputStream = null;
+        OutputStream propertiesFileOutputStream = null;
         collectAllFileChanges(srcDir, changedList, properties, existing);
         try {
-            changedListFileOutputStream = new FileOutputStream(changedPropertiesFile);
+            changedListFileOutputStream = new BufferedOutputStream(new FileOutputStream(changedPropertiesFile));
             changedList.store(changedListFileOutputStream, null);
-            propertiesFileOutputStream = new FileOutputStream(lastSrcChanged);
+            propertiesFileOutputStream = new BufferedOutputStream(new FileOutputStream(lastSrcChanged));
             properties.store(propertiesFileOutputStream, null);
         } catch (IOException ioe) {
             System.out.println("^error^ " + ioe.getMessage());
@@ -147,13 +147,13 @@ public class FileChangeDetector {
     }
 
     private static String computeSha1Hash(File file) {
-        FileInputStream fileInputStream = null;
+        InputStream fileInputStream = null;
         try {
             MessageDigest hash = MessageDigest.getInstance("SHA1");
-            fileInputStream = new FileInputStream(file);
+            fileInputStream = new BufferedInputStream(new FileInputStream(file));
             DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, hash);
-            byte[] buffer = new byte[4096];
-            while (digestInputStream.read(buffer, 0, 4096) != -1) { }
+            byte[] buffer = new byte[8192];
+            while (digestInputStream.read(buffer, 0, 8192) != -1) { }
             byte[] sha1 = hash.digest();
             return toHexString(sha1);
         } catch (NoSuchAlgorithmException nsae) {
