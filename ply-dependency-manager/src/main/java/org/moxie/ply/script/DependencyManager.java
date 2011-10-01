@@ -207,7 +207,7 @@ public class DependencyManager {
             Map<String, String> dependencies = getDependenciesFromEnv();
             int size = dependencies.size();
             if (size > 0) {
-                System.out.printf("Resolving ^b^%d^r^ dependenc%s for project ^b^%s^r^.\n", size, (size == 1 ? "y" : "ies"),
+                System.out.printf("Resolving ^b^%d^r^ dependenc%s for ^b^%s^r^.\n", size, (size == 1 ? "y" : "ies"),
                         System.getenv("ply.project.name"));
                 Properties dependencyFiles = resolveDependencies(dependencies);
                 storeResolvedDependenciesFile(dependencyFiles);
@@ -465,7 +465,7 @@ public class DependencyManager {
 
     private static URL getUrl(String path) {
         try {
-            System.out.printf("^info^ resolving %s\n", path);
+            System.out.printf("^dbug^ resolving %s\n", path);
             return new URI(path).toURL();
         } catch (URISyntaxException urise) {
             System.out.printf("^error^ %s\n", urise.getMessage());

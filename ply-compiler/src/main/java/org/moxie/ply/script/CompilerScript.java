@@ -168,6 +168,7 @@ public class CompilerScript {
         Iterable<? extends JavaFileObject> sourceFiles = fileManager.getJavaFileObjects(sourceFilePaths.toArray(new String[sourceFilePaths.size()]));
         StringWriter extraPrintStatements = new StringWriter();
         JavaCompiler.CompilationTask compilationTask = javac.getTask(extraPrintStatements, fileManager, diagnosticListener, getCompilerArgs(), null, sourceFiles);
+        System.out.printf("Compiling ^b^%d^r^ source files for ^b^%s^r^\n", sourceFilePaths.size(), System.getenv("ply.project.name"));
         boolean result = compilationTask.call();
         for (String error : diagnosticListener.getErrors()) {
             System.out.println(error);
@@ -239,14 +240,58 @@ public class CompilerScript {
             args.add(System.getenv("compiler.java.encoding"));
         }
 
-        // TODO - configure the classpath element with dependent jars.
         args.add("-classpath");
-        args.add(System.getenv("compiler.buildPath"));
+        args.add(createClasspath(System.getenv("compiler.buildPath"), addDependenciesToClasspathArgs()));
 
         args.add("-sourcepath");
         args.add(srcDir);
 
         return args;
+    }
+
+    /**
+     * @return the contents of ${ply.build.dir}/${resolved-deps.properties}
+     */
+    private static Properties addDependenciesToClasspathArgs() {
+        Properties dependencies = new Properties();
+        String buildPath = System.getenv("ply.build.dir");
+        // load the src-changed.properties file from the build directory.
+        File dependenciesFile = new File(buildPath + (buildPath.endsWith(File.separator) ? "" : File.separator) + "resolved-deps.properties");
+        if (!dependenciesFile.exists()) {
+            return dependencies;
+        }
+        InputStream dependenciesInputStream = null;
+        try {
+            dependenciesInputStream = new BufferedInputStream(new FileInputStream(dependenciesFile));
+            dependencies.load(dependenciesInputStream);
+        } catch (IOException ioe) {
+            System.out.printf("^error %s\n", ioe.getMessage());
+        } finally {
+            try {
+                if (dependenciesInputStream != null) {
+                    dependenciesInputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
+        }
+        return dependencies;
+    }
+
+    /**
+     * Concatenates together {@code localPath} with the keys of {@code dependencies} (if any), separating each
+     * by the {@link File#pathSeparator}.
+     * @param localPath of the classpath
+     * @param dependencies of the project, if any
+     * @return the concatenated classpath
+     */
+    private static String createClasspath(String localPath, Properties dependencies) {
+        StringBuffer buffer = new StringBuffer(localPath);
+        for (String dependency : dependencies.stringPropertyNames()) {
+            buffer.append(File.pathSeparator);
+            buffer.append(dependency);
+        }
+        return buffer.toString();
     }
 
 }

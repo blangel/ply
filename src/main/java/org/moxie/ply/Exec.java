@@ -17,20 +17,6 @@ import java.util.*;
  */
 public final class Exec {
 
-    /**
-     * Swap between colors when displaying script names (so that chained script invocations' output is
-     * easily distinguishable).
-     */
-    private static class ColorSwap {
-        private boolean swap = false;
-        private synchronized String get() {
-            String color = swap ? "green" : "magenta";
-            swap = !swap;
-            return color;
-        }
-    }
-    private static final ColorSwap COLOR_SWAP = new ColorSwap();
-
     public static boolean invoke(String script) {
         String[] cmdArgs = splitScript(script);
         String originalScript = cmdArgs[0];
@@ -46,12 +32,11 @@ public final class Exec {
     }
 
     private static boolean invoke(String originalScriptName, String[] cmdArgs) {
-        String color = COLOR_SWAP.get();
         cmdArgs[0] = resolveExecutable(cmdArgs[0]);
         cmdArgs = handleNonNativeExecutable(cmdArgs);
         String script = buildScriptName(cmdArgs);
         try {
-            Output.print("^info^ invoking ^" + color + "^%s^r^", script);
+            Output.print("^dbug^ invoking %s", script);
             ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true);
             Map<String, String> environment = processBuilder.environment();
             Map<String, Config.Prop> properties = Config.getResolvedEnvironmentalProperties();
@@ -65,15 +50,15 @@ public final class Exec {
             BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
             String processStdoutLine;
             while ((processStdoutLine = lineReader.readLine()) != null) {
-                Output.print("[^" + color + "^%s^r^] %s", originalScriptName, processStdoutLine);
+                Output.print("[^green^%s^r^] %s", originalScriptName, processStdoutLine);
             }
             int result = process.waitFor();
             if (result == 0) {
                 return true;
             }
-            Output.print("^error^ script ^" + color + "^%s^r^ failed [ result = %d ].", originalScriptName, result);
+            Output.print("^error^ script ^green^%s^r^ failed [ result = %d ].", originalScriptName, result);
         } catch (IOException ioe) {
-            Output.print("^error^ executing script ^" + color + "^%s^r^", originalScriptName);
+            Output.print("^error^ executing script ^green^%s^r^", originalScriptName);
             Output.print(ioe);
         } catch (InterruptedException ie) {
             Output.print(ie);
@@ -213,6 +198,8 @@ public final class Exec {
             script = System.getProperty("ply.java");
             String[] newCmdArray = new String[cmdArray.length + 5];
             newCmdArray[0] = script;
+            // TODO - make these parameters configurable; i.e., a scripts-java.properties w/ prop-name of the script
+            // TODO - being invoked and one default
             newCmdArray[1] = "-client";
             newCmdArray[2] = "-Xms32M";
             newCmdArray[3] = "-Xmx32M";

@@ -43,6 +43,7 @@ public final class Output {
         TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), withinTerminal ? "[\u001b[1;31merr!\u001b[0m]" : "[err!]"));
         TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), withinTerminal ? "[\u001b[1;33mwarn\u001b[0m]" : "[warn]"));
         TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), withinTerminal ? "[\u001b[1;34minfo\u001b[0m]" : "[info]"));
+        TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), withinTerminal ? "[\u001b[1;35mdbug\u001b[0m]" : "[dbug]"));
         TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), withinTerminal ? "\u001b[0m" : ""));
         TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), withinTerminal ? "\u001b[1m" : ""));
         TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), withinTerminal ? "\u001b[2m" : ""));
@@ -59,6 +60,7 @@ public final class Output {
 
     private static final AtomicReference<Boolean> warnLevel = new AtomicReference<Boolean>(true);
     private static final AtomicReference<Boolean> infoLevel = new AtomicReference<Boolean>(true);
+    private static final AtomicReference<Boolean> dbugLevel = new AtomicReference<Boolean>(true);
 
     /**
      * Remaps the {@link #TERM_CODES} appropriately if the {@literal color} property is false.
@@ -73,6 +75,7 @@ public final class Output {
             TERM_CODES.put("error", new TermCode(TERM_CODES.get("error").pattern, "[err!]"));
             TERM_CODES.put("warn", new TermCode(TERM_CODES.get("warn").pattern, "[warn]"));
             TERM_CODES.put("info", new TermCode(TERM_CODES.get("info").pattern, "[info]"));
+            TERM_CODES.put("dbug", new TermCode(TERM_CODES.get("dbug").pattern, "[dbug]"));
             TERM_CODES.put("reset", new TermCode(TERM_CODES.get("reset").pattern, ""));
             TERM_CODES.put("bold", new TermCode(TERM_CODES.get("bold").pattern, ""));
             TERM_CODES.put("normal", new TermCode(TERM_CODES.get("normal").pattern, ""));
@@ -93,6 +96,9 @@ public final class Output {
         if (!logLevelsProp.contains("info")) {
             infoLevel.set(false);
         }
+        if (!logLevelsProp.contains("debug") && !logLevelsProp.contains("dbug")) {
+            dbugLevel.set(false);
+        }
     }
 
     public static void print(String message, Object ... args) {
@@ -103,7 +109,8 @@ public final class Output {
             TermCode termCode = TERM_CODES.get(key);
             Matcher matcher = termCode.pattern.matcher(formatted);
             if (matcher.find()) {
-                if (("warn".equals(key) && !warnLevel.get()) || ("info".equals(key) && !infoLevel.get())) {
+                if (("warn".equals(key) && !warnLevel.get()) || ("info".equals(key) && !infoLevel.get())
+                        || ("dbug".equals(key) && !dbugLevel.get())) {
                     // this is a log statement for a disabled log-level, skip.
                     return;
                 }
