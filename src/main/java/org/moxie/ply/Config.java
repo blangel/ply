@@ -207,7 +207,12 @@ public final class Config {
             resolveProperties();
             // has name to retrieve
             if (args.length == (explicitlyDefinedContext ? 4 : 3)) {
-                printPropertyValue(context, args[explicitlyDefinedContext ? 3 : 2]);
+                String name = args[explicitlyDefinedContext ? 3 : 2];
+                if (!explicitlyDefinedContext) {
+                    printPropertyValue(name);
+                } else {
+                    printPropertyValue(context, name);
+                }
             }
             // no name, but has context
             else if (explicitlyDefinedContext) {
@@ -420,6 +425,16 @@ public final class Config {
     }
 
     /**
+     * Prints the value of property named {@code name} within all contexts.
+     * @param name the name of the property to print.
+     */
+    private void printPropertyValue(String name) {
+        for (String context : contextToResolvedProperty.keySet()) {
+            printPropertyValue(context, name);
+        }
+    }
+
+    /**
      * Prints the value of property named {@code name} within context {@code context}.
      * @param context the name of the context for which to look for a property named {@code name}.
      * @param name the name of the property to print.
@@ -431,7 +446,7 @@ public final class Config {
             return;
         }
 
-        printPropertyValue(String.format("From ^b^%s^r^ property ", context), context, name, props);
+        printPropertyValue(String.format("From ^b^%s^r^ context; ", context), context, name, props);
     }
 
     /**
@@ -540,7 +555,7 @@ public final class Config {
     private void printPropertyValueByWildcardName(String prefix, String context, String name, Map<String, Prop> properties) {
         Map<String, Prop> resolvedProps = getPropertyValuesByWildcardName(name, properties);
         if (resolvedProps.isEmpty()) {
-            Output.print("No property matched ^b^%s^r^ in any context.", name);
+            Output.print("No property matched ^b^%s^r^ in context ^b^%s^r^.", name, context);
         } else {
             printPropertyValues(prefix, context, resolvedProps);
         }
