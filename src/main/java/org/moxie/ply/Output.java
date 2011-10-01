@@ -43,7 +43,7 @@ public final class Output {
         TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), withinTerminal ? "[\u001b[1;31merr!\u001b[0m]" : "[err!]"));
         TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), withinTerminal ? "[\u001b[1;33mwarn\u001b[0m]" : "[warn]"));
         TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), withinTerminal ? "[\u001b[1;34minfo\u001b[0m]" : "[info]"));
-        TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), withinTerminal ? "[\u001b[1;35mdbug\u001b[0m]" : "[dbug]"));
+        TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), withinTerminal ? "[\u001b[1;30mdbug\u001b[0m]" : "[dbug]"));
         TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), withinTerminal ? "\u001b[0m" : ""));
         TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), withinTerminal ? "\u001b[1m" : ""));
         TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), withinTerminal ? "\u001b[2m" : ""));
