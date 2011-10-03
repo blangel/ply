@@ -113,12 +113,40 @@ public final class Config {
     }
 
     /**
+     * @param context in which to get {@code name}
+     * @param name of the property to get
+     * @param filter true if the value should be filtered
+     * @return the value for the property named {@code name} within context {@code context} or null if none exists.
+     */
+    public static String get(String context, String name, boolean filter) {
+        return get()._get(context, name, filter);
+    }
+
+    /**
+     * @param context to retrieve
+     * @return the properties within {@code context}
+     */
+    public static Map<String, Prop> getContext(String context) {
+        return get()._getContext(context);
+    }
+
+    /**
      * @param name of the property to get
      * @return the value for the property named {@code name} within the default context, {@link #DEFAULT_CONTEXT},
      *         or null if none exists.
      */
     public static String get(String name) {
         return get()._get(name);
+    }
+
+    /**
+     * @param name of the property to get
+     * @param filter true if the property value should be filtered
+     * @return the value for the property named {@code name} within the default context, {@link #DEFAULT_CONTEXT},
+     *         or null if none exists.
+     */
+    public static String get(String name, boolean filter) {
+        return get()._get(name, filter);
     }
 
     /**
@@ -250,10 +278,28 @@ public final class Config {
      * @return the value for the property named {@code name} within context {@code context} or null if none exists.
      */
     private String _get(String context, String name) {
+        return _get(context, name, false);
+    }
+
+    /**
+     * @param context in which to get {@code name}
+     * @param name of the property to get
+     * @param filter true if the property value should be filtered
+     * @return the value for the property named {@code name} within context {@code context} or null if none exists.
+     */
+    private String _get(String context, String name, boolean filter) {
         resolveProperties();
         Map<String, Prop> props = contextToResolvedProperty.get(context);
         Prop prop = (props == null ? null : props.get(name));
-        return (prop == null ? null : prop.value);
+        return (prop == null ? null : filter ? filter(prop) : prop.value);
+    }
+
+    /**
+     * @param context to retrieve
+     * @return all resolved property mapping for {@code context}
+     */
+    private Map<String, Prop> _getContext(String context) {
+        return contextToResolvedProperty.get(context);
     }
 
     /**
@@ -263,6 +309,16 @@ public final class Config {
      */
     private String _get(String name) {
         return _get(DEFAULT_CONTEXT, name);
+    }
+
+    /**
+     * @param name of the property to get
+     * @param filter true if the property value should be filtered
+     * @return the value for the property named {@code name} within the default context, {@link #DEFAULT_CONTEXT},
+     *         or null if none exists.
+     */
+    private String _get(String name, boolean filter) {
+        return _get(DEFAULT_CONTEXT, name, filter);
     }
 
     /**

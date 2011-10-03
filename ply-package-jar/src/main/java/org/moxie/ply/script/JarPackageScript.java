@@ -2,7 +2,9 @@ package org.moxie.ply.script;
 
 import java.io.*;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
+import java.util.jar.JarFile;
 
 /**
  * User: blangel
@@ -160,15 +162,87 @@ public class JarPackageScript {
         jarName = getJarFilePath(jarName);
         String manifestFile = getManifestFilePath();
         String inputFiles = System.getenv("compiler.buildPath");
-        return new String[] { jarScript, options, jarName, manifestFile, "-C", inputFiles, "." };
+
+        String buildDir = System.getenv("project.build.dir");
+        buildDir = buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator);
+        File dependenciesFile = createDependenciesFile(buildDir);
+        if (dependenciesFile == null) {
+            System.out.printf("^error^ Error creating the %sMETA-INF/ply/dependencies.properties file.\n", buildDir);
+            System.exit(1);
+        }
+
+        return new String[] { jarScript, options, jarName, manifestFile, "-C", inputFiles, ".", "-C", buildDir, "META-INF/ply" };
     }
 
     private static String getManifestFilePath() {
-        return System.getenv("project.build.dir") + File.separator + "Manifest.mf";
+        String buildDirPath = System.getenv("project.build.dir");
+        File metaInfDir = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) + "META-INF");
+        metaInfDir.mkdir();
+        return (metaInfDir.getPath() + (metaInfDir.getPath().endsWith(File.separator) ? "" : File.separator) + "Manifest.mf");
     }
 
     private static String getJarFilePath(String jarName) {
-        return System.getenv("project.build.dir") + File.separator + jarName;
+        String buildDirPath = System.getenv("project.build.dir");
+        return buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) + jarName;
+    }
+
+    /**
+     * Reads in the {@literal resolved-deps.properties} file stored at {@literal project.build.dir} and copies it
+     * to {@literal project.build.dir}/META-INF/ply/dependencies.properties stripping away the property values (as
+     * the values are the resolved local-repo paths to the dependencies).  If there is no {@literal resolved-deps.properties}
+     * file then a blank file will be copied to {@literal project.build.dir}/META-INF/ply/dependencies.properties.
+     * @param buildDirPath the build directory path (assumed to end in {@link File#separator}).
+     * @return the handle to the created dependencies.properties file or null if an error occurred while creating the file.
+     */
+    private static File createDependenciesFile(String buildDirPath) {
+        String metaInfPlyDirPath = buildDirPath + "META-INF/ply/";
+        File metaInfPlyDir = new File(metaInfPlyDirPath);
+        metaInfPlyDir.mkdirs();
+
+        File metaInfPlyDepFile = new File(metaInfPlyDirPath + "dependencies.properties");
+        try {
+            metaInfPlyDepFile.createNewFile();
+        } catch (IOException ioe) {
+            System.out.printf("^error^ %s\n", ioe.getMessage());
+            return null;
+        }
+
+        // read in resolved-deps.properties file
+        Properties dependencies = new Properties();
+        InputStream resolvedInputStream = null;
+        OutputStream dependenciesOutputStream = null;
+        try {
+            File resolvedFile = new File(buildDirPath + "resolved-deps.properties");
+            if (!resolvedFile.exists()) {
+                return metaInfPlyDepFile;
+            }
+            Properties resolvedDeps = new Properties();
+            resolvedInputStream = new BufferedInputStream(new FileInputStream(resolvedFile));
+            resolvedDeps.load(resolvedInputStream);
+            for (String propertyName : resolvedDeps.stringPropertyNames()) {
+                dependencies.put(propertyName, "");
+            }
+            dependenciesOutputStream = new BufferedOutputStream(new FileOutputStream(metaInfPlyDepFile));
+            dependencies.store(dependenciesOutputStream, null);
+        } catch (IOException ioe) {
+            System.out.printf("^error^ %s\n", ioe.getMessage());
+        } finally {
+            try {
+                if (resolvedInputStream != null) {
+                    resolvedInputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
+            try {
+                if (dependenciesOutputStream != null) {
+                    dependenciesOutputStream.close();
+                }
+            } catch (IOException ioe) {
+                // ignore
+            }
+        }
+        return metaInfPlyDepFile;
     }
 
     private static boolean isEmpty(String value) {

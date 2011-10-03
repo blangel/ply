@@ -290,7 +290,7 @@ public class CompilerScript {
         StringBuffer buffer = new StringBuffer(localPath);
         for (String dependency : dependencies.stringPropertyNames()) {
             buffer.append(File.pathSeparator);
-            buffer.append(dependency);
+            buffer.append(dependencies.getProperty(dependency));
         }
         return buffer.toString();
     }

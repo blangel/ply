@@ -1,8 +1,6 @@
 package org.moxie.ply;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -10,17 +8,17 @@ import java.util.regex.Pattern;
 
 /**
  * User: blangel
- * Date: 9/3/11
- * Time: 5:06 PM
+ * Date: 10/2/11
+ * Time: 9:18 PM
  *
  * Defines the output mechanism within the {@literal Ply} application.
  * Support for colored VT-100 terminal output is controlled by the property {@literal color} within the
  * default context, {@literal ply}.
  */
-public final class Output {
+public class Output {
 
     /**
-     * A regex {@link Pattern} paired with its corresponding output string.
+     * A regex {@link java.util.regex.Pattern} paired with its corresponding output string.
      */
     private static final class TermCode {
         private final Pattern pattern;
@@ -65,11 +63,11 @@ public final class Output {
     /**
      * Remaps the {@link #TERM_CODES} appropriately if the {@literal color} property is false.
      * Also figures out what log levels are available.
-     * Requires property resolution and so is post-static initialization.
+     * Requires property resolution and so is post-static initialization and package protected.
+     * @param color false to unmap color terminal codes
+     * @param logLevels the {@literal ply.log.levels} property value
      */
-    static void init() {
-        String colorProp = Config.get("color");
-        boolean color = (colorProp == null || !"false".equals(colorProp));
+    static void init(boolean color, String logLevels) {
         if (!color) {
             TERM_CODES.put("ply", new TermCode(TERM_CODES.get("ply").pattern, "[ply]"));
             TERM_CODES.put("error", new TermCode(TERM_CODES.get("error").pattern, "[err!]"));
@@ -89,14 +87,13 @@ public final class Output {
             TERM_CODES.put("cyan", new TermCode(TERM_CODES.get("cyan").pattern, ""));
             TERM_CODES.put("white", new TermCode(TERM_CODES.get("white").pattern, ""));
         }
-        String logLevelsProp = Config.get("log.levels");
-        if (!logLevelsProp.contains("warn")) {
+        if (!logLevels.contains("warn")) {
             warnLevel.set(false);
         }
-        if (!logLevelsProp.contains("info")) {
+        if (!logLevels.contains("info")) {
             infoLevel.set(false);
         }
-        if (!logLevelsProp.contains("debug") && !logLevelsProp.contains("dbug")) {
+        if (!logLevels.contains("debug") && !logLevels.contains("dbug")) {
             dbugLevel.set(false);
         }
     }

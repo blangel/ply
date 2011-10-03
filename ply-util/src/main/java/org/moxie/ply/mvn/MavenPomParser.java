@@ -1,5 +1,6 @@
-package org.moxie.ply.script;
+package org.moxie.ply.mvn;
 
+import org.moxie.ply.dep.RepositoryAtom;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -10,13 +11,15 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * User: blangel
- * Date: 9/30/11
- * Time: 4:18 PM
+ * Date: 10/1/11
+ * Time: 2:14 PM
  *
  * Responsible for parsing {@literal Maven} pom files, resolving all dependencies including the dependencies'
  * {@literal groupId}, {@literal artifactId} and {@literal version} from any property values referenceable from
@@ -24,7 +27,11 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public interface MavenPomParser {
 
-    static class Default implements  MavenPomParser {
+    /**
+     * Default implementation of {@link MavenPomParser}.  This parser is rudimentary and is definitely a work
+     * in progress.
+     */
+    static class Default implements MavenPomParser {
 
         /**
          * Holds a collection of resolved property values and un-resolved dependencies from parsing a pom file.
@@ -38,7 +45,7 @@ public interface MavenPomParser {
             }
         }
 
-        @Override public Properties parsePom(String pomUrlPath, DependencyManager.RepositoryAtom repositoryAtom) {
+        @Override public Properties parsePom(String pomUrlPath, RepositoryAtom repositoryAtom) {
             try {
                 ParseResult result = parse(pomUrlPath, repositoryAtom);
                 Properties properties = new Properties();
@@ -65,14 +72,14 @@ public interface MavenPomParser {
             }
         }
 
-        public ParseResult parse(String pomUrlPath, DependencyManager.RepositoryAtom repositoryAtom)
+        public ParseResult parse(String pomUrlPath, RepositoryAtom repositoryAtom)
                 throws ParserConfigurationException, IOException, SAXException {
             ParseResult parseResult = new ParseResult();
             parse(pomUrlPath, repositoryAtom, parseResult);
             return parseResult;
         }
 
-        private void parse(String pomUrlPath, DependencyManager.RepositoryAtom repositoryAtom, ParseResult parseResult)
+        private void parse(String pomUrlPath, RepositoryAtom repositoryAtom, ParseResult parseResult)
                 throws ParserConfigurationException, IOException, SAXException {
             URL pomUrl = new URL(pomUrlPath);
             Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(pomUrl.openStream());
@@ -186,7 +193,7 @@ public interface MavenPomParser {
         private static String filter(String toFilter, String filterValue, Map<String, String> replacementMap) {
             if (toFilter.contains("${" + filterValue + "}")) {
                 return toFilter.replaceAll("\\$\\{" + filterValue.replaceAll("\\.", "\\\\.") + "\\}",
-                                           replacementMap.get(filterValue));
+                        replacementMap.get(filterValue));
             }
             return toFilter;
         }
@@ -202,7 +209,7 @@ public interface MavenPomParser {
             }
         }
 
-        private String parseParentPomUrlPath(Node parent, DependencyManager.RepositoryAtom repositoryAtom,
+        private String parseParentPomUrlPath(Node parent, RepositoryAtom repositoryAtom,
                                              AtomicReference<String> parentGroupId, AtomicReference<String> parentVersion) {
             NodeList children = parent.getChildNodes();
             String groupId = "", artifactId = "", version = "";
@@ -236,6 +243,6 @@ public interface MavenPomParser {
 
     }
 
-    Properties parsePom(String pomUrlPath, DependencyManager.RepositoryAtom repositoryAtom);
+    Properties parsePom(String pomUrlPath, RepositoryAtom repositoryAtom);
 
 }

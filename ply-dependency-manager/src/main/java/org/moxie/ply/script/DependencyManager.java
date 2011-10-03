@@ -1,15 +1,10 @@
 package org.moxie.ply.script;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.moxie.ply.dep.DependencyAtom;
+import org.moxie.ply.dep.DependencyResolver;
+import org.moxie.ply.dep.RepositoryAtom;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -75,120 +70,6 @@ import java.util.concurrent.atomic.AtomicReference;
  * repositories.
  */
 public class DependencyManager {
-
-    /**
-     * Represents a dependency atom made up of namespace::name::version[::artifactName]
-     * If artifactName is null then (name-version.jar) will be used when necessary.
-     */
-    public static final class DependencyAtom {
-        public final String namespace;
-        public final String name;
-        public final String version;
-        public final String artifactName;
-
-        public DependencyAtom(String namespace, String name, String version, String artifactName) {
-            this.namespace = namespace;
-            this.name = name;
-            this.version = version;
-            this.artifactName = artifactName;
-        }
-
-        public DependencyAtom(String namespace, String name, String version) {
-            this(namespace, name, version, null);
-        }
-
-        public String getPropertyName() {
-            return namespace + "::" + name;
-        }
-
-        public String getPropertyValue() {
-            return (version == null ? "" : version) + (artifactName != null ? "::" + artifactName : "");
-        }
-
-        public String getResolvedPropertyValue() {
-            return version + "::" + getArtifactName();
-        }
-
-        public String getArtifactName() {
-            return (artifactName == null ? name + "-" + version + ".jar" : artifactName);
-        }
-
-        @Override public String toString() {
-            return getPropertyName() + "::" + getResolvedPropertyValue();
-        }
-
-        public static DependencyAtom parse(String atom, AtomicReference<String> error) {
-            String[] parsed = atom.split("::");
-            if ((parsed.length < 3) || (parsed.length > 4)) {
-                if (error != null) {
-                    switch (parsed.length) {
-                        case 0: error.set("namespace, name and version"); break;
-                        case 1: error.set("name and version"); break;
-                        default: error.set("version");
-                    }
-                }
-                return null;
-            }
-            return (parsed.length == 3 ? new DependencyAtom(parsed[0], parsed[1], parsed[2]) :
-                    new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3]));
-        }
-    }
-
-    /**
-     * Represents a repository atom made up of repositoryURI[::type].
-     * If type is null then ply will be used when necessary.
-     */
-    public static final class RepositoryAtom {
-        public static enum Type {
-            ply, maven
-        }
-        public final URI repositoryUri;
-        public final Type type;
-
-        public RepositoryAtom(URI repositoryUri, Type type) {
-            this.repositoryUri = repositoryUri;
-            this.type = type;
-        }
-        public RepositoryAtom(URI repositoryUri) {
-            this(repositoryUri, null);
-        }
-        public String getPropertyName() {
-            return repositoryUri.toString();
-        }
-        public String getPropertyValue() {
-            return (type == null ? "" : type.name());
-        }
-        public Type getResolvedType() {
-            return (type == null ? Type.ply : type);
-        }
-        public String getResolvedPropertyValue() {
-            return getResolvedType().name();
-        }
-        @Override public String toString() {
-            return getPropertyName() + "::" + getResolvedPropertyValue();
-        }
-        public static RepositoryAtom parse(String atom) {
-            if (atom == null) {
-                return null;
-            }
-            String[] resolved = atom.split("::");
-            if ((resolved.length < 1) && (resolved.length > 2)) {
-                return null;
-            }
-            URI repositoryUri = URI.create(resolved[0]);
-            Type type = null;
-            if (resolved.length == 2) {
-                if ("ply".equals(resolved[1])) {
-                    type = Type.ply;
-                } else if ("maven".equals(resolved[1])) {
-                    type = Type.maven;
-                } else {
-                    System.out.printf("^warn^ unsupported type %s, must be either null, ply or maven.\n", resolved[1]);
-                }
-            }
-            return new RepositoryAtom(repositoryUri, type);
-        }
-    }
 
     public static void main(String[] args) {
         if ((args == null) || (args.length > 0 && "--usage".equals(args[0]))) {
@@ -300,219 +181,6 @@ public class DependencyManager {
         }
     }
 
-    private static Properties resolveDependencies(Map<String, String> dependencies) {
-        Properties dependencyFiles = new Properties();
-
-        AtomicReference<String> error = new AtomicReference<String>();
-        List<RepositoryAtom> repositoryAtoms = createRepositoryList();
-        for (String dependencyKey : dependencies.keySet()) {
-            error.set(null);
-            String dependencyValue = dependencies.get(dependencyKey);
-            DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + "::" + dependencyValue, error);
-            if (dependencyAtom == null) {
-                System.out.printf("^warn^ Invalid dependency %s::%s; missing %s\n", dependencyKey, dependencyValue,
-                        error.get());
-                continue;
-            }
-            resolveDependency(dependencyAtom, repositoryAtoms, dependencyFiles);
-        }
-
-        return dependencyFiles;
-    }
-
-    private static boolean resolveDependency(DependencyAtom dependencyAtom) {
-        return resolveDependency(dependencyAtom, createRepositoryList(), new Properties());
-    }
-
-    private static boolean resolveDependency(DependencyAtom dependencyAtom, List<RepositoryAtom> repositories, Properties dependencyFiles) {
-        if (repositories.size() < 1) {
-            throw new IllegalArgumentException("Need at least one repository!");
-        }
-        RepositoryAtom localRepo = repositories.get(0);
-        List<RepositoryAtom> nonLocalRepos = repositories.subList(1, repositories.size());
-
-        // build the url to the dependency for the local repo.
-        String localPath = getDependencyPathForRepo(dependencyAtom, localRepo);
-        URL localUrl = getUrl(localPath);
-        if (localUrl == null) {
-            return false;
-        }
-        String localDirPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
-        File localDepDirFile = new File(localDirPath.substring(7));
-        File localDepFile = new File(localUrl.getFile());
-        if (localDepFile.exists()) {
-            if (!dependencyFiles.contains(localDepFile.getPath())) {
-                dependencyFiles.put(localDepFile.getPath(), "");
-                // TODO - should this also resave the transitive deps file?
-                processTransitiveDependencies(dependencyAtom, localRepo, repositories,
-                                                "file://" + localDepDirFile.getPath(), dependencyFiles);
-
-            }
-            return true;
-        }
-
-        // not in the local-repo, check each other repo.
-        for (RepositoryAtom remoteRepo : nonLocalRepos) {
-            String remotePathDir = getDependencyDirectoryPathForRepo(dependencyAtom, remoteRepo);
-            String remotePath = remotePathDir + File.separator + dependencyAtom.getArtifactName();
-            URL remoteUrl = getUrl(remotePath);
-            if (remoteUrl == null) {
-                continue;
-            }
-            if (copy(remoteUrl, localDepFile, localDepDirFile)) {
-                if (!dependencyFiles.contains(localDepFile.getPath())) {
-                    dependencyFiles.put(localDepFile.getPath(), "");
-                    Properties transitiveDeps = processTransitiveDependencies(dependencyAtom, remoteRepo, repositories,
-                                                    remotePathDir, dependencyFiles);
-                    storeTransitiveDependenciesFile(transitiveDeps, localDepDirFile.getPath());
-                }
-                return true;
-            }
-        }
-        System.out.printf("^warn^ Dependency ^b^%s^r^ not found in any repository.\n", dependencyAtom.toString());
-        return false;
-    }
-
-    private static Properties processTransitiveDependencies(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom, List<RepositoryAtom> repositories,
-                                                      String repoDepDir, Properties resolvedDependencies) {
-        Properties transitiveDependencies = getTransitiveDependenciesFile(dependencyAtom, repositoryAtom, repoDepDir);
-        if (transitiveDependencies == null) {
-            System.out.printf("^warn^ No transitive dependencies file found for %s, ignoring.\n",
-                    dependencyAtom.toString());
-            return null;
-        }
-        AtomicReference<String> error = new AtomicReference<String>();
-        for (String dependency : transitiveDependencies.stringPropertyNames()) {
-            error.set(null);
-            String dependencyVersion = transitiveDependencies.getProperty(dependency);
-            DependencyAtom transitiveDependencyAtom = DependencyAtom.parse(dependency + "::" + dependencyVersion, error);
-            if (transitiveDependencyAtom == null) {
-                System.out.printf("^warn^ Transitive dependency %s::%s invalid; missing %s, skipping.\n", dependency,
-                        dependencyVersion, error.get());
-                continue;
-            }
-            resolveDependency(transitiveDependencyAtom, repositories, resolvedDependencies);
-        }
-        return transitiveDependencies;
-    }
-
-    private static Properties getTransitiveDependenciesFile(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
-                                                            String repoDepDir) {
-        if (repositoryAtom.getResolvedType() == RepositoryAtom.Type.ply) {
-            return getTransitiveDependenciesFromPlyRepo(repoDepDir + File.separator + "dependencies.properties");
-        } else {
-            String pomName = dependencyAtom.getArtifactName().replace(".jar", ".pom");
-            return getTransitiveDependenciesFromMavenRepo(repoDepDir + File.separator + pomName, repositoryAtom);
-        }
-    }
-
-    private static Properties getTransitiveDependenciesFromPlyRepo(String urlPath) {
-        InputStream inputStream = null;
-        try {
-            URL url = new URL(urlPath);
-            Properties properties = new Properties();
-            inputStream = new BufferedInputStream(url.openStream());
-            properties.load(inputStream);
-            return properties;
-        } catch (MalformedURLException murle) {
-            System.out.printf("^error^ %s\n", murle.getMessage());
-        } catch (IOException ioe) {
-            System.out.printf("^error^ %s\n", ioe.getMessage());
-            ioe.printStackTrace();
-        } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-        }
-        return null;
-    }
-
-    private static Properties getTransitiveDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
-        MavenPomParser mavenPomParser = new MavenPomParser.Default();
-        return mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
-    }
-
-    private static String getDependencyPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
-        String dependencyDirectoryPath = getDependencyDirectoryPathForRepo(dependencyAtom, repositoryAtom);
-        return dependencyDirectoryPath + File.separator + dependencyAtom.getArtifactName();
-    }
-
-    private static String getDependencyDirectoryPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
-        String startPath = repositoryAtom.getPropertyName();
-        if (!startPath.contains(":")) {
-            // a file path without prefix, make absolute
-            startPath = "file://" + startPath;
-        }
-        // hygiene the end separator
-        if (!startPath.endsWith("/") && !startPath.endsWith("\\")) {
-            startPath = startPath + File.separator;
-        }
-        RepositoryAtom.Type type = repositoryAtom.getResolvedType();
-        String endPath = (type == RepositoryAtom.Type.ply ? dependencyAtom.namespace :
-                dependencyAtom.namespace.replaceAll("\\.", File.separator))
-                + File.separator + dependencyAtom.name + File.separator +
-                dependencyAtom.version;
-        // hygiene the start separator
-        if (endPath.startsWith("/") || endPath.startsWith("\\")) {
-            endPath = endPath.substring(1, endPath.length());
-        }
-        return startPath + endPath;
-    }
-
-    private static URL getUrl(String path) {
-        try {
-            System.out.printf("^dbug^ resolving %s\n", path);
-            return new URI(path).toURL();
-        } catch (URISyntaxException urise) {
-            System.out.printf("^error^ %s\n", urise.getMessage());
-        } catch (MalformedURLException murle) {
-            System.out.printf("^error^ %s\n", murle.getMessage());
-        }
-        return null;
-    }
-
-    private static boolean copy(URL from, File to, File toDir) {
-        InputStream inputStream = null;
-        OutputStream outputStream = null;
-        try {
-            // ensure destination exists.
-            toDir.mkdirs();
-            to.createNewFile();
-
-            inputStream = new BufferedInputStream(from.openStream());
-            outputStream = new BufferedOutputStream(new FileOutputStream(to));
-
-            byte[] buffer = new byte[8192];
-            int read = 0;
-            while ((read = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, read);
-            }
-            return true;
-        } catch (IOException ioe) {
-            System.out.printf("^error^ %s\n", ioe.getMessage());
-        } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-            try {
-                if (outputStream != null) {
-                    outputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-        }
-        return false;
-    }
-
     private static List<RepositoryAtom> createRepositoryList() {
         RepositoryAtom localRepo = RepositoryAtom.parse(System.getenv("depmngr.localRepo"));
         if (localRepo == null) {
@@ -538,6 +206,29 @@ public class DependencyManager {
             }
         }
         return repositoryAtoms;
+    }
+
+    private static Properties resolveDependencies(Map<String, String> dependencies) {
+        List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>(dependencies.size());
+        AtomicReference<String> error = new AtomicReference<String>();
+        for (String dependencyKey : dependencies.keySet()) {
+            error.set(null);
+            String dependencyValue = dependencies.get(dependencyKey);
+            DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + "::" + dependencyValue, error);
+            if (dependencyAtom == null) {
+                System.out.printf("^warn^ Invalid dependency %s::%s; missing %s\n", dependencyKey, dependencyValue,
+                        error.get());
+                continue;
+            }
+            dependencyAtoms.add(dependencyAtom);
+        }
+
+        return DependencyResolver.resolveDependencies(dependencyAtoms, createRepositoryList());
+    }
+
+    private static boolean resolveDependency(DependencyAtom dependencyAtom) {
+        return DependencyResolver.resolveDependency(dependencyAtom, createRepositoryList(),
+                new Properties());
     }
 
     private static Map<String, String> getDependenciesFromEnv() {
@@ -610,13 +301,6 @@ public class DependencyManager {
         buildDir.mkdirs();
         storeFile(resolvedDependencies, buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
                 + "resolved-deps.properties");
-    }
-
-    private static void storeTransitiveDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {
-        File localRepoDepDir = new File(localRepoDepDirPath);
-        localRepoDepDir.mkdirs();
-        storeFile(transitiveDependencies, localRepoDepDirPath + (localRepoDepDirPath.endsWith(File.separator) ? "" : File.separator)
-                                                + "dependencies.properties");
     }
 
     private static void storeFile(Properties properties, String path) {

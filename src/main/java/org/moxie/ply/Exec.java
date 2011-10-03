@@ -1,7 +1,16 @@
 package org.moxie.ply;
 
+import org.moxie.ply.dep.DependencyAtom;
+import org.moxie.ply.dep.DependencyResolver;
+import org.moxie.ply.dep.RepositoryAtom;
+
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.zip.ZipInputStream;
 
 /**
  * User: blangel
@@ -199,25 +208,9 @@ public final class Exec {
     private static String[] handleNonNativeExecutable(String[] cmdArray) {
         String script = cmdArray[0];
         if (script.endsWith(".jar")) {
-            String[] options = getJarScriptOptions(script);
-            // add the appropriate java command
-            script = System.getProperty("ply.java");
-            String[] newCmdArray = new String[cmdArray.length + options.length + 2];
-            newCmdArray[0] = script;
-            System.arraycopy(options, 0, newCmdArray, 1, options.length);
-            newCmdArray[options.length + 1] = "-jar";
-            System.arraycopy(cmdArray, 0, newCmdArray, 2 + options.length, cmdArray.length);
-            cmdArray = newCmdArray;
+            cmdArray = JarExec.createJarExecutable(cmdArray);
         }
         return cmdArray;
-    }
-
-    private static String[] getJarScriptOptions(String script) {
-        String options = Config.get("scripts-jar", script);
-        if (options == null) {
-            options = Config.get("scripts-jar", "default");
-        }
-        return options.split(" ");
     }
 
 }

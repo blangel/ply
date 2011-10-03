@@ -20,9 +20,13 @@ public class Ply {
             usage();
             System.exit(0);
         }
+        // init the output information
         try {
-            Output.init();
-        } catch (IllegalStateException ise) { // thrown to indicate there is no local properties directory
+            String colorProp = Config.get("color");
+            boolean color = (colorProp == null || !"false".equals(colorProp));
+            String logLevelsProp = Config.get("log.levels");
+            Output.init(color, logLevelsProp);
+        } catch (IllegalStateException ise) { // thrown from Config to indicate there is no local properties directory
             if (!"init".equals(args[0])) {
                 Output.print(ise.getMessage());
             }
