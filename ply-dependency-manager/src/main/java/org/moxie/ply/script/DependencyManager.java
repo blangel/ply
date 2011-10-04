@@ -1,5 +1,6 @@
 package org.moxie.ply.script;
 
+import org.moxie.ply.PropertiesUtil;
 import org.moxie.ply.dep.DependencyAtom;
 import org.moxie.ply.dep.DependencyResolver;
 import org.moxie.ply.dep.RepositoryAtom;
@@ -245,87 +246,42 @@ public class DependencyManager {
 
     private static Properties loadDependenciesFile() {
         String localDir = System.getenv("ply.project.dir");
-        return loadFile(localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "dependencies.properties");
+        String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
+                File.separator + "dependencies.properties";
+        return PropertiesUtil.load(loadPath);
     }
 
     private static Properties loadRepositoriesFile() {
         String localDir = System.getenv("ply.project.dir");
-        return loadFile(localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "repositories.properties");
-    }
-
-    private static Properties loadFile(String path) {
-        Properties properties = new Properties();
-        File file = new File(path);
-        InputStream fileInputStream = null;
-        try {
-            if (!file.exists()) {
-                file.createNewFile();
-            }
-            fileInputStream = new BufferedInputStream(new FileInputStream(file));
-            properties.load(fileInputStream);
-        } catch (FileNotFoundException fnfe) {
-            System.out.println(fnfe.getMessage());
-            System.exit(1);
-        } catch (IOException ioe) {
-            System.out.println(ioe.getMessage());
-            System.exit(1);
-        } finally {
-            try {
-                if (fileInputStream != null) {
-                    fileInputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-        }
-        return properties;
+        String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
+                File.separator + "repositories.properties";
+        return PropertiesUtil.load(loadPath);
     }
 
     private static void storeDependenciesFile(Properties dependencies) {
         String localDir = System.getenv("ply.project.dir");
-        storeFile(dependencies, localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "dependencies.properties");
+        String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
+                            File.separator + "dependencies.properties";
+        if (!PropertiesUtil.store(dependencies, storePath, true)) {
+            System.exit(1);
+        }
     }
 
     private static void storeRepositoriesFile(Properties repositories) {
         String localDir = System.getenv("ply.project.dir");
-        storeFile(repositories, localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "repositories.properties");
+        String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
+                File.separator + "repositories.properties";
+        if (!PropertiesUtil.store(repositories, storePath, true)) {
+            System.exit(1);
+        }
     }
 
     private static void storeResolvedDependenciesFile(Properties resolvedDependencies) {
         String buildDirPath = System.getenv("project.build.dir");
-        File buildDir = new File(buildDirPath);
-        buildDir.mkdirs();
-        storeFile(resolvedDependencies, buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
-                + "resolved-deps.properties");
-    }
-
-    private static void storeFile(Properties properties, String path) {
-        File file = new File(path);
-        OutputStream fileOutputStream = null;
-        try {
-            if (!file.exists()) {
-                file.createNewFile();
-            }
-            fileOutputStream = new BufferedOutputStream(new FileOutputStream(file));
-            properties.store(fileOutputStream, null);
-        } catch (FileNotFoundException fnfe) {
-            System.out.println(fnfe.getMessage());
+        String storePath = buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
+                + "resolved-deps.properties";
+        if (!PropertiesUtil.store(resolvedDependencies, storePath, true)) {
             System.exit(1);
-        } catch (IOException ioe) {
-            System.out.println(ioe.getMessage());
-            System.exit(1);
-        } finally {
-            try {
-                if (fileOutputStream != null) {
-                    fileOutputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
         }
     }
 

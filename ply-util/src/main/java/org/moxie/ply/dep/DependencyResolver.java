@@ -1,6 +1,8 @@
 package org.moxie.ply.dep;
 
+import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
+import org.moxie.ply.PropertiesUtil;
 import org.moxie.ply.mvn.MavenPomParser;
 
 import java.io.*;
@@ -67,7 +69,7 @@ public class DependencyResolver {
             if (remoteUrl == null) {
                 continue;
             }
-            if (copy(remoteUrl, localDepFile, localDepDirFile)) {
+            if (FileUtil.copy(remoteUrl, localDepFile)) {
                 if (!dependencyFiles.contains(localDepFile.getPath())) {
                     dependencyFiles.put(localDepFile.getPath(), "");
                     Properties transitiveDeps = processTransitiveDependencies(dependencyAtom, remoteRepo, repositories,
@@ -118,44 +120,6 @@ public class DependencyResolver {
             Output.print(murle);
         }
         return null;
-    }
-
-    private static boolean copy(URL from, File to, File toDir) {
-        InputStream inputStream = null;
-        OutputStream outputStream = null;
-        try {
-            // ensure destination exists.
-            toDir.mkdirs();
-            to.createNewFile();
-
-            inputStream = new BufferedInputStream(from.openStream());
-            outputStream = new BufferedOutputStream(new FileOutputStream(to));
-
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, read);
-            }
-            return true;
-        } catch (IOException ioe) {
-            Output.print(ioe);
-        } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-            try {
-                if (outputStream != null) {
-                    outputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-        }
-        return false;
     }
 
     private static Properties processTransitiveDependencies(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom, List<RepositoryAtom> repositories,
@@ -233,36 +197,8 @@ public class DependencyResolver {
     }
 
     private static void storeTransitiveDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {
-        File localRepoDepDir = new File(localRepoDepDirPath);
-        localRepoDepDir.mkdirs();
-        storeFile(transitiveDependencies, localRepoDepDirPath + (localRepoDepDirPath.endsWith(File.separator) ? "" : File.separator)
-                                                + "dependencies.properties");
-    }
-
-    private static void storeFile(Properties properties, String path) {
-        File file = new File(path);
-        OutputStream fileOutputStream = null;
-        try {
-            if (!file.exists()) {
-                file.createNewFile();
-            }
-            fileOutputStream = new BufferedOutputStream(new FileOutputStream(file));
-            properties.store(fileOutputStream, null);
-        } catch (FileNotFoundException fnfe) {
-            Output.print(fnfe);
-            System.exit(1);
-        } catch (IOException ioe) {
-            Output.print(ioe);
-            System.exit(1);
-        } finally {
-            try {
-                if (fileOutputStream != null) {
-                    fileOutputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-        }
+        PropertiesUtil.store(transitiveDependencies, localRepoDepDirPath + (localRepoDepDirPath.endsWith(File.separator) ? "" : File.separator)
+                                                + "dependencies.properties", true);
     }
 
 }

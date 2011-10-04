@@ -35,25 +35,27 @@ public class Output {
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
     static {
         boolean withinTerminal = (System.getenv("TERM") != null);
+        boolean colorDisabled = (System.getenv("ply.color") != null ? "false".equals(System.getenv("ply.color")) : false);
+        boolean useColor = withinTerminal && !colorDisabled;
         // first place color values (in case call to Config tries to print, at least have something in
         // TERM_CODES with which to strip messages.
-        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), withinTerminal ? "[\u001b[0;33mply\u001b[0m]" : "[ply]"));
-        TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), withinTerminal ? "[\u001b[1;31merr!\u001b[0m]" : "[err!]"));
-        TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), withinTerminal ? "[\u001b[1;33mwarn\u001b[0m]" : "[warn]"));
-        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), withinTerminal ? "[\u001b[1;34minfo\u001b[0m]" : "[info]"));
-        TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), withinTerminal ? "[\u001b[1;30mdbug\u001b[0m]" : "[dbug]"));
-        TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), withinTerminal ? "\u001b[0m" : ""));
-        TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), withinTerminal ? "\u001b[1m" : ""));
-        TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), withinTerminal ? "\u001b[2m" : ""));
-        TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), withinTerminal ? "\u001b[7m" : ""));
-        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), withinTerminal ? "\u001b[1;30m" : ""));
-        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"), withinTerminal ? "\u001b[1;31m" : ""));
-        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), withinTerminal ? "\u001b[1;32m" : ""));
-        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), withinTerminal ? "\u001b[1;33m" : ""));
-        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), withinTerminal ? "\u001b[1;34m" : ""));
-        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), withinTerminal ? "\u001b[1;35m" : ""));
-        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), withinTerminal ? "\u001b[1;36m" : ""));
-        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), withinTerminal ? "\u001b[1;37m" : ""));
+        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), useColor ? "[\u001b[0;33mply\u001b[0m]" : "[ply]"));
+        TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), useColor ? "[\u001b[1;31merr!\u001b[0m]" : "[err!]"));
+        TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), useColor ? "[\u001b[1;33mwarn\u001b[0m]" : "[warn]"));
+        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), useColor ? "[\u001b[1;34minfo\u001b[0m]" : "[info]"));
+        TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), useColor ? "[\u001b[1;30mdbug\u001b[0m]" : "[dbug]"));
+        TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), useColor ? "\u001b[0m" : ""));
+        TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), useColor ? "\u001b[1m" : ""));
+        TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), useColor ? "\u001b[2m" : ""));
+        TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), useColor ? "\u001b[7m" : ""));
+        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), useColor ? "\u001b[1;30m" : ""));
+        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"), useColor ? "\u001b[1;31m" : ""));
+        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), useColor ? "\u001b[1;32m" : ""));
+        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), useColor ? "\u001b[1;33m" : ""));
+        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), useColor ? "\u001b[1;34m" : ""));
+        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), useColor ? "\u001b[1;35m" : ""));
+        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), useColor ? "\u001b[1;36m" : ""));
+        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), useColor ? "\u001b[1;37m" : ""));
     }
 
     private static final AtomicReference<Boolean> warnLevel = new AtomicReference<Boolean>(true);
