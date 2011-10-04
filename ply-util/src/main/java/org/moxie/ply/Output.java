@@ -30,6 +30,13 @@ public class Output {
     }
 
     /**
+     * Configurable log level variables.
+     */
+    private static final AtomicReference<Boolean> warnLevel = new AtomicReference<Boolean>(true);
+    private static final AtomicReference<Boolean> infoLevel = new AtomicReference<Boolean>(true);
+    private static final AtomicReference<Boolean> dbugLevel = new AtomicReference<Boolean>(true);
+
+    /**
      * A mapping of easily identifiable words to a {@link TermCode} object for colored output.
      */
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
@@ -56,11 +63,12 @@ public class Output {
         TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), useColor ? "\u001b[1;35m" : ""));
         TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), useColor ? "\u001b[1;36m" : ""));
         TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), useColor ? "\u001b[1;37m" : ""));
-    }
+        // init log-levels for scripts which depend upon ply-util (ply itself calls init(boolean, String)
+        if (System.getenv("ply.log.levels") != null) {
+            init(System.getenv("ply.log.levels"));
+        }
 
-    private static final AtomicReference<Boolean> warnLevel = new AtomicReference<Boolean>(true);
-    private static final AtomicReference<Boolean> infoLevel = new AtomicReference<Boolean>(true);
-    private static final AtomicReference<Boolean> dbugLevel = new AtomicReference<Boolean>(true);
+    }
 
     /**
      * Remaps the {@link #TERM_CODES} appropriately if the {@literal color} property is false.
@@ -89,6 +97,10 @@ public class Output {
             TERM_CODES.put("cyan", new TermCode(TERM_CODES.get("cyan").pattern, ""));
             TERM_CODES.put("white", new TermCode(TERM_CODES.get("white").pattern, ""));
         }
+        init(logLevels);
+    }
+
+    static void init(String logLevels) {
         if (!logLevels.contains("warn")) {
             warnLevel.set(false);
         }

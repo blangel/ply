@@ -1,5 +1,9 @@
 package org.moxie.ply.script;
 
+import org.moxie.ply.BitUtil;
+import org.moxie.ply.Output;
+import org.moxie.ply.PropertiesUtil;
+
 import java.io.*;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
@@ -25,42 +29,17 @@ public class FileChangeDetector {
 
     public static void main(String[] args) {
         String buildDirPath = System.getenv("project.build.dir");
-        File buildDir = new File(buildDirPath);
         File lastSrcChanged = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
                 + "src-changed-meta.properties");
         File changedPropertiesFile = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
                 + "src-changed.properties");
         String srcDirPath = System.getenv("project.src.dir");
         File srcDir = new File(srcDirPath);
-        Properties existing = new Properties();
-        if (!lastSrcChanged.exists()) {
-            buildDir.mkdirs();
-            try {
-                lastSrcChanged.createNewFile();
-            } catch (IOException ioe) {
-                System.out.println("^error^ " + ioe.getMessage());
-            }
-        } else {
-            InputStream fileInputStream = null;
-            try {
-                fileInputStream = new BufferedInputStream(new FileInputStream(lastSrcChanged));
-                existing.load(fileInputStream);
-            } catch (IOException ioe) {
-                System.out.println("^error^ " + ioe.getMessage());
-            } finally {
-                try {
-                    if (fileInputStream != null) {
-                        fileInputStream.close();
-                    }
-                } catch (IOException ioe) {
-                    // ignore
-                }
-            }
-        }
+        Properties existing = PropertiesUtil.load(lastSrcChanged.getPath(), true);
         try {
             changedPropertiesFile.createNewFile();
         } catch (IOException ioe) {
-            System.out.println("^error^ " + ioe.getMessage());
+            Output.print(ioe);
         }
         computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing);
     }
@@ -68,32 +47,9 @@ public class FileChangeDetector {
     private static void computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir, Properties existing) {
         Properties changedList = new Properties();
         Properties properties = new Properties();
-        OutputStream changedListFileOutputStream = null;
-        OutputStream propertiesFileOutputStream = null;
         collectAllFileChanges(srcDir, changedList, properties, existing);
-        try {
-            changedListFileOutputStream = new BufferedOutputStream(new FileOutputStream(changedPropertiesFile));
-            changedList.store(changedListFileOutputStream, null);
-            propertiesFileOutputStream = new BufferedOutputStream(new FileOutputStream(lastSrcChanged));
-            properties.store(propertiesFileOutputStream, null);
-        } catch (IOException ioe) {
-            System.out.println("^error^ " + ioe.getMessage());
-        } finally {
-            try {
-                if (changedListFileOutputStream != null) {
-                    changedListFileOutputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-            try {
-                if (propertiesFileOutputStream != null) {
-                    propertiesFileOutputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-        }
+        PropertiesUtil.store(changedList, changedPropertiesFile.getPath());
+        PropertiesUtil.store(properties, lastSrcChanged.getPath());
     }
 
     private static void collectAllFileChanges(File from, Properties changedList, Properties into, Properties existing) {
@@ -113,7 +69,7 @@ public class FileChangeDetector {
                         into.setProperty(path, existing.getProperty(path));
                     }
                 } catch (IOException ioe) {
-                    System.out.println("^error^ " + ioe.getMessage());
+                    Output.print(ioe);
                 }
             }
         }
@@ -127,7 +83,7 @@ public class FileChangeDetector {
             }
             String[] split = propertyValue.split("\\,");
             if (split.length != 2) {
-                System.out.println("^warn^ corrupted src-changed-meta.properties file, recomputing.");
+                Output.print("^warn^ corrupted src-changed-meta.properties file, recomputing.");
                 return true;
             }
             long timestamp = Long.valueOf(split[0]);
@@ -141,7 +97,7 @@ public class FileChangeDetector {
         } catch (IOException ioe) {
             throw new AssertionError(ioe);
         } catch (NumberFormatException nfe) {
-            System.out.println("^warn^ corrupted src-changed-meta.properties file, recomputing.");
+            Output.print("^warn^ corrupted src-changed-meta.properties file, recomputing.");
             return true;
         }
     }
@@ -155,13 +111,13 @@ public class FileChangeDetector {
             byte[] buffer = new byte[8192];
             while (digestInputStream.read(buffer, 0, 8192) != -1) { }
             byte[] sha1 = hash.digest();
-            return toHexString(sha1);
+            return BitUtil.toHexString(sha1);
         } catch (NoSuchAlgorithmException nsae) {
             throw new AssertionError(nsae);
         } catch (FileNotFoundException fnfe) {
             throw new AssertionError(fnfe);
         } catch (IOException ioe) {
-            System.out.println("^error^ " + ioe.getMessage());
+            Output.print(ioe);
         } finally {
             try {
                 if (fileInputStream != null) {
@@ -174,18 +130,4 @@ public class FileChangeDetector {
         return ""; // error!
     }
 
-    private static String toHexString(byte[] array) {
-        if (array == null) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder(array.length * 2);
-        for (byte byt : array) {
-            int v = byt & 0xff;
-            if (v < 16) {
-                sb.append('0');
-            }
-            sb.append(Integer.toHexString(v));
-        }
-        return sb.toString();
-    }
 }

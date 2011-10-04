@@ -20,15 +20,44 @@ public class PropertiesUtil {
      * @return the loaded {@link Properties} file (which may be empty if loading failed).
      */
     public static Properties load(String path) {
+        return load(path, false);
+    }
+
+    /**
+     * Loads {@code path} into a {@link Properties} file and returns it.
+     * @param path to load
+     * @param create true will create the file if it does not exist; false otherwise
+     * @return the loaded {@link Properties} file (which may be empty if loading failed).
+     */
+    public static Properties load(String path, boolean create) {
+        return load(path, create, false);
+    }
+
+    /**
+     * Loads {@code path} into a {@link Properties} file and returns it.
+     * @param path to load
+     * @param create true will create the file if it does not exist; false otherwise
+     * @param nullOnFNF true to have null returned when {@code path} can not be found; otherwise an error is printed.
+     * @return the loaded {@link Properties} file (which may be empty if loading failed).
+     */
+    public static Properties load(String path, boolean create, boolean nullOnFNF) {
         File propertiesFile = new File(path);
         InputStream inputStream = null;
         Properties properties = new Properties();
         try {
+            if (create && !propertiesFile.exists()) {
+                propertiesFile.getParentFile().mkdirs();
+                propertiesFile.createNewFile();
+            }
             inputStream = new BufferedInputStream(new FileInputStream(propertiesFile));
             properties.load(inputStream);
         } catch (FileNotFoundException fnfe) {
-            Output.print("Cannot load properties file, %s, it does not exist.", path);
-            Output.print(fnfe);
+            if (nullOnFNF) {
+                return null;
+            } else {
+                Output.print("Cannot load properties file, %s, it does not exist.", path);
+                Output.print(fnfe);
+            }
         } catch (IOException ioe) {
             Output.print(ioe);
         } finally {

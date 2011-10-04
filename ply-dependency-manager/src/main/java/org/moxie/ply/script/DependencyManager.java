@@ -248,14 +248,14 @@ public class DependencyManager {
         String localDir = System.getenv("ply.project.dir");
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "dependencies.properties";
-        return PropertiesUtil.load(loadPath);
+        return PropertiesUtil.load(loadPath, true);
     }
 
     private static Properties loadRepositoriesFile() {
         String localDir = System.getenv("ply.project.dir");
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "repositories.properties";
-        return PropertiesUtil.load(loadPath);
+        return PropertiesUtil.load(loadPath, true);
     }
 
     private static void storeDependenciesFile(Properties dependencies) {

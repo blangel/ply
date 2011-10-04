@@ -1,5 +1,8 @@
 package org.moxie.ply.script;
 
+import org.moxie.ply.Output;
+import org.moxie.ply.PropertiesUtil;
+
 import javax.tools.*;
 import java.io.*;
 import java.util.*;
@@ -74,7 +77,7 @@ public class CompilerScript {
         try {
             Float javaVersion = Float.valueOf(version);
             if (javaVersion < 1.6f) {
-                System.out.printf("^error^ only JDK 1.6+ is supported for compilation [ running %f ].", javaVersion);
+                Output.print("^error^ only JDK 1.6+ is supported for compilation [ running %f ].", javaVersion);
                 return false;
             }
         } catch (NumberFormatException nfe) {
@@ -108,7 +111,7 @@ public class CompilerScript {
 
     private CompilerScript(String srcDir, String buildDir) {
         if ((srcDir == null) || (buildDir == null)) {
-            System.out.println("^error^ could not determine source or build directory for compilation.");
+            Output.print("^error^ could not determine source or build directory for compilation.");
             System.exit(1);
         }
         if (!isSupportedJavaVersion(getJavaVersion())) {
@@ -122,34 +125,21 @@ public class CompilerScript {
         buildClassesDir.mkdirs();
         // load the src-changed.properties file from the build directory.
         File changedPropertiesFile = new File(buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator) + "src-changed.properties");
-        Properties changedProperties = new Properties();
-        InputStream changedPropertiesInputStream = null;
-        try {
-            changedPropertiesInputStream = new BufferedInputStream(new FileInputStream(changedPropertiesFile));
-            changedProperties.load(changedPropertiesInputStream);
-        } catch (FileNotFoundException fnfe) {
-            System.out.println("^error^ src-changed.properties not found, please run 'file-changed' before 'compiler'.");
-        } catch (IOException ioe) {
-            System.out.println("^error " + ioe.getMessage());
-        } finally {
-            try {
-                if (changedPropertiesInputStream != null) {
-                    changedPropertiesInputStream.close();
+        Properties changedProperties = PropertiesUtil.load(changedPropertiesFile.getPath(), false, true);
+        if (changedProperties == null) {
+            Output.print("^error^ src-changed.properties not found, please run 'file-changed' before 'compiler'.");
+        } else {
+            for (String filePath : changedProperties.stringPropertyNames()) {
+                if (filePath.endsWith(".java")) {
+                    sourceFilePaths.add(filePath);
                 }
-            } catch (IOException ioe) {
-                // ignore
-            }
-        }
-        for (String filePath : changedProperties.stringPropertyNames()) {
-            if (filePath.endsWith(".java")) {
-                sourceFilePaths.add(filePath);
             }
         }
     }
 
     private void invoke() {
         if (sourceFilePaths.isEmpty()) {
-            System.out.println("Nothing to compile, everything is up to date.");
+            Output.print("Nothing to compile, everything is up to date.");
             return;
         }
         File sourceDir = new File(srcDir);
@@ -254,29 +244,13 @@ public class CompilerScript {
      * @return the contents of ${project.build.dir}/${resolved-deps.properties}
      */
     private static Properties addDependenciesToClasspathArgs() {
-        Properties dependencies = new Properties();
         String buildPath = System.getenv("project.build.dir");
         // load the src-changed.properties file from the build directory.
         File dependenciesFile = new File(buildPath + (buildPath.endsWith(File.separator) ? "" : File.separator) + "resolved-deps.properties");
         if (!dependenciesFile.exists()) {
-            return dependencies;
+            return new Properties();
         }
-        InputStream dependenciesInputStream = null;
-        try {
-            dependenciesInputStream = new BufferedInputStream(new FileInputStream(dependenciesFile));
-            dependencies.load(dependenciesInputStream);
-        } catch (IOException ioe) {
-            System.out.printf("^error %s\n", ioe.getMessage());
-        } finally {
-            try {
-                if (dependenciesInputStream != null) {
-                    dependenciesInputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-        }
-        return dependencies;
+        return PropertiesUtil.load(dependenciesFile.getPath());
     }
 
     /**
@@ -287,7 +261,7 @@ public class CompilerScript {
      * @return the concatenated classpath
      */
     private static String createClasspath(String localPath, Properties dependencies) {
-        StringBuffer buffer = new StringBuffer(localPath);
+        StringBuilder buffer = new StringBuilder(localPath);
         for (String dependency : dependencies.stringPropertyNames()) {
             buffer.append(File.pathSeparator);
             buffer.append(dependencies.getProperty(dependency));

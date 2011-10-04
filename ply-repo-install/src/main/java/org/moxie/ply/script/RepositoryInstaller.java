@@ -1,5 +1,7 @@
 package org.moxie.ply.script;
 
+import org.moxie.ply.FileUtil;
+
 import java.io.*;
 
 /**
@@ -55,46 +57,12 @@ public class RepositoryInstaller {
                                     (namespace.endsWith(File.separator) ? "" : File.separator) +
                                name + (name.endsWith(File.separator) ? "" : File.separator) +
                                version + (version.endsWith(File.separator) ? "" : File.separator);
-        File localRepo = new File(localRepoPath);
-        localRepo.mkdirs();
         File localRepoArtifact = new File(localRepoPath + artifactName);
-        copy(artifact, localRepoArtifact);
+        FileUtil.copy(artifact, localRepoArtifact);
 
         if (dependenciesFile.exists()) {
             File localRepoDependenciesFile = new File(localRepoPath + "dependencies.properties");
-            copy(dependenciesFile, localRepoDependenciesFile);
-        }
-    }
-
-    private static void copy(File from, File to) {
-        InputStream inputStream = null;
-        OutputStream outputStream = null;
-        try {
-            to.createNewFile();
-            inputStream = new BufferedInputStream(new FileInputStream(from));
-            outputStream = new BufferedOutputStream(new FileOutputStream(to));
-            byte[] tx = new byte[8192];
-            int read;
-            while ((read = inputStream.read(tx)) != -1) {
-                outputStream.write(tx, 0, read);
-            }
-        } catch (IOException ioe) {
-            System.out.printf("^error^ %s\n", ioe);
-        } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-            try {
-                if (outputStream != null) {
-                    outputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
+            FileUtil.copy(dependenciesFile, localRepoDependenciesFile);
         }
     }
 

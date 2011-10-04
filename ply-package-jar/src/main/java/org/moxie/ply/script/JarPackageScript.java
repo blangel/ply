@@ -1,5 +1,7 @@
 package org.moxie.ply.script;
 
+import org.moxie.ply.PropertiesUtil;
+
 import java.io.*;
 import java.util.HashSet;
 import java.util.Properties;
@@ -195,53 +197,14 @@ public class JarPackageScript {
      * @return the handle to the created dependencies.properties file or null if an error occurred while creating the file.
      */
     private static File createDependenciesFile(String buildDirPath) {
-        String metaInfPlyDirPath = buildDirPath + "META-INF/ply/";
-        File metaInfPlyDir = new File(metaInfPlyDirPath);
-        metaInfPlyDir.mkdirs();
-
-        File metaInfPlyDepFile = new File(metaInfPlyDirPath + "dependencies.properties");
-        try {
-            metaInfPlyDepFile.createNewFile();
-        } catch (IOException ioe) {
-            System.out.printf("^error^ %s\n", ioe.getMessage());
-            return null;
-        }
-
         // read in resolved-deps.properties file
         Properties dependencies = new Properties();
-        InputStream resolvedInputStream = null;
-        OutputStream dependenciesOutputStream = null;
-        try {
-            File resolvedFile = new File(buildDirPath + "resolved-deps.properties");
-            if (!resolvedFile.exists()) {
-                return metaInfPlyDepFile;
-            }
-            Properties resolvedDeps = new Properties();
-            resolvedInputStream = new BufferedInputStream(new FileInputStream(resolvedFile));
-            resolvedDeps.load(resolvedInputStream);
-            for (String propertyName : resolvedDeps.stringPropertyNames()) {
-                dependencies.put(propertyName, "");
-            }
-            dependenciesOutputStream = new BufferedOutputStream(new FileOutputStream(metaInfPlyDepFile));
-            dependencies.store(dependenciesOutputStream, null);
-        } catch (IOException ioe) {
-            System.out.printf("^error^ %s\n", ioe.getMessage());
-        } finally {
-            try {
-                if (resolvedInputStream != null) {
-                    resolvedInputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
-            try {
-                if (dependenciesOutputStream != null) {
-                    dependenciesOutputStream.close();
-                }
-            } catch (IOException ioe) {
-                // ignore
-            }
+        Properties resolvedDeps = PropertiesUtil.load(buildDirPath + "resolved-deps.properties", true);
+        for (String propertyName : resolvedDeps.stringPropertyNames()) {
+            dependencies.put(propertyName, "");
         }
+        File metaInfPlyDepFile = new File(buildDirPath + "META-INF/ply/dependencies.properties");
+        PropertiesUtil.store(dependencies, metaInfPlyDepFile.getPath(), true);
         return metaInfPlyDepFile;
     }
 
