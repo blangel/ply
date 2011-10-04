@@ -1,5 +1,6 @@
 package org.moxie.ply.script;
 
+import org.moxie.ply.Output;
 import org.moxie.ply.PropertiesUtil;
 import org.moxie.ply.dep.DependencyAtom;
 import org.moxie.ply.dep.DependencyResolver;
@@ -81,6 +82,17 @@ public class DependencyManager {
             addDependency(args[1]);
         } else if ((args.length > 1) && "remove".equals(args[0])) {
             removeDependency(args[1]);
+        } else if ((args.length == 1) && "list".equals(args[0])) {
+            Map<String, String> dependencies = getDependenciesFromEnv();
+            int size = dependencies.size();
+            if (size > 0) {
+                Output.print("Project ^b^%s^r^ has ^b^%d^r^ dependencies:", System.getenv("project.name"), size);
+                for (String key : dependencies.keySet()) {
+                    Output.print("\t%s::%s", key, dependencies.get(key));
+                }
+            } else {
+                Output.print("Project ^b^%s^r^ has no dependencies.", System.getenv("project.name"));
+            }
         } else if ((args.length > 1) && "add-repo".equals(args[0])) {
             addRepository(args[1]);
         } else if ((args.length > 1) && "remove-repo".equals(args[0])) {
@@ -89,7 +101,7 @@ public class DependencyManager {
             Map<String, String> dependencies = getDependenciesFromEnv();
             int size = dependencies.size();
             if (size > 0) {
-                System.out.printf("Resolving ^b^%d^r^ dependenc%s for ^b^%s^r^.\n", size, (size == 1 ? "y" : "ies"),
+                Output.print("Resolving ^b^%d^r^ dependenc%s for ^b^%s^r^.", size, (size == 1 ? "y" : "ies"),
                         System.getenv("project.name"));
                 Properties dependencyFiles = resolveDependencies(dependencies);
                 storeResolvedDependenciesFile(dependencyFiles);
@@ -103,20 +115,21 @@ public class DependencyManager {
         AtomicReference<String> error = new AtomicReference<String>(null);
         DependencyAtom atom = DependencyAtom.parse(dependency, error);
         if (atom == null) {
-            System.out.printf("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace::name::version[::artifactName]).\n",
+            Output.print("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace::name::version[::artifactName]).",
                     dependency, error.get());
             System.exit(1);
         }
         Properties dependencies = loadDependenciesFile();
         if (dependencies.contains(atom.getPropertyName())) {
-            System.out.printf("^info^ overriding dependency %s; was %s now is %s.\n", atom.getPropertyName(),
+            Output.print("^info^ overriding dependency %s; was %s now is %s.", atom.getPropertyName(),
                     dependencies.getProperty(atom.getPropertyName()), atom.getPropertyValue());
         }
         dependencies.put(atom.getPropertyName(), atom.getPropertyValue());
         if (resolveDependency(atom)) {
             storeDependenciesFile(dependencies);
         } else {
-            System.out.printf("^error^ unable to resolve dependency ^b^%s^r^. Ensure you are able to connect to the remote repositories.\n", atom.toString());
+            Output.print("^error^ unable to resolve dependency ^b^%s^r^. Ensure you are able to connect to the remote repositories.",
+                    atom.toString());
             System.exit(1);
         }
     }
@@ -127,14 +140,14 @@ public class DependencyManager {
             // allow non-version specification.
             String[] split = dependency.split("::");
             if (split.length < 2) {
-                System.out.printf("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace::name[::version::artifactName]).\n",
+                Output.print("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace::name[::version::artifactName]).",
                         dependency, (split.length == 1 ? "name" : "namespace and name"));
                 System.exit(1);
             }
             atom = new DependencyAtom(split[0], split[1], null);
         }
         if (System.getenv("dependencies." + atom.getPropertyName()) == null) {
-            System.out.printf("^warn^ Dependency not found; given %s::%s\n", atom.getPropertyName(),
+            Output.print("^warn^ Dependency not found; given %s::%s", atom.getPropertyName(),
                     atom.getPropertyValue());
         } else {
             Properties dependencies = loadDependenciesFile();
@@ -146,19 +159,19 @@ public class DependencyManager {
     private static void addRepository(String repository) {
         RepositoryAtom atom = RepositoryAtom.parse(repository);
         if (atom == null) {
-            System.out.printf("^error^ Repository %s not of format repoUri[::type].\n", repository);
+            Output.print("^error^ Repository %s not of format repoUri[::type].", repository);
             System.exit(1);
         }
         try {
             atom.repositoryUri.toURL();
         } catch (Exception e) {
-            System.out.printf("^error^ Given value ^b^%s^r^ is not a valid URL and so is not a repository.\n",
+            Output.print("^error^ Given value ^b^%s^r^ is not a valid URL and so is not a repository.",
                     atom.getPropertyName());
             System.exit(1);
         }
         Properties repositories = loadRepositoriesFile();
         if (repositories.contains(atom.getPropertyName())) {
-            System.out.printf("^info^ overriding repository %s; was %s now is %s.\n", atom.getPropertyName(),
+            Output.print("^info^ overriding repository %s; was %s now is %s.", atom.getPropertyName(),
                     repositories.getProperty(atom.getPropertyName()), atom.getPropertyValue());
         }
         repositories.put(atom.getPropertyName(), atom.getPropertyValue());
@@ -168,12 +181,12 @@ public class DependencyManager {
     private static void removeRepository(String repository) {
         RepositoryAtom atom = RepositoryAtom.parse(repository);
         if (atom == null) {
-            System.out.printf("^error^ Repository %s not of format repoUri[::type].\n", repository);
+            Output.print("^error^ Repository %s not of format repoUri[::type].", repository);
             System.exit(1);
         }
 
         if (System.getenv("repositories." + atom.getPropertyName()) == null) {
-            System.out.printf("^warn^ Repository not found; given %s::%s\n", atom.getPropertyName(),
+            Output.print("^warn^ Repository not found; given %s::%s", atom.getPropertyName(),
                     atom.getPropertyValue());
         } else {
             Properties repositories = loadRepositoriesFile();
@@ -185,7 +198,7 @@ public class DependencyManager {
     private static List<RepositoryAtom> createRepositoryList() {
         RepositoryAtom localRepo = RepositoryAtom.parse(System.getenv("depmngr.localRepo"));
         if (localRepo == null) {
-            System.out.println("^error^ Local repository not defined.  Set 'localRepo' property in context 'depmngr'");
+            Output.print("^error^ Local repository not defined.  Set 'localRepo' property in context 'depmngr'");
             System.exit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
@@ -200,7 +213,7 @@ public class DependencyManager {
                 String repoAtom = repoUri + "::" + repoType;
                 RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
                 if (repo == null) {
-                    System.out.printf("^warn^ Invalid repository declared %s, ignoring.\n", repoAtom);
+                    Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);
                 } else {
                     repositoryAtoms.add(repo);
                 }
@@ -217,7 +230,7 @@ public class DependencyManager {
             String dependencyValue = dependencies.get(dependencyKey);
             DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + "::" + dependencyValue, error);
             if (dependencyAtom == null) {
-                System.out.printf("^warn^ Invalid dependency %s::%s; missing %s\n", dependencyKey, dependencyValue,
+                Output.print("^warn^ Invalid dependency %s::%s; missing %s", dependencyKey, dependencyValue,
                         error.get());
                 continue;
             }
@@ -286,15 +299,15 @@ public class DependencyManager {
     }
 
     private static void usage() {
-        System.out.println("dep [--usage] <^b^command^r^>");
-        System.out.println("  where ^b^command^r^ is either:");
-        System.out.println("    ^b^add <dep-atom>^r^\t: adds dep-atom to the list of dependencies (or replacing the version if it already exists).");
-        System.out.println("    ^b^remove <dep-atom>^r^\t: removes dep-atom from the list of dependencies.");
-        System.out.println("    ^b^add-repo <rep-atom>^r^\t: adds rep-atom to the list of repositories.");
-        System.out.println("    ^b^remove-repo <rep-atom>^r^: removes rep-atom from the list of repositories.");
-        System.out.println("  ^b^dep-atom^r^ is namespace::name::version[::artifactName] (artifactName is optional and defaults to name-version.jar).");
-        System.out.println("  ^b^rep-atom^r^ is repoURI[::type] (type is optional and defaults to ply, must be either ply or maven).");
-        System.out.println("  if no command is passed then dependency resolution is done for all dependencies against the known repositories.");
+        Output.print("dep [--usage] <^b^command^r^>");
+        Output.print("  where ^b^command^r^ is either:");
+        Output.print("    ^b^add <dep-atom>^r^\t: adds dep-atom to the list of dependencies (or replacing the version if it already exists).");
+        Output.print("    ^b^remove <dep-atom>^r^\t: removes dep-atom from the list of dependencies.");
+        Output.print("    ^b^add-repo <rep-atom>^r^\t: adds rep-atom to the list of repositories.");
+        Output.print("    ^b^remove-repo <rep-atom>^r^: removes rep-atom from the list of repositories.");
+        Output.print("  ^b^dep-atom^r^ is namespace::name::version[::artifactName] (artifactName is optional and defaults to name-version.jar).");
+        Output.print("  ^b^rep-atom^r^ is repoURI[::type] (type is optional and defaults to ply, must be either ply or maven).");
+        Output.print("  if no command is passed then dependency resolution is done for all dependencies against the known repositories.");
     }
 
 }
