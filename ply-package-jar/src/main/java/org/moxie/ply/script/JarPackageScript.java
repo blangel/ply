@@ -45,9 +45,9 @@ public class JarPackageScript {
         try {
             jarPackageScript.invoke();
         } catch (IOException ioe) {
-            System.out.println(ioe.getMessage());
+            Output.print(ioe);
         } catch (InterruptedException ie) {
-            System.out.println(ie.getMessage());
+            Output.print(ie);
         }
     }
 

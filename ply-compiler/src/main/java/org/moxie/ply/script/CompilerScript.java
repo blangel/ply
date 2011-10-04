@@ -158,20 +158,19 @@ public class CompilerScript {
         Iterable<? extends JavaFileObject> sourceFiles = fileManager.getJavaFileObjects(sourceFilePaths.toArray(new String[sourceFilePaths.size()]));
         StringWriter extraPrintStatements = new StringWriter();
         JavaCompiler.CompilationTask compilationTask = javac.getTask(extraPrintStatements, fileManager, diagnosticListener, getCompilerArgs(), null, sourceFiles);
-        System.out.printf("Compiling ^b^%d^r^ source files for ^b^%s^r^\n", sourceFilePaths.size(),
-                System.getenv("project.name"));
+        Output.print("Compiling ^b^%d^r^ source files for ^b^%s^r^\n", sourceFilePaths.size(), System.getenv("project.name"));
         boolean result = compilationTask.call();
         for (String error : diagnosticListener.getErrors()) {
-            System.out.println(error);
+            Output.print(error);
         }
         for (String warning : diagnosticListener.getWarnings()) {
-            System.out.println(warning);
+            Output.print(warning);
         }
         for (String notes : diagnosticListener.getNotes()) {
-            System.out.println(notes);
+            Output.print(notes);
         }
         if (extraPrintStatements.getBuffer().length() > 0) {
-            System.out.println(extraPrintStatements.toString());
+            Output.print(extraPrintStatements.toString());
         }
         if (!result) {
             System.exit(1);

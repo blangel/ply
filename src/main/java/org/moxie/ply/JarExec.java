@@ -126,7 +126,7 @@ public class JarExec {
     private static List<RepositoryAtom> createRepositoryList() {
         RepositoryAtom localRepo = RepositoryAtom.parse(Config.get("depmngr", "localRepo", true));
         if (localRepo == null) {
-            System.out.println("^error^ Local repository not defined.  Set 'localRepo' property in context 'depmngr'");
+            Output.print("^error^ Local repository not defined.  Set 'localRepo' property in context 'depmngr'");
             System.exit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
