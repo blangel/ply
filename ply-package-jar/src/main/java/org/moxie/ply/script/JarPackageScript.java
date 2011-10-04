@@ -1,5 +1,6 @@
 package org.moxie.ply.script;
 
+import org.moxie.ply.Output;
 import org.moxie.ply.PropertiesUtil;
 
 import java.io.*;
@@ -59,7 +60,7 @@ public class JarPackageScript {
         BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
         String processStdoutLine;
         while ((processStdoutLine = lineReader.readLine()) != null) {
-            System.out.println(processStdoutLine);
+            System.out.println(processStdoutLine); // don't use Output, just print directly and let ply itself handle
         }
         int result = process.waitFor();
         System.exit(result);
@@ -120,7 +121,7 @@ public class JarPackageScript {
             writer.println(buffer.toString());
             writer.flush();
         } catch (IOException ioe) {
-            System.out.println(ioe.getMessage());
+            Output.print(ioe);
             System.exit(1);
         } finally {
             if (writer != null) {
@@ -149,13 +150,13 @@ public class JarPackageScript {
         }
         String jarName = System.getenv("package-jar.jarName");
         if (isEmpty(jarName)) {
-            System.out.println("^warn^ Property 'package-jar.jarName' was empty, defaulting to value of ${project.artifact.name}.");
+            Output.print("^warn^ Property 'package-jar.jarName' was empty, defaulting to value of ${project.artifact.name}.");
             jarName = System.getenv("project.artifact.name");
             if (isEmpty(jarName)) {
-                System.out.println("^warn^ Property 'project.artifact.name' was empty, defaulting to value of ${project.name}.");
+                Output.print("^warn^ Property 'project.artifact.name' was empty, defaulting to value of ${project.name}.");
                 jarName = System.getenv("project.artifact.name");
                 if (isEmpty(jarName)) {
-                    System.out.println("^warn^ Property 'project.name' was empty, defaulting to 'no-name'.");
+                    Output.print("^warn^ Property 'project.name' was empty, defaulting to 'no-name'.");
                     jarName = "no-name";
                 }
             }
@@ -169,7 +170,7 @@ public class JarPackageScript {
         buildDir = buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator);
         File dependenciesFile = createDependenciesFile(buildDir);
         if (dependenciesFile == null) {
-            System.out.printf("^error^ Error creating the %sMETA-INF/ply/dependencies.properties file.\n", buildDir);
+            Output.print("^error^ Error creating the %sMETA-INF/ply/dependencies.properties file.", buildDir);
             System.exit(1);
         }
 

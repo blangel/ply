@@ -1,6 +1,7 @@
 package org.moxie.ply.script;
 
 import org.moxie.ply.FileUtil;
+import org.moxie.ply.Output;
 
 import java.io.*;
 
@@ -49,7 +50,7 @@ public class RepositoryInstaller {
         String version = System.getenv("project.version");
         File localRepoBase = new File(resolvedLocalRepo[0]);
         if (!localRepoBase.exists()) {
-            System.out.printf("^error^ Local repository ^b^%s^r^ doesn't exist.\n", localRepoBase.getPath());
+            Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoBase.getPath());
             System.exit(1);
         }
         String localRepoPath = localRepoBase.getPath() + (localRepoBase.getPath().endsWith(File.separator) ? "" : File.separator) +
