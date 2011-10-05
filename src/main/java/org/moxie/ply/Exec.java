@@ -46,8 +46,9 @@ public final class Exec {
     }
 
     private static boolean invoke(String originalScriptName, String[] cmdArgs, File projectRoot) {
+        String scriptWithoutPath = cmdArgs[0];
         cmdArgs[0] = resolveExecutable(cmdArgs[0]);
-        cmdArgs = handleNonNativeExecutable(cmdArgs);
+        cmdArgs = handleNonNativeExecutable(scriptWithoutPath, cmdArgs);
         String script = buildScriptName(cmdArgs);
         try {
             Output.print("^dbug^ invoking %s", script);
@@ -202,13 +203,14 @@ public final class Exec {
      * Translates {@code cmdArray[0]} into an executable statement if it needs an invoker like a VM.
      * The whole command array needs to be processed as parameters to the VM may need to be inserted
      * into the command array.
+     * @param unresolvedScript the unresolved script name (i.e., with path information).
      * @param cmdArray to translate
      * @return the translated command array.
      */
-    private static String[] handleNonNativeExecutable(String[] cmdArray) {
+    private static String[] handleNonNativeExecutable(String unresolvedScript, String[] cmdArray) {
         String script = cmdArray[0];
         if (script.endsWith(".jar")) {
-            cmdArray = JarExec.createJarExecutable(cmdArray);
+            cmdArray = JarExec.createJarExecutable(unresolvedScript, cmdArray);
         }
         return cmdArray;
     }

@@ -28,22 +28,23 @@ public class JarExec {
      * Translates {@code cmdArray[0]} into an executable statement for a JVM invoker.
      * The whole command array needs to be processed as parameters to the JVM need to be inserted
      * into the command array.
+     * @param unresolvedScript the unresolved script name (i.e., with path information).
      * @param cmdArray to translate
      * @return the translated command array.
      */
-    public static String[] createJarExecutable(String[] cmdArray) {
+    public static String[] createJarExecutable(String unresolvedScript, String[] cmdArray) {
         String script = cmdArray[0];
         String classpath = null;
         AtomicReference<String> mainClass = new AtomicReference<String>();
         AtomicBoolean staticClasspath = new AtomicBoolean(false);
-        String[] options = getJarScriptOptions(script, staticClasspath);
+        String[] options = getJarScriptOptions(unresolvedScript, staticClasspath);
         if (!staticClasspath.get()) {
             classpath = getClasspathEntries(script, mainClass);
         }
-        int classpathLength = (classpath == null ? 2 : 3);
+        int classpathLength = (staticClasspath.get() ? 0 : classpath == null ? 2 : 3);
         // add the appropriate java command
         script = System.getProperty("ply.java");
-        String[] newCmdArray = new String[1 + (cmdArray.length - 1) + options.length + classpathLength];
+        String[] newCmdArray = new String[cmdArray.length + options.length + classpathLength];
         newCmdArray[0] = script;
         System.arraycopy(options, 0, newCmdArray, 1, options.length);
         // if the '-classpath' option is specified, can't use '-jar' option (or rather vice-versa), so
@@ -53,7 +54,7 @@ public class JarExec {
             newCmdArray[options.length + 1] = "-classpath";
             newCmdArray[options.length + 2] = classpath;
             newCmdArray[options.length + 3] = mainClass.get(); // main-class must be found if using implicit dependencies
-        } else {
+        } else if (!staticClasspath.get()) {
             newCmdArray[options.length + 1] = "-jar";
             newCmdArray[options.length + 2] = cmdArray[0];
         }
@@ -162,6 +163,7 @@ public class JarExec {
         if (options == null) {
             options = Config.get("scripts-jar", "options.default");
         }
+        options = Config.filter(new Config.Prop("scripts-jar", "", options, true));
         if (options.contains("-cp") || options.contains("-classpath")) {
             staticClasspath.set(true);
         }
