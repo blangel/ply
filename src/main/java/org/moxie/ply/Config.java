@@ -377,7 +377,10 @@ public final class Config {
             return;
         }
         File propertiesFile = getContextPropertyFile(context);
-        Properties properties = PropertiesUtil.load(propertiesFile.getPath());
+        Properties properties = PropertiesUtil.load(propertiesFile.getPath(), false, true);
+        if (properties == null) {
+            properties = new Properties();
+        }
         properties.setProperty(name, value);
         PropertiesUtil.store(properties, propertiesFile.getPath(), true);
         // if already resolved, keep in sync.
@@ -409,9 +412,9 @@ public final class Config {
     /**
      * Prepends {@code value} to the property named {@code name} in context {@code context}.
      * If no existing property exists for {@code name} within {@code context} a new one will be created.
-     * @param context of the property to which to append
+     * @param context of the property to which to prepend
      * @param name of the property
-     * @param value to append
+     * @param value to prepend
      */
     private void prependProperty(String context, String name, String value) {
         String existingValue = get(context, name);
