@@ -61,11 +61,12 @@ import java.util.concurrent.atomic.AtomicReference;
  * so that compilation and packaging may succeed.
  *
  * The dependency script's usage is:
- * <pre>dep [--usage] [add|remove|add-repo|remove-repo]</pre>
+ * <pre>dep [--usage] [add|remove|list|add-repo|remove-repo]</pre>
  * where {@literal --usage} prints the usage information.
  * The {@literal add} command takes an atom and adds it as a dependency, resolving it eagerly from the known repos and
  * failing if it cannot be resolved.
  * The {@literal remove} command takes an atom and removes it from the dependencies, if it exists.
+ * The {@literal list} command lists all dependencies.
  * The {@literal add-repo} command takes a repository and adds it to the repositories.
  * The {@literal remove-repo} command removes the repository.
  * If nothing is passed to the script then dependency resolution is done for all dependencies against the known
@@ -303,6 +304,7 @@ public class DependencyManager {
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^add <dep-atom>^r^\t: adds dep-atom to the list of dependencies (or replacing the version if it already exists).");
         Output.print("    ^b^remove <dep-atom>^r^\t: removes dep-atom from the list of dependencies.");
+        Output.print("    ^b^list^r^\t\t\t: list all dependencies.");
         Output.print("    ^b^add-repo <rep-atom>^r^\t: adds rep-atom to the list of repositories.");
         Output.print("    ^b^remove-repo <rep-atom>^r^: removes rep-atom from the list of repositories.");
         Output.print("  ^b^dep-atom^r^ is namespace::name::version[::artifactName] (artifactName is optional and defaults to name-version.jar).");
