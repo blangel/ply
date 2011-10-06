@@ -7,7 +7,6 @@ import java.io.*;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
-import java.util.jar.JarFile;
 
 /**
  * User: blangel

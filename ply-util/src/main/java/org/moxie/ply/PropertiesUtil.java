@@ -1,8 +1,6 @@
 package org.moxie.ply;
 
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Properties;
 
 /**

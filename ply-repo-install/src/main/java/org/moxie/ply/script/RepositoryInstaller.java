@@ -3,7 +3,7 @@ package org.moxie.ply.script;
 import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
 
-import java.io.*;
+import java.io.File;
 
 /**
  * User: blangel

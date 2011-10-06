@@ -3,8 +3,13 @@ package org.moxie.ply.script;
 import org.moxie.ply.Output;
 import org.moxie.ply.PropertiesUtil;
 
-import javax.tools.*;
-import java.io.*;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
+import java.io.File;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.util.*;
 
 /**

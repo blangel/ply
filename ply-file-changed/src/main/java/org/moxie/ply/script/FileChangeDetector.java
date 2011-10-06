@@ -8,7 +8,7 @@ import java.io.*;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**

@@ -1,16 +1,7 @@
 package org.moxie.ply;
 
-import org.moxie.ply.dep.DependencyAtom;
-import org.moxie.ply.dep.DependencyResolver;
-import org.moxie.ply.dep.RepositoryAtom;
-
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.zip.ZipInputStream;
 
 /**
  * User: blangel
