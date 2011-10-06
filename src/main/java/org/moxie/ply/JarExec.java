@@ -159,11 +159,11 @@ public class JarExec {
      * @return the split jvm options for {@code script}
      */
     private static String[] getJarScriptOptions(String script, AtomicBoolean staticClasspath) {
-        String options = Config.get("scripts-jar", "options." + script);
+        String options = Config.get("scripts.jar", "options." + script);
         if (options == null) {
-            options = Config.get("scripts-jar", "options.default");
+            options = Config.get("scripts.jar", "options.default");
         }
-        options = Config.filter(new Config.Prop("scripts-jar", "", options, true));
+        options = Config.filter(new Config.Prop("scripts.jar", "", options, true));
         if (options.contains("-cp") || options.contains("-classpath")) {
             staticClasspath.set(true);
         }
