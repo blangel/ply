@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * Dependencies are grouped by a context (i.e., test).  The default context is null.  Below ${context} represents this
  * dependency context.
  *
- * Dependency information is stored in a file called {@literal ${context}dependencies.properties} and so the ply-context is
- * {@literal ${context}dependencies}.  The format of each property within the file is:
+ * Dependency information is stored in a file called {@literal dependencies[.${context}].properties} and so the ply-context is
+ * {@literal dependencies[.${context}]}.  The format of each property within the file is:
  * namespace::name=version::artifactName
  * where namespace provides a unique context for name.  It is analogous to {@literal groupId} in {@literal Maven} or
  * the {@literal category} portion of a base atom in {@literal portage}.
@@ -59,7 +59,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * are resolved to forward slashes as is convention in the {@literal Maven} build system.
  *
  * This script, run without arguments (except perhaps the context), will resolve all the dependencies listed
- * in {@literal ${context}dependencies.properties} and store the values in file {@literal ${context}resolved-deps.properties}
+ * in {@literal dependencies[.${context}].properties} and store the values in file {@literal resolved-deps[.${context}].properties}
  * under the {@literal project.build.dir}.  This file will contain local file references (local to the {@literal localRepo})
  * for dependencies and transitive dependencies so that compilation and packaging may succeed.
  *
@@ -83,11 +83,11 @@ public class DependencyManager {
      */
     private static class Context {
         private final String name;
-        private final String filePrefix;
+        private final String fileSuffix;
         private final String print;
         private Context(String contextName) {
             this.name = contextName;
-            this.filePrefix = (contextName.isEmpty() ? "" : contextName + ".");
+            this.fileSuffix = (contextName.isEmpty() ? "" : "." + contextName);
             this.print = (contextName.isEmpty() ? "" : "^b^" + contextName + "^r^ ");
         }
         @Override public String toString() {
@@ -174,7 +174,7 @@ public class DependencyManager {
             }
             atom = new DependencyAtom(split[0], split[1], null);
         }
-        if (System.getenv(context.filePrefix + "dependencies." + atom.getPropertyName()) == null) {
+        if (System.getenv("dependencies" + context.fileSuffix + "." + atom.getPropertyName()) == null) {
             Output.print("^warn^ Could not find %sdependency; given %s::%s", context.print, atom.getPropertyName(),
                     atom.getPropertyValue());
         } else {
@@ -276,8 +276,8 @@ public class DependencyManager {
     private static Map<String, String> getDependenciesFromEnv(Context context) {
         Map<String, String> dependencies = new HashMap<String, String>();
         for (String environmentKey : System.getenv().keySet()) {
-            if (environmentKey.startsWith(context.filePrefix + "dependencies.")) {
-                String dependencyKey = environmentKey.replace(context.filePrefix + "dependencies.", "");
+            if (environmentKey.startsWith("dependencies" + context.fileSuffix + ".")) {
+                String dependencyKey = environmentKey.replace("dependencies" + context.fileSuffix + ".", "");
                 String dependencyValue = System.getenv(environmentKey);
                 dependencies.put(dependencyKey, dependencyValue);
             }
@@ -288,7 +288,7 @@ public class DependencyManager {
     private static Properties loadDependenciesFile(Context context) {
         String localDir = System.getenv("ply.project.dir");
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + context.filePrefix + "dependencies.properties";
+                File.separator + "dependencies" + context.fileSuffix + ".properties";
         return PropertiesUtil.load(loadPath, true);
     }
 
@@ -302,7 +302,7 @@ public class DependencyManager {
     private static void storeDependenciesFile(Properties dependencies, Context context) {
         String localDir = System.getenv("ply.project.dir");
         String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                            File.separator + context.filePrefix + "dependencies.properties";
+                            File.separator + "dependencies" + context.fileSuffix + ".properties";
         if (!PropertiesUtil.store(dependencies, storePath, true)) {
             System.exit(1);
         }
@@ -320,7 +320,7 @@ public class DependencyManager {
     private static void storeResolvedDependenciesFile(Properties resolvedDependencies, Context context) {
         String buildDirPath = System.getenv("project.build.dir");
         String storePath = buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
-                + context.filePrefix + "resolved-deps.properties";
+                + "resolved-deps" + context.fileSuffix + ".properties";
         if (!PropertiesUtil.store(resolvedDependencies, storePath, true)) {
             System.exit(1);
         }
