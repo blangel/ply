@@ -6,7 +6,7 @@ import org.moxie.ply.dep.DependencyAtom;
 import org.moxie.ply.dep.DependencyResolver;
 import org.moxie.ply.dep.RepositoryAtom;
 
-import java.io.*;
+import java.io.File;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -23,8 +23,11 @@ import java.util.concurrent.atomic.AtomicReference;
  *           but only this, the {@literal localRepo}, will be used to store remote repositories' downloads.  The format
  *           is repoUri[::type], see below for description of this format).
  *
- * Dependency information is stored in a file called {@literal dependencies.properties} and so the context is
- * {@literal dependencies}.  The format of each property within the file is:
+ * Dependencies are grouped by a context (i.e., test).  The default context is null.  Below ${context} represents this
+ * dependency context.
+ *
+ * Dependency information is stored in a file called {@literal ${context}dependencies.properties} and so the ply-context is
+ * {@literal ${context}dependencies}.  The format of each property within the file is:
  * namespace::name=version::artifactName
  * where namespace provides a unique context for name.  It is analogous to {@literal groupId} in {@literal Maven} or
  * the {@literal category} portion of a base atom in {@literal portage}.
@@ -55,64 +58,88 @@ import java.util.concurrent.atomic.AtomicReference;
  * The difference between the two is that with the {@literal maven} type the dependency's {@literal namespace}'s periods
  * are resolved to forward slashes as is convention in the {@literal Maven} build system.
  *
- * This script, run without arguments, will resolve all the dependencies listed in {@literal dependencies.properties}
- * and store the values in file {@literal resolved-deps.properties} under the {@literal project.build.dir}.  This file
- * will contain local file references (local to the {@literal localRepo}) for dependencies and transitive dependencies
- * so that compilation and packaging may succeed.
+ * This script, run without arguments (except perhaps the context), will resolve all the dependencies listed
+ * in {@literal ${context}dependencies.properties} and store the values in file {@literal ${context}resolved-deps.properties}
+ * under the {@literal project.build.dir}.  This file will contain local file references (local to the {@literal localRepo})
+ * for dependencies and transitive dependencies so that compilation and packaging may succeed.
  *
  * The dependency script's usage is:
- * <pre>dep [--usage] [add|remove|list|add-repo|remove-repo]</pre>
+ * <pre>dep [--usage] [--context] [add|remove|list|add-repo|remove-repo]</pre>
  * where {@literal --usage} prints the usage information.
- * The {@literal add} command takes an atom and adds it as a dependency, resolving it eagerly from the known repos and
- * failing if it cannot be resolved.
- * The {@literal remove} command takes an atom and removes it from the dependencies, if it exists.
- * The {@literal list} command lists all dependencies.
+ * The {@literal add} command takes an atom and adds it as a dependency for the supplied context, resolving it eagerly
+ * from the known repos and failing if it cannot be resolved.
+ * The {@literal remove} command takes an atom and removes it from the dependencies context, if it exists.
+ * The {@literal list} command lists all dependencies for the context.
  * The {@literal add-repo} command takes a repository and adds it to the repositories.
  * The {@literal remove-repo} command removes the repository.
+ * The context groups dependencies into logical units (i.e., test).  The default is null.  It is not applicable to repositories.
  * If nothing is passed to the script then dependency resolution is done for all dependencies against the known
  * repositories.
  */
 public class DependencyManager {
+
+    /**
+     * Flavors of the context for file name prefix and pretty printing.
+     */
+    private static class Context {
+        private final String name;
+        private final String filePrefix;
+        private final String print;
+        private Context(String contextName) {
+            this.name = contextName;
+            this.filePrefix = (contextName.isEmpty() ? "" : contextName + ".");
+            this.print = (contextName.isEmpty() ? "" : "^b^" + contextName + "^r^ ");
+        }
+        @Override public String toString() {
+            return name;
+        }
+    }
 
     public static void main(String[] args) {
         if ((args == null) || (args.length > 0 && "--usage".equals(args[0]))) {
             usage();
             return;
         }
+        Context context = new Context(((args.length > 0) && args[0].startsWith("--")) ? args[0].substring(2) : "");
+        if (!context.name.isEmpty()) {
+            args = removeContext(args);
+        }
+
         if ((args.length > 1) && "add".equals(args[0])) {
-            addDependency(args[1]);
+            addDependency(args[1], context);
         } else if ((args.length > 1) && "remove".equals(args[0])) {
-            removeDependency(args[1]);
+            removeDependency(args[1], context);
         } else if ((args.length == 1) && "list".equals(args[0])) {
-            Map<String, String> dependencies = getDependenciesFromEnv();
+            Map<String, String> dependencies = getDependenciesFromEnv(context);
             int size = dependencies.size();
             if (size > 0) {
-                Output.print("Project ^b^%s^r^ has ^b^%d^r^ dependencies:", System.getenv("project.name"), size);
+                Output.print("Project ^b^%s^r^ has ^b^%d^r^ %sdependenc%s: ", System.getenv("project.name"), size,
+                        context.print, (size == 1 ? "y" : "ies"));
                 for (String key : dependencies.keySet()) {
                     Output.print("\t%s::%s", key, dependencies.get(key));
                 }
             } else {
-                Output.print("Project ^b^%s^r^ has no dependencies.", System.getenv("project.name"));
+                Output.print("Project ^b^%s^r^ has no %sdependencies.", System.getenv("project.name"), context.print);
             }
         } else if ((args.length > 1) && "add-repo".equals(args[0])) {
             addRepository(args[1]);
         } else if ((args.length > 1) && "remove-repo".equals(args[0])) {
             removeRepository(args[1]);
         } else if (args.length == 0) {
-            Map<String, String> dependencies = getDependenciesFromEnv();
+            Map<String, String> dependencies = getDependenciesFromEnv(context);
             int size = dependencies.size();
             if (size > 0) {
-                Output.print("Resolving ^b^%d^r^ dependenc%s for ^b^%s^r^.", size, (size == 1 ? "y" : "ies"),
+                Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^.", size, context.print, (size == 1 ? "y" : "ies"),
                         System.getenv("project.name"));
                 Properties dependencyFiles = resolveDependencies(dependencies);
-                storeResolvedDependenciesFile(dependencyFiles);
+                storeResolvedDependenciesFile(dependencyFiles, context);
             }
         } else {
             usage();
         }
     }
 
-    private static void addDependency(String dependency) {
+    private static void addDependency(String dependency, Context context) {
         AtomicReference<String> error = new AtomicReference<String>(null);
         DependencyAtom atom = DependencyAtom.parse(dependency, error);
         if (atom == null) {
@@ -120,22 +147,22 @@ public class DependencyManager {
                     dependency, error.get());
             System.exit(1);
         }
-        Properties dependencies = loadDependenciesFile();
+        Properties dependencies = loadDependenciesFile(context);
         if (dependencies.contains(atom.getPropertyName())) {
-            Output.print("^info^ overriding dependency %s; was %s now is %s.", atom.getPropertyName(),
+            Output.print("^info^ overriding %sdependency %s; was %s now is %s.", context.print, atom.getPropertyName(),
                     dependencies.getProperty(atom.getPropertyName()), atom.getPropertyValue());
         }
         dependencies.put(atom.getPropertyName(), atom.getPropertyValue());
         if (resolveDependency(atom)) {
-            storeDependenciesFile(dependencies);
+            storeDependenciesFile(dependencies, context);
         } else {
-            Output.print("^error^ unable to resolve dependency ^b^%s^r^. Ensure you are able to connect to the remote repositories.",
-                    atom.toString());
+            Output.print("^error^ unable to resolve %sdependency ^b^%s^r^. Ensure you are able to connect to the remote repositories.",
+                    context.print, atom.toString());
             System.exit(1);
         }
     }
 
-    private static void removeDependency(String dependency) {
+    private static void removeDependency(String dependency, Context context) {
         DependencyAtom atom = DependencyAtom.parse(dependency, null);
         if (atom == null) {
             // allow non-version specification.
@@ -147,13 +174,13 @@ public class DependencyManager {
             }
             atom = new DependencyAtom(split[0], split[1], null);
         }
-        if (System.getenv("dependencies." + atom.getPropertyName()) == null) {
-            Output.print("^warn^ Dependency not found; given %s::%s", atom.getPropertyName(),
+        if (System.getenv(context.filePrefix + "dependencies." + atom.getPropertyName()) == null) {
+            Output.print("^warn^ Could not find %sdependency; given %s::%s", context.print, atom.getPropertyName(),
                     atom.getPropertyValue());
         } else {
-            Properties dependencies = loadDependenciesFile();
+            Properties dependencies = loadDependenciesFile(context);
             dependencies.remove(atom.getPropertyName());
-            storeDependenciesFile(dependencies);
+            storeDependenciesFile(dependencies, context);
         }
     }
 
@@ -246,11 +273,11 @@ public class DependencyManager {
                 new Properties());
     }
 
-    private static Map<String, String> getDependenciesFromEnv() {
+    private static Map<String, String> getDependenciesFromEnv(Context context) {
         Map<String, String> dependencies = new HashMap<String, String>();
         for (String environmentKey : System.getenv().keySet()) {
-            if (environmentKey.startsWith("dependencies.")) {
-                String dependencyKey = environmentKey.replace("dependencies.", "");
+            if (environmentKey.startsWith(context.filePrefix + "dependencies.")) {
+                String dependencyKey = environmentKey.replace(context.filePrefix + "dependencies.", "");
                 String dependencyValue = System.getenv(environmentKey);
                 dependencies.put(dependencyKey, dependencyValue);
             }
@@ -258,10 +285,10 @@ public class DependencyManager {
         return dependencies;
     }
 
-    private static Properties loadDependenciesFile() {
+    private static Properties loadDependenciesFile(Context context) {
         String localDir = System.getenv("ply.project.dir");
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "dependencies.properties";
+                File.separator + context.filePrefix + "dependencies.properties";
         return PropertiesUtil.load(loadPath, true);
     }
 
@@ -272,10 +299,10 @@ public class DependencyManager {
         return PropertiesUtil.load(loadPath, true);
     }
 
-    private static void storeDependenciesFile(Properties dependencies) {
+    private static void storeDependenciesFile(Properties dependencies, Context context) {
         String localDir = System.getenv("ply.project.dir");
         String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                            File.separator + "dependencies.properties";
+                            File.separator + context.filePrefix + "dependencies.properties";
         if (!PropertiesUtil.store(dependencies, storePath, true)) {
             System.exit(1);
         }
@@ -290,26 +317,33 @@ public class DependencyManager {
         }
     }
 
-    private static void storeResolvedDependenciesFile(Properties resolvedDependencies) {
+    private static void storeResolvedDependenciesFile(Properties resolvedDependencies, Context context) {
         String buildDirPath = System.getenv("project.build.dir");
         String storePath = buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
-                + "resolved-deps.properties";
+                + context.filePrefix + "resolved-deps.properties";
         if (!PropertiesUtil.store(resolvedDependencies, storePath, true)) {
             System.exit(1);
         }
     }
 
+    private static String[] removeContext(String[] args) {
+        String[] newArgs = new String[args.length - 1];
+        System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+        return newArgs;
+    }
+
     private static void usage() {
-        Output.print("dep [--usage] <^b^command^r^>");
+        Output.print("dep [--usage] [--context] <^b^command^r^>");
         Output.print("  where ^b^command^r^ is either:");
-        Output.print("    ^b^add <dep-atom>^r^\t: adds dep-atom to the list of dependencies (or replacing the version if it already exists).");
-        Output.print("    ^b^remove <dep-atom>^r^\t: removes dep-atom from the list of dependencies.");
-        Output.print("    ^b^list^r^\t\t\t: list all dependencies.");
+        Output.print("    ^b^add <dep-atom>^r^\t: adds dep-atom to the list of dependencies (within context) (or replacing the version if it already exists).");
+        Output.print("    ^b^remove <dep-atom>^r^\t: removes dep-atom from the list of dependencies (within context).");
+        Output.print("    ^b^list^r^\t\t\t: list all dependencies (within context).");
         Output.print("    ^b^add-repo <rep-atom>^r^\t: adds rep-atom to the list of repositories.");
         Output.print("    ^b^remove-repo <rep-atom>^r^: removes rep-atom from the list of repositories.");
         Output.print("  ^b^dep-atom^r^ is namespace::name::version[::artifactName] (artifactName is optional and defaults to name-version.jar).");
         Output.print("  ^b^rep-atom^r^ is repoURI[::type] (type is optional and defaults to ply, must be either ply or maven).");
         Output.print("  if no command is passed then dependency resolution is done for all dependencies against the known repositories.");
+        Output.print("  Dependencies can be grouped by ^b^context^r^ (i.e. test).  The default context is null.");
     }
 
 }
