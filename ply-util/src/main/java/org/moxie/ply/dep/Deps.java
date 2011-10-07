@@ -4,6 +4,8 @@ import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
 import org.moxie.ply.PropertiesFileUtil;
 import org.moxie.ply.mvn.MavenPomParser;
+import org.moxie.ply.props.Prop;
+import org.moxie.ply.props.Props;
 
 import java.io.*;
 import java.net.MalformedURLException;
@@ -20,6 +22,22 @@ import java.util.concurrent.atomic.AtomicReference;
  * Time: 1:41 PM
  */
 public class Deps {
+
+    /**
+     * @return the {@link Prop} representing this project as a dependency.
+     */
+    public static Prop getProjectDependencyProp() {
+        String namespace = Props.getValue("project", Props.DEFAULT_SCOPE, "namespace");
+        String name = Props.getValue("project", Props.DEFAULT_SCOPE, "name");
+        String version = Props.getValue("project", Props.DEFAULT_SCOPE, "version");
+        String artifactName = Props.getValue("project", Props.DEFAULT_SCOPE, "artifact.name");
+        String defaultArtifactName = name + "-" + version + ".jar";
+        String propName = namespace + "::" + name;
+        // don't pollute by placing artifactName explicitly even though it's the default
+        String propValue = version + (artifactName.equals(defaultArtifactName) ? "" : "::" + artifactName);
+        return new Prop("project", Props.DEFAULT_SCOPE, propName, propValue, true);
+    }
+
 
     public static Properties resolveDependencies(List<DependencyAtom> dependencyAtoms, List<RepositoryAtom> repositoryAtoms) {
         Properties dependencyFiles = new Properties();

@@ -6,10 +6,7 @@ import org.moxie.ply.PropertiesFileUtil;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -155,6 +152,8 @@ public class Props {
 
         Map<String, Map<String, Map<String, Prop>>> props = get();
         if (!props.containsKey(context) || !props.get(context).containsKey(scope)) {
+            // TODO - should we return null if scope not found (and not default)? if not default then the default
+            // TODO - should be returned
             return null;
         }
 
@@ -164,6 +163,51 @@ public class Props {
         } else {
             return props.get(context).get(scope).get(named);
         }
+    }
+
+    /**
+     * Similar to {@link #get(String, String, String)} except {@code named} can have wildcards and so multiple
+     * may be returned.
+     * @param context in which to look for {@code named}; if null the default context is used.
+     * @param scope under {@code context} in which to look for {@literal named}; if null the default scope is used.
+     * @param named the property name for which to look (may contain wildcards)
+     * @return the properties matching {@code named} within context {@code context} having scope {@code scope}
+     *         or null if no such property exists.
+     */
+    public static Map<String, Prop> getLike(String context, String scope, String named) {
+        Map<String, Prop> foundProps = new HashMap<String, Prop>();
+        if (!named.contains("*")) {
+            Prop prop = get(context, scope, named);
+            if (prop != null) {
+                foundProps.put(prop.name, prop);
+            } else if (!DEFAULT_SCOPE.equals(scope)) {
+                prop = get(context, DEFAULT_SCOPE, named);
+                if (prop != null) {
+                    foundProps.put(prop.name, prop);
+                }
+            }
+        } else {
+            context = (context == null ? DEFAULT_CONTEXT : context);
+            scope = (scope == null ? DEFAULT_SCOPE : scope);
+            Map<String, Map<String, Map<String, Prop>>> props = get();
+            if (!props.containsKey(context) || !props.get(context).containsKey(scope)) {
+                // TODO - should we return null if scope not found (and not default)? if not default then the default
+                // TODO - should be returned
+                return null;
+            }
+            if (!DEFAULT_SCOPE.equals(scope) && props.get(context).containsKey(DEFAULT_SCOPE)) {
+                // first populate with default, then override from actual scope.
+                Map<String, Prop> defaultScope = getPropertyValuesByWildcardName(named, props.get(context).get(DEFAULT_SCOPE));
+                for (String key : defaultScope.keySet()) {
+                    foundProps.put(key, defaultScope.get(key));
+                }
+            }
+            Map<String, Prop> scopedProps = getPropertyValuesByWildcardName(named, props.get(context).get(scope));
+            for (String key : scopedProps.keySet()) {
+                foundProps.put(key, scopedProps.get(key));
+            }
+        }
+        return foundProps;
     }
 
     /**
@@ -212,11 +256,22 @@ public class Props {
      *         if there is no such mapping
      */
     public static Map<String, Prop> getProperties(String context, String scope) {
+       return getProperties(context, scope, false);
+    }
+
+    /**
+     * @param context for which to retrieve properties for {@code scope}
+     * @param scope within {@code context} for which to retrieve properties
+     * @param noInheritance true to prevent non-default scopes to inherit from the default scope
+     * @return a resolved mapping of property_name -> prop for the given {@code context} and {@code scope} or null
+     *         if there is no such mapping
+     */
+    public static Map<String, Prop> getProperties(String context, String scope, boolean noInheritance) {
         Map<String, Map<String, Prop>> contextProps = getProperties(context);
         if (contextProps == null) {
             return null;
         }
-        if (DEFAULT_SCOPE.equals(scope)) {
+        if (DEFAULT_SCOPE.equals(scope) || noInheritance) {
             return contextProps.get(scope);
         }
         // need to include the default scoped props as scopes all inherit from the default scope.

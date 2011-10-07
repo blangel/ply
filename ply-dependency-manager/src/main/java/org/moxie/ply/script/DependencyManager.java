@@ -259,8 +259,14 @@ public class DependencyManager {
     }
 
     private static Map<String, String> getResolvedDependencies(Scope scope) {
-        Map<String, Prop> scopedDependencies = Props.getProperties("dependencies", scope.name);
+        // non-default scoped dependencies do not inherit; they simply are dependent upon the default scope dep itself
+        Map<String, Prop> scopedDependencies = Props.getProperties("dependencies", scope.name, false);
         Map<String, String> dependencies = new HashMap<String, String>();
+        if (!Props.DEFAULT_SCOPE.equals(scope.name)) {
+            // add the project itself as this is not the default scope
+            Prop self = Deps.getProjectDependencyProp();
+            dependencies.put(self.name, self.value);
+        }
         if (scopedDependencies == null) {
             return dependencies;
         }
