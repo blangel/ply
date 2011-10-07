@@ -70,7 +70,7 @@ public class Props {
         }
         String filtered = value.value;
         // first attempt to resolve via the value's context and scope.
-        Map<String, Map<String, Prop>> all = Props.getProperties();
+        Map<String, Map<String, Prop>> all = Props.getPropertiesWithCollapsedScope();
         filtered = filterBy(filtered, "", all.get(value.getContextScope()));
         // also attempt to filter context-prefixed values
         for (String context : all.keySet()) {
@@ -88,6 +88,9 @@ public class Props {
     }
 
     private static String filterBy(String value, String prefix, Map<String, Prop> props) {
+        if (props == null) {
+            return value;
+        }
         for (String name : props.keySet()) {
             String toFind = prefix + name;
             if (value.contains("${" + toFind + "}")) {
@@ -247,7 +250,15 @@ public class Props {
                 if (scope.isEmpty()) {
                     collapsedScope.put(context, scopedProps);
                 } else {
-                    collapsedScope.put(context + "." + scope, scopedProps);
+                    Map<String, Prop> augmentedScopedProps = new HashMap<String, Prop>(scopedProps.size());
+                    // need to include the default scoped props as scopes all inherit from the default scope.
+                    Map<String, Prop> defaultProps = contextProps.get(Props.DEFAULT_SCOPE);
+                    if (defaultProps != null) {
+                        augmentedScopedProps.putAll(defaultProps);
+                    }
+                    // add after to override
+                    augmentedScopedProps.putAll(scopedProps);
+                    collapsedScope.put(context + "." + scope, augmentedScopedProps);
                 }
             }
         }
@@ -271,13 +282,13 @@ public class Props {
     }
 
     /**
-     * @param context of the properties file to look within
+     * @param contextDotScope of the properties file to look within
      * @param name to match (may include a wildcard).
      * @return a mapping of all properties within the context.scope which match {@code name}
      */
-    public static Map<String, Prop> getPropertiesWithCollapsedScope(String context, String name) {
+    public static Map<String, Prop> getPropertiesWithCollapsedScope(String contextDotScope, String name) {
         Map<String, Map<String, Prop>> all = getPropertiesWithCollapsedScope();
-        Map<String, Prop> props = all.get(context);
+        Map<String, Prop> props = all.get(contextDotScope);
         if (props == null) {
             return Collections.emptyMap();
         }

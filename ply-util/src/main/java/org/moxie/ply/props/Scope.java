@@ -42,6 +42,6 @@ public class Scope {
     public Scope(String scope) {
         this.name = (scope == null ? "" : scope);
         this.fileSuffix = (name.isEmpty() ? "" : "." + name);
-        this.forPrint = (name.isEmpty() ? "" : "^b^" + name + "^r^");
+        this.forPrint = (name.isEmpty() ? "" : "^b^" + name + "^r^ ");
     }
 }

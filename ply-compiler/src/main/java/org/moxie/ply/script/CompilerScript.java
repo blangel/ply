@@ -3,6 +3,7 @@ package org.moxie.ply.script;
 import org.moxie.ply.Output;
 import org.moxie.ply.PropertiesFileUtil;
 import org.moxie.ply.props.Props;
+import org.moxie.ply.props.Scope;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
@@ -18,9 +19,13 @@ import java.util.*;
  * Date: 9/17/11
  * Time: 8:58 AM
  *
- * Script used to compile source code for the ply build system.  This script is dependent upon
- * the {@literal ply-file-changed} script as it uses this information to determine which files to recompile.
- * The property file used to configure this script is {@literal compiler.properties} and so the context is {@literal compiler}.
+ * Script used to compile source code for the ply build system.
+ * The script takes one optional parameter; scope.  The parameter, by convention with other scripts, is prepended
+ * with '--'.  If it is null, the default scope is used.
+ *
+ * This script is dependent upon the {@literal ply-file-changed} script as it uses this information to determine which
+ * files to recompile. The property file used to configure this script is {@literal compiler.properties} and so the
+ * context is {@literal compiler}.
  * The following properties exist:
  * buildPath=string [[default=${project.build.dir}/classes]] (where to place the compiled files)
  * debug=boolean [[default=true]] (true to include debug information in the compiled file)
@@ -50,7 +55,7 @@ import java.util.*;
  *                 the 'java.processorPath' option.
  * compiler=string [[default=java]] (so far only a java concrete compiler is defined, more to come in the future)
  *
- * Note, the source directory is managed by the {@literal project} context, {@literal project.src.dir}.
+ * Note, the source directory is managed by the {@literal project} context, {@literal project[.scope].src.dir}.
  *
  * More detailed descriptions of the javac processor options can be found:
  * 1.6 = http://download.oracle.com/javase/6/docs/technotes/tools/solaris/javac.html
@@ -64,15 +69,11 @@ import java.util.*;
 public class CompilerScript {
 
     /**
-     * @param args are either null or contains the src and build directories.
+     * @param args are either null or contains the scope prepended with '--' as is convention
      */
     public static void main(String[] args) {
-        CompilerScript script;
-        if (args.length == 2) {
-            script = new CompilerScript(args[0], args[1]);
-        } else {
-            script = new CompilerScript(Props.getValue("project", "src.dir"), Props.getValue("project", "build.dir"));
-        }
+        String scope = (args.length == 1 && args[0].startsWith("--") ? args[0].substring(2) : Props.DEFAULT_SCOPE);
+        CompilerScript script = new CompilerScript(scope);
         script.invoke();
     }
 
@@ -111,29 +112,36 @@ public class CompilerScript {
         return ((value != null) && value.equalsIgnoreCase("true"));
     }
 
+    private final String scope;
+
     private final String srcDir;
 
     private final Set<String> sourceFilePaths;
 
-    private CompilerScript(String srcDir, String buildDir) {
-        if ((srcDir == null) || (buildDir == null)) {
+    private CompilerScript(String scope) {
+        String fileChangedPrefix = (Props.DEFAULT_SCOPE.equals(scope) ? "src" : scope);
+        String srcDir = Props.getValue("project", scope, "src.dir");
+        String buildDir = Props.getValue("project", scope, "build.dir");
+        if ((srcDir.isEmpty()) || (buildDir.isEmpty())) {
             Output.print("^error^ could not determine source or build directory for compilation.");
             System.exit(1);
         }
         if (!isSupportedJavaVersion(getJavaVersion())) {
             System.exit(1);
         }
+        this.scope = scope;
         this.srcDir = srcDir;
         this.sourceFilePaths = new HashSet<String>();
         // ensure the build directories are created
-        String buildClassesPath = Props.getValue("compiler", "buildPath");
+        String buildClassesPath = Props.getValue("compiler", scope, "buildPath"); // TODO scope
         File buildClassesDir = new File(buildClassesPath);
         buildClassesDir.mkdirs();
         // load the src-changed.properties file from the build directory.
-        File changedPropertiesFile = new File(buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator) + "src-changed.properties");
+        File changedPropertiesFile = new File(buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator) +
+                                              fileChangedPrefix + "-changed.properties");
         Properties changedProperties = PropertiesFileUtil.load(changedPropertiesFile.getPath(), false, true);
         if (changedProperties == null) {
-            Output.print("^error^ src-changed.properties not found, please run 'file-changed' before 'compiler'.");
+            Output.print("^error^ %s-changed.properties not found, please run 'file-changed' before 'compiler'.", fileChangedPrefix);
         } else {
             for (String filePath : changedProperties.stringPropertyNames()) {
                 if (filePath.endsWith(".java")) {
@@ -163,9 +171,11 @@ public class CompilerScript {
         StandardJavaFileManager fileManager = javac.getStandardFileManager(diagnosticListener, null, null);
         Iterable<? extends JavaFileObject> sourceFiles = fileManager.getJavaFileObjects(sourceFilePaths.toArray(new String[sourceFilePaths.size()]));
         StringWriter extraPrintStatements = new StringWriter();
-        JavaCompiler.CompilationTask compilationTask = javac.getTask(extraPrintStatements, fileManager, diagnosticListener, getCompilerArgs(), null, sourceFiles);
-        Output.print("Compiling ^b^%d^r^ source files for ^b^%s^r^", sourceFilePaths.size(), Props
-                .getValue("project", "name"));
+        JavaCompiler.CompilationTask compilationTask = javac.getTask(extraPrintStatements, fileManager, diagnosticListener,
+                                                        getCompilerArgs(), null, sourceFiles);
+        Output.print("Compiling ^b^%d^r^ %ssource file%s for ^b^%s^r^", sourceFilePaths.size(), new Scope(scope).forPrint,
+                                                                       (sourceFilePaths.size() == 1 ? "" : "s"),
+                                                                       Props.getValue("project", "name"));
         boolean result = compilationTask.call();
         for (String error : diagnosticListener.getErrors()) {
             Output.print(error);
@@ -188,15 +198,15 @@ public class CompilerScript {
         List<String> args = new ArrayList<String>();
 
         args.add("-d");
-        args.add(Props.getValue("compiler", "buildPath"));
+        args.add(Props.getValue("compiler", scope, "buildPath"));
 
-        if (getBoolean(Props.getValue("compiler", "optimize"))) {
+        if (getBoolean(Props.getValue("compiler", scope, "optimize"))) {
             args.add("-O");
         }
 
-        if (getBoolean(Props.getValue("compiler", "debug"))) {
-            if (!isEmpty(Props.getValue("compiler", "java.debugLevel"))) {
-                args.add("-g:" + Props.getValue("compiler", "java.debugLevel"));
+        if (getBoolean(Props.getValue("compiler", scope, "debug"))) {
+            if (!isEmpty(Props.getValue("compiler", scope, "java.debugLevel"))) {
+                args.add("-g:" + Props.getValue("compiler", scope, "java.debugLevel"));
             } else {
                 args.add("-g");
             }
@@ -204,19 +214,19 @@ public class CompilerScript {
             args.add("-g:none");
         }
 
-        if (getBoolean(Props.getValue("compiler", "verbose"))) {
+        if (getBoolean(Props.getValue("compiler", scope, "verbose"))) {
             args.add( "-verbose" );
         }
 
-        if (getBoolean(Props.getValue("compiler", "java.deprecation"))) {
+        if (getBoolean(Props.getValue("compiler", scope, "java.deprecation"))) {
             args.add("-deprecation");
         }
 
-        if (!getBoolean(Props.getValue("compiler", "warnings"))) {
+        if (!getBoolean(Props.getValue("compiler", scope, "warnings"))) {
             args.add("-Xlint:none");
         } else {
-            if (!isEmpty(Props.getValue("compiler", "java.warningsLevel"))) {
-                String[] tokens = Props.getValue("compiler", "java.warningsLevel").split(",");
+            if (!isEmpty(Props.getValue("compiler", scope, "java.warningsLevel"))) {
+                String[] tokens = Props.getValue("compiler", scope, "java.warningsLevel").split(",");
                 for (String token : tokens) {
                     args.add("-Xlint:" + token);
                 }
@@ -226,19 +236,19 @@ public class CompilerScript {
         }
 
         args.add("-source");
-        if (isSupportedJavaVersion(Props.getValue("compiler", "java.source"))) {
-            args.add(Props.getValue("compiler", "java.source"));
+        if (isSupportedJavaVersion(Props.getValue("compiler", scope, "java.source"))) {
+            args.add(Props.getValue("compiler", scope, "java.source"));
         } else {
             args.add(getJavaVersion());
         }
 
-        if (!isEmpty(Props.getValue("compiler", "java.encoding"))) {
+        if (!isEmpty(Props.getValue("compiler", scope, "java.encoding"))) {
             args.add("-encoding");
-            args.add(Props.getValue("compiler", "java.encoding"));
+            args.add(Props.getValue("compiler", scope, "java.encoding"));
         }
 
         args.add("-classpath");
-        args.add(createClasspath(Props.getValue("compiler", "buildPath"), addDependenciesToClasspathArgs()));
+        args.add(createClasspath(Props.getValue("compiler", scope, "buildPath"), addDependenciesToClasspathArgs(scope)));
 
         args.add("-sourcepath");
         args.add(srcDir);
@@ -247,11 +257,12 @@ public class CompilerScript {
     }
 
     /**
+     * @param scope in which to resolve ${project.scope.build.dir}
      * @return the contents of ${project.build.dir}/${resolved-deps.properties}
      */
-    private static Properties addDependenciesToClasspathArgs() {
-        String buildPath = Props.getValue("project", "build.dir");
-        // load the src-changed.properties file from the build directory.
+    private static Properties addDependenciesToClasspathArgs(String scope) {
+        String buildPath = Props.getValue("project", scope, "build.dir");
+        // load the resolved-deps.properties file from the build directory.
         File dependenciesFile = new File(buildPath + (buildPath.endsWith(File.separator) ? "" : File.separator) + "resolved-deps.properties");
         if (!dependenciesFile.exists()) {
             return new Properties();

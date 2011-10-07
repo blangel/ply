@@ -98,7 +98,7 @@ public class DependencyManager {
         } else if ((args.length > 1) && "remove".equals(args[0])) {
             removeDependency(args[1], scope);
         } else if ((args.length == 1) && "list".equals(args[0])) {
-            Map<String, String> dependencies = getDependenciesFromEnv(scope);
+            Map<String, String> dependencies = getResolvedDependencies(scope);
             int size = dependencies.size();
             if (size > 0) {
                 Output.print("Project ^b^%s^r^ has ^b^%d^r^ %sdependenc%s: ", Props.getValue("project", "name"), size,
@@ -114,7 +114,7 @@ public class DependencyManager {
         } else if ((args.length > 1) && "remove-repo".equals(args[0])) {
             removeRepository(args[1]);
         } else if (args.length == 0) {
-            Map<String, String> dependencies = getDependenciesFromEnv(scope);
+            Map<String, String> dependencies = getResolvedDependencies(scope);
             int size = dependencies.size();
             if (size > 0) {
                 Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^.", size, scope.forPrint, (size == 1 ? "y" : "ies"),
@@ -258,7 +258,7 @@ public class DependencyManager {
         return Deps.resolveDependency(dependencyAtom, createRepositoryList(), new Properties());
     }
 
-    private static Map<String, String> getDependenciesFromEnv(Scope scope) {
+    private static Map<String, String> getResolvedDependencies(Scope scope) {
         Map<String, Prop> scopedDependencies = Props.getProperties("dependencies", scope.name);
         Map<String, String> dependencies = new HashMap<String, String>();
         if (scopedDependencies == null) {
