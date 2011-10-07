@@ -1,7 +1,8 @@
 package org.moxie.ply.script;
 
 import org.moxie.ply.Output;
-import org.moxie.ply.PropertiesUtil;
+import org.moxie.ply.PropertiesFileUtil;
+import org.moxie.ply.props.Props;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
@@ -70,7 +71,7 @@ public class CompilerScript {
         if (args.length == 2) {
             script = new CompilerScript(args[0], args[1]);
         } else {
-            script = new CompilerScript(System.getenv("project.src.dir"), System.getenv("project.build.dir"));
+            script = new CompilerScript(Props.getValue("project", "src.dir"), Props.getValue("project", "build.dir"));
         }
         script.invoke();
     }
@@ -125,12 +126,12 @@ public class CompilerScript {
         this.srcDir = srcDir;
         this.sourceFilePaths = new HashSet<String>();
         // ensure the build directories are created
-        String buildClassesPath = System.getenv("compiler.buildPath");
+        String buildClassesPath = Props.getValue("compiler", "buildPath");
         File buildClassesDir = new File(buildClassesPath);
         buildClassesDir.mkdirs();
         // load the src-changed.properties file from the build directory.
         File changedPropertiesFile = new File(buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator) + "src-changed.properties");
-        Properties changedProperties = PropertiesUtil.load(changedPropertiesFile.getPath(), false, true);
+        Properties changedProperties = PropertiesFileUtil.load(changedPropertiesFile.getPath(), false, true);
         if (changedProperties == null) {
             Output.print("^error^ src-changed.properties not found, please run 'file-changed' before 'compiler'.");
         } else {
@@ -163,7 +164,8 @@ public class CompilerScript {
         Iterable<? extends JavaFileObject> sourceFiles = fileManager.getJavaFileObjects(sourceFilePaths.toArray(new String[sourceFilePaths.size()]));
         StringWriter extraPrintStatements = new StringWriter();
         JavaCompiler.CompilationTask compilationTask = javac.getTask(extraPrintStatements, fileManager, diagnosticListener, getCompilerArgs(), null, sourceFiles);
-        Output.print("Compiling ^b^%d^r^ source files for ^b^%s^r^\n", sourceFilePaths.size(), System.getenv("project.name"));
+        Output.print("Compiling ^b^%d^r^ source files for ^b^%s^r^", sourceFilePaths.size(), Props
+                .getValue("project", "name"));
         boolean result = compilationTask.call();
         for (String error : diagnosticListener.getErrors()) {
             Output.print(error);
@@ -186,15 +188,15 @@ public class CompilerScript {
         List<String> args = new ArrayList<String>();
 
         args.add("-d");
-        args.add(System.getenv("compiler.buildPath"));
+        args.add(Props.getValue("compiler", "buildPath"));
 
-        if (getBoolean(System.getenv("compiler.optimize"))) {
+        if (getBoolean(Props.getValue("compiler", "optimize"))) {
             args.add("-O");
         }
 
-        if (getBoolean(System.getenv("compiler.debug"))) {
-            if (!isEmpty(System.getenv("compiler.java.debugLevel"))) {
-                args.add("-g:" + System.getenv("compiler.java.debugLevel"));
+        if (getBoolean(Props.getValue("compiler", "debug"))) {
+            if (!isEmpty(Props.getValue("compiler", "java.debugLevel"))) {
+                args.add("-g:" + Props.getValue("compiler", "java.debugLevel"));
             } else {
                 args.add("-g");
             }
@@ -202,19 +204,19 @@ public class CompilerScript {
             args.add("-g:none");
         }
 
-        if (getBoolean(System.getenv("compiler.verbose"))) {
+        if (getBoolean(Props.getValue("compiler", "verbose"))) {
             args.add( "-verbose" );
         }
 
-        if (getBoolean(System.getenv("compiler.java.deprecation"))) {
+        if (getBoolean(Props.getValue("compiler", "java.deprecation"))) {
             args.add("-deprecation");
         }
 
-        if (!getBoolean(System.getenv("compiler.warnings"))) {
+        if (!getBoolean(Props.getValue("compiler", "warnings"))) {
             args.add("-Xlint:none");
         } else {
-            if (!isEmpty(System.getenv("compiler.java.warningsLevel"))) {
-                String[] tokens = System.getenv("compiler.java.warningsLevel").split(",");
+            if (!isEmpty(Props.getValue("compiler", "java.warningsLevel"))) {
+                String[] tokens = Props.getValue("compiler", "java.warningsLevel").split(",");
                 for (String token : tokens) {
                     args.add("-Xlint:" + token);
                 }
@@ -224,19 +226,19 @@ public class CompilerScript {
         }
 
         args.add("-source");
-        if (isSupportedJavaVersion(System.getenv("compiler.java.source"))) {
-            args.add(System.getenv("compiler.java.source"));
+        if (isSupportedJavaVersion(Props.getValue("compiler", "java.source"))) {
+            args.add(Props.getValue("compiler", "java.source"));
         } else {
             args.add(getJavaVersion());
         }
 
-        if (!isEmpty(System.getenv("compiler.java.encoding"))) {
+        if (!isEmpty(Props.getValue("compiler", "java.encoding"))) {
             args.add("-encoding");
-            args.add(System.getenv("compiler.java.encoding"));
+            args.add(Props.getValue("compiler", "java.encoding"));
         }
 
         args.add("-classpath");
-        args.add(createClasspath(System.getenv("compiler.buildPath"), addDependenciesToClasspathArgs()));
+        args.add(createClasspath(Props.getValue("compiler", "buildPath"), addDependenciesToClasspathArgs()));
 
         args.add("-sourcepath");
         args.add(srcDir);
@@ -248,13 +250,13 @@ public class CompilerScript {
      * @return the contents of ${project.build.dir}/${resolved-deps.properties}
      */
     private static Properties addDependenciesToClasspathArgs() {
-        String buildPath = System.getenv("project.build.dir");
+        String buildPath = Props.getValue("project", "build.dir");
         // load the src-changed.properties file from the build directory.
         File dependenciesFile = new File(buildPath + (buildPath.endsWith(File.separator) ? "" : File.separator) + "resolved-deps.properties");
         if (!dependenciesFile.exists()) {
             return new Properties();
         }
-        return PropertiesUtil.load(dependenciesFile.getPath());
+        return PropertiesFileUtil.load(dependenciesFile.getPath());
     }
 
     /**

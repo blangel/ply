@@ -1,5 +1,7 @@
 package org.moxie.ply;
 
+import org.moxie.ply.props.Props;
+
 /**
  * User: blangel
  * Date: 9/2/11
@@ -22,9 +24,9 @@ public class Ply {
         }
         // init the output information
         try {
-            String colorProp = Config.get("color");
+            String colorProp = Props.getValue("color");
             boolean color = (colorProp == null || !"false".equals(colorProp));
-            String logLevelsProp = Config.get("log.levels");
+            String logLevelsProp = Props.getValue("log.levels");
             Output.init(color, logLevelsProp);
         } catch (IllegalStateException ise) { // thrown from Config to indicate there is no local properties directory
             if (!"init".equals(args[0])) {
@@ -39,7 +41,8 @@ public class Ply {
             Init.invoke(args);
         } else {
             long start = System.currentTimeMillis();
-            Output.print("^ply^ building ^b^" + Config.get("project", "name") + "^r^, " + Config.get("project", "version"));
+            Output.print("^ply^ building ^b^" + Props.getValue("project", "name") + "^r^, " +
+                        Props.getValue("project", "version"));
             for (String script : args) {
                 if (!Exec.invoke(script)) {
                     System.exit(1);

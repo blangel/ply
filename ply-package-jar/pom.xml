@@ -11,6 +11,14 @@
     <!-- project information -->
     <name>Script used to package files into a jar file.</name>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.moxie.ply</groupId>
+            <artifactId>ply-util</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>

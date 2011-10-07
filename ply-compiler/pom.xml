@@ -11,6 +11,14 @@
     <!-- project information -->
     <name>Script used to compile source code.</name>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.moxie.ply</groupId>
+	    <artifactId>ply-util</artifactId>
+	    <version>1.0</version>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>
@@ -59,31 +67,5 @@
         </plugins>
 
     </build>
-
-    <distributionManagement>
-        <repository>
-            <id>alana-nexus</id>
-            <name>Alana Nexus Repository</name>
-            <url>http://173.45.236.244:8080/nexus/content/repositories/releases/</url>
-        </repository>
-        <snapshotRepository>
-            <id>alana-nexus</id>
-            <name>Alana Nexus Snapshot Repository</name>
-            <url>http://173.45.236.244:8080/nexus/content/repositories/snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
-
-    <repositories>
-        <repository>
-            <id>alana-nexus</id>
-            <name>Alana Nexus Repository</name>
-            <url>http://173.45.236.244:8080/nexus/content/repositories/releases/</url>
-        </repository>
-        <repository>
-            <id>jboss</id>
-            <name>JBoss Repository</name>
-            <url>https://repository.jboss.org/nexus/content/groups/public-jboss/</url>
-        </repository>
-    </repositories>
 
 </project>

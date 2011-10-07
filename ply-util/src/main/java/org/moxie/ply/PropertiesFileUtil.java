@@ -10,7 +10,7 @@ import java.util.Properties;
  *
  * Assists in loading and storing {@link java.util.Properties} files.
  */
-public class PropertiesUtil {
+public class PropertiesFileUtil {
 
     /**
      * Loads {@code path} into a {@link Properties} file and returns it.

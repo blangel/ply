@@ -10,13 +10,16 @@ import java.net.URI;
  * Time: 1:36 PM
  * 
  * Represents a repository atom made up of repositoryURI[::type].
- * If type is null then ply will be used when necessary.
+ * Type is either ply or maven.  If type is null then ply will be used when necessary.
  */
 public class RepositoryAtom {
+
     public static enum Type {
         ply, maven
     }
+
     public final URI repositoryUri;
+
     public final Type type;
 
     public RepositoryAtom(URI repositoryUri, Type type) {

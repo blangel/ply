@@ -1,5 +1,7 @@
 package org.moxie.ply;
 
+import org.moxie.ply.props.Props;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -42,7 +44,7 @@ public class Output {
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
     static {
         boolean withinTerminal = (System.getenv("TERM") != null);
-        boolean colorDisabled = (System.getenv("ply.color") != null ? "false".equals(System.getenv("ply.color")) : false);
+        boolean colorDisabled = (Props.get("color") != null ? "false".equals(Props.getValue("color")) : false);
         boolean useColor = withinTerminal && !colorDisabled;
         // first place color values (in case call to Config tries to print, at least have something in
         // TERM_CODES with which to strip messages.
@@ -64,8 +66,8 @@ public class Output {
         TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), useColor ? "\u001b[1;36m" : ""));
         TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), useColor ? "\u001b[1;37m" : ""));
         // init log-levels for scripts which depend upon ply-util (ply itself calls init(boolean, String)
-        if (System.getenv("ply.log.levels") != null) {
-            init(System.getenv("ply.log.levels"));
+        if (Props.get("log.levels") != null) {
+            init(Props.getValue("log.levels"));
         }
 
     }

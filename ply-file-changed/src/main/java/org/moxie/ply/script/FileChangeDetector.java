@@ -2,7 +2,8 @@ package org.moxie.ply.script;
 
 import org.moxie.ply.BitUtil;
 import org.moxie.ply.Output;
-import org.moxie.ply.PropertiesUtil;
+import org.moxie.ply.PropertiesFileUtil;
+import org.moxie.ply.props.Props;
 
 import java.io.*;
 import java.security.DigestInputStream;
@@ -16,40 +17,41 @@ import java.util.concurrent.atomic.AtomicReference;
  * Date: 9/12/11
  * Time: 9:20 PM
  *
- * There are two arguments to this script, both are optional.  The first is a name which is used in the outputted file
- * names.  The default is {@literal src}.  It will be referred to as {@literal args[0]} below.  The second is the
- * directory to process.  The default is the value of {@literal project.src.dir}.  It will be referred to as
- * {@literal args[1]} below.
+ * There is one argument to this script: the scope.  Its default is null.  To match convention of other scripts, the
+ * scope must be prefixed with '--'
+ * This scope argument is used as a prefix to the file
+ * names created by this script.  If the scope is null then 'src' will be used for file names prefix.  This file name
+ * prefix is referred to as '${prefix}' below.
  *
- * Determines which files within {@literal args[1]} have changed since last invocation.
+ * Determines which files within {@literal project[.scope].src.dir} have changed since last invocation.
  * The information used to determine if a file has changed is saved in the {@literal project.build.dir} in a file named
- * {@literal ${args[0]}-changed-meta.properties}.  The list of files which have changed since last invocation is stored
- * in a file named {@literal ${args[0]}-changed.properties} in directory {@literal project.build.dir}.
- * The information used to determine change is stored relative to {@literal project.build.dir} to allow for cleans to
- * force a full-recompilation.  The format of the {@literal ${args[0]}-changed-meta.properties} file is:
+ * {@literal ${prefix}-changed-meta.properties}.  The list of files which have changed since last invocation is stored
+ * in a file named {@literal ${prefix}-changed.properties} in directory {@literal project[#scope]#build.dir}.
+ * The information used to determine change is stored relative to {@literal project[#scope]#build.dir} to allow for cleans to
+ * force a full-recompilation.  The format of the {@literal ${prefix}-changed-meta.properties} file is:
  * file-path=timestamp,sha1-hash
- * and the format of the {@literal ${args[0]}-changed.properties} is simply a listing of file paths which have changed.
+ * and the format of the {@literal ${prefix}-changed.properties} is simply a listing of file paths which have changed.
  *
  */
 public class FileChangeDetector {
 
     public static void main(String[] args) {
-        String invocationName = (args.length > 0 ? args[0] : "src");
-        String srcDirPath = (args.length > 1 ? args[1] : System.getenv("project.src.dir"));
-        Output.print("^dbug^ Invocation name ^b^%s^r^ and source path ^b^%s^r^.", invocationName, srcDirPath);
-        String buildDirPath = System.getenv("project.build.dir");
+        String scope = ((args.length > 0) && args[0].startsWith("--") ? args[0].substring(2) : "");
+        String prefix = (scope.isEmpty() ? "src" : scope);
+        String srcDirPath = Props.getValue("project", scope, "src.dir");
+        String buildDirPath = Props.getValue("project", scope, "build.dir");
         File lastSrcChanged = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
-                + invocationName + "-changed-meta.properties");
+                + prefix + "-changed-meta.properties");
         File changedPropertiesFile = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
-                + invocationName + "-changed.properties");
+                + prefix + "-changed.properties");
         File srcDir = new File(srcDirPath);
-        Properties existing = PropertiesUtil.load(lastSrcChanged.getPath(), true);
+        Properties existing = PropertiesFileUtil.load(lastSrcChanged.getPath(), true);
         try {
             changedPropertiesFile.createNewFile();
         } catch (IOException ioe) {
             Output.print(ioe);
         }
-        computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing, invocationName);
+        computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing, prefix);
     }
 
     private static void computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir,
@@ -57,8 +59,8 @@ public class FileChangeDetector {
         Properties changedList = new Properties();
         Properties properties = new Properties();
         collectAllFileChanges(srcDir, changedList, properties, existing, invocationName);
-        PropertiesUtil.store(changedList, changedPropertiesFile.getPath());
-        PropertiesUtil.store(properties, lastSrcChanged.getPath());
+        PropertiesFileUtil.store(changedList, changedPropertiesFile.getPath());
+        PropertiesFileUtil.store(properties, lastSrcChanged.getPath());
     }
 
     private static void collectAllFileChanges(File from, Properties changedList, Properties into, Properties existing,

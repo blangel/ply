@@ -12,7 +12,7 @@ import java.io.File;
 public class Clean {
 
     public static void main(String[] args) {
-        Clean clean = new Clean(System.getenv("project.build.dir"));
+        Clean clean = new Clean(System.getenv("ply$project#build.dir"));
         clean.invoke();
     }
 

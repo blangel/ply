@@ -13,8 +13,11 @@ import java.util.concurrent.atomic.AtomicReference;
 public class DependencyAtom {
 
     public final String namespace;
+
     public final String name;
+
     public final String version;
+
     public final String artifactName;
 
     public DependencyAtom(String namespace, String name, String version, String artifactName) {

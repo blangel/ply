@@ -2,7 +2,7 @@ package org.moxie.ply.dep;
 
 import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
-import org.moxie.ply.PropertiesUtil;
+import org.moxie.ply.PropertiesFileUtil;
 import org.moxie.ply.mvn.MavenPomParser;
 
 import java.io.*;
@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Date: 10/2/11
  * Time: 1:41 PM
  */
-public class DependencyResolver {
+public class Deps {
 
     public static Properties resolveDependencies(List<DependencyAtom> dependencyAtoms, List<RepositoryAtom> repositoryAtoms) {
         Properties dependencyFiles = new Properties();
@@ -198,8 +198,9 @@ public class DependencyResolver {
     }
 
     private static void storeTransitiveDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {
-        PropertiesUtil.store(transitiveDependencies, localRepoDepDirPath + (localRepoDepDirPath.endsWith(File.separator) ? "" : File.separator)
-                                                + "dependencies.properties", true);
+        PropertiesFileUtil.store(transitiveDependencies,
+                localRepoDepDirPath + (localRepoDepDirPath.endsWith(File.separator) ? "" : File.separator)
+                        + "dependencies.properties", true);
     }
 
 }

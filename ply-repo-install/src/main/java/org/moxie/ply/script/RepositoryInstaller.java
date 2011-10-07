@@ -2,6 +2,7 @@ package org.moxie.ply.script;
 
 import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
+import org.moxie.ply.props.Props;
 
 import java.io.File;
 
@@ -22,19 +23,19 @@ import java.io.File;
 public class RepositoryInstaller {
 
     public static void main(String[] args) {
-        String buildDirPath = System.getenv("project.build.dir");
-        String artifactName = System.getenv("project.artifact.name");
+        String buildDirPath = Props.getValue("project", Props.DEFAULT_SCOPE, "build.dir");
+        String artifactName = Props.getValue("project", Props.DEFAULT_SCOPE, "artifact.name");
         File artifact = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) +
                                     artifactName);
         if (!artifact.exists()) {
             return;
         }
 
-        String plyProjectDirPath = System.getenv("ply.project.dir");
+        String plyProjectDirPath = Props.getValue("project.dir");
         File dependenciesFile = new File(plyProjectDirPath + (plyProjectDirPath.endsWith(File.separator) ? "" : File.separator)
                                             + "config/dependencies.properties");
 
-        String localRepoProp = System.getenv("depmngr.localRepo");
+        String localRepoProp = Props.getValue("depmngr", Props.DEFAULT_SCOPE, "localRepo");
         // determine repo type.
         boolean localRepoIsPly = true;
         String[] resolvedLocalRepo = localRepoProp.split("::");
@@ -45,9 +46,9 @@ public class RepositoryInstaller {
             }
         }
 
-        String namespace = System.getenv("project.namespace");
-        String name = System.getenv("project.name");
-        String version = System.getenv("project.version");
+        String namespace = Props.getValue("project", Props.DEFAULT_SCOPE, "namespace");
+        String name = Props.getValue("project", Props.DEFAULT_SCOPE, "name");
+        String version = Props.getValue("project", Props.DEFAULT_SCOPE, "version");
         File localRepoBase = new File(resolvedLocalRepo[0]);
         if (!localRepoBase.exists()) {
             Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoBase.getPath());

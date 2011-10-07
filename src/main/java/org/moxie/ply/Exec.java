@@ -1,5 +1,8 @@
 package org.moxie.ply;
 
+import org.moxie.ply.props.Prop;
+import org.moxie.ply.props.Props;
+
 import java.io.*;
 import java.util.*;
 
@@ -26,7 +29,7 @@ public final class Exec {
         // all invoked scripts will be started from the parent of the '.ply' directory.
         // this provides a consistent view of execution for all scripts.  if a script wants to actually know
         // which directory from which the 'ply' command was invoked, look at 'parent.user.dir' environment property.
-        String plyDirPath = Config.LOCAL_PROJECT_DIR.getPath();
+        String plyDirPath = PlyUtil.LOCAL_PROJECT_DIR.getPath();
         File projectRoot = new File(plyDirPath + (plyDirPath.endsWith(File.separator) ? "" : File.separator) + ".." + File.separator);
         for (String[] resolvedCmd : resolvedCmds) {
             if (!invoke(originalScript, resolvedCmd, projectRoot)) {
@@ -42,14 +45,14 @@ public final class Exec {
         cmdArgs = handleNonNativeExecutable(scriptWithoutPath, cmdArgs);
         String script = buildScriptName(cmdArgs);
         try {
-            Output.print("^dbug^ invoking %s", script);
             ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true).directory(projectRoot);
             Map<String, String> environment = processBuilder.environment();
-            Map<String, Config.Prop> properties = Config.getResolvedEnvironmentalProperties();
+            Map<String, Prop> properties = Config.getResolvedEnvironmentalProperties();
             for (String propKey : properties.keySet()) {
-                Config.Prop prop = properties.get(propKey);
-                environment.put(propKey, Config.filter(prop));
+                Prop prop = properties.get(propKey);
+                environment.put(propKey, Props.filter(prop));
             }
+            Output.print("^dbug^ invoking %s", script);
             // the Process thread reaps the child if the parent (this) is terminated
             Process process = processBuilder.start();
             InputStream processStdout = process.getInputStream();
@@ -79,7 +82,7 @@ public final class Exec {
      * @param args the script and arguments to it where {@code args[0]} is the script per convention of {@link Process}
      * @param resolvedArgs the list of resolved scripts (as {@code args[0]} could be aliased as multiple commands) where
      *         each command's arguments have been filtered ({@literal ${xx}} is replaced by property named {@literal xx}
-     *         from {@link Config#get(String)}).
+     *         from {@link org.moxie.ply.props.Props#get(String, String)}).
      * @param encountered set of scripts already encountered while trying to resolve aliases.  Used to keep track
      *         of possible circular references.
      */
@@ -90,14 +93,14 @@ public final class Exec {
             System.exit(1);
         }
         encountered.add(script);
-        String resolved = Config.get("scripts", script);
+        Prop resolved = Props.get("scripts", script);
         if (resolved == null) {
             filter(args);
             resolvedArgs.add(args);
             return;
         }
-        Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^", script, resolved);
-        String[] splitResolved = splitScript(resolved);
+        Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^", script, resolved.value);
+        String[] splitResolved = splitScript(resolved.value);
         for (String split : splitResolved) {
             String[] splitArgs = splitScript(split);
             String[] combined = combine(splitArgs, 0, splitArgs.length, args, 1, args.length - 1);
@@ -106,12 +109,12 @@ public final class Exec {
     }
 
     /**
-     * Runs {@link Config#filter(Config.Prop)} on each value within {@code array}, the context will be scripts.
+     * Runs {@link org.moxie.ply.props.Props#filter(Prop)} on each value within {@code array}, the context will be scripts.
      * @param array to filter
      */
     private static void filter(String[] array) {
         for (int i = 0; i < array.length; i++) {
-            array[i] = Config.filter(new Config.Prop("scripts", "", array[i], true));
+            array[i] = Props.filter(new Prop("scripts", "", "", array[i], true));
         }
     }
 
@@ -167,7 +170,7 @@ public final class Exec {
 
     private static String resolveExecutable(String script) {
         String originalScript = script;
-        String localScriptsDir = Config.get("project", "scripts.dir");
+        String localScriptsDir = Props.getValue("project", "scripts.dir");
         script = (localScriptsDir.endsWith(File.separator) ? localScriptsDir :
                 localScriptsDir + File.separator) + script;
         File scriptFile = new File(script);
@@ -177,7 +180,7 @@ public final class Exec {
             Output.print("^warn^ ^b^%s^r^ exists but is not executable, skipping.", scriptFile.getPath());
         }
         try {
-            script = Config.GLOBAL_SCRIPTS_DIR.getCanonicalPath() + File.separator + originalScript;
+            script = PlyUtil.SYSTEM_SCRIPTS_DIR.getCanonicalPath() + File.separator + originalScript;
             scriptFile = new File(script);
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);

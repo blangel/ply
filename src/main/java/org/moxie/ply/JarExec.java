@@ -1,8 +1,10 @@
 package org.moxie.ply;
 
 import org.moxie.ply.dep.DependencyAtom;
-import org.moxie.ply.dep.DependencyResolver;
+import org.moxie.ply.dep.Deps;
 import org.moxie.ply.dep.RepositoryAtom;
+import org.moxie.ply.props.Prop;
+import org.moxie.ply.props.Props;
 
 import java.io.File;
 import java.io.IOException;
@@ -100,7 +102,7 @@ public class JarExec {
                     dependencyAtoms.add(dependencyAtom);
                 }
             }
-            Properties resolvedDependencies = DependencyResolver
+            Properties resolvedDependencies = Deps
                     .resolveDependencies(dependencyAtoms, createRepositoryList());
             StringBuilder classpath = new StringBuilder();
             for (String resolvedDependency : resolvedDependencies.stringPropertyNames()) {
@@ -125,14 +127,15 @@ public class JarExec {
     }
 
     private static List<RepositoryAtom> createRepositoryList() {
-        RepositoryAtom localRepo = RepositoryAtom.parse(Config.get("depmngr", "localRepo", true));
+        String filteredLocalRepo = Props.filter(Props.get("depmngr", "localRepo"));
+        RepositoryAtom localRepo = RepositoryAtom.parse(filteredLocalRepo);
         if (localRepo == null) {
             Output.print("^error^ Local repository not defined.  Set 'localRepo' property in context 'depmngr'");
             System.exit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
         repositoryAtoms.add(localRepo);
-        Map<String, Config.Prop> repositoryProps = Config.getContext("repositories");
+        Map<String, Prop> repositoryProps = Props.getProperties("repositories", Props.DEFAULT_SCOPE);
         if (repositoryProps != null) {
             for (String repoUri : repositoryProps.keySet()) {
                 if (localRepo.getPropertyName().equals(repoUri)) {
@@ -159,11 +162,11 @@ public class JarExec {
      * @return the split jvm options for {@code script}
      */
     private static String[] getJarScriptOptions(String script, AtomicBoolean staticClasspath) {
-        String options = Config.get("scripts.jar", "options." + script);
-        if (options == null) {
-            options = Config.get("scripts.jar", "options.default");
+        String options = Props.getValue("scripts-jar", Props.DEFAULT_SCOPE, "options." + script);
+        if (options.isEmpty()) {
+            options = Props.getValue("scripts-jar", Props.DEFAULT_SCOPE, "options.default");
         }
-        options = Config.filter(new Config.Prop("scripts.jar", "", options, true));
+        options = Props.filter(new Prop("scripts-jar", "", "", options, true));
         if (options.contains("-cp") || options.contains("-classpath")) {
             staticClasspath.set(true);
         }

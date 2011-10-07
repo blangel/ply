@@ -1,12 +1,13 @@
 package org.moxie.ply.script;
 
 import org.moxie.ply.Output;
-import org.moxie.ply.PropertiesUtil;
+import org.moxie.ply.PropertiesFileUtil;
+import org.moxie.ply.props.Prop;
+import org.moxie.ply.props.Props;
 
 import java.io.*;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 /**
  * User: blangel
@@ -66,35 +67,30 @@ public class JarPackageScript {
     }
 
     private void createManifestFile() {
-        Set<String> manifestProperties = new HashSet<String>();
-        for (String envPropertyName : System.getenv().keySet()) {
-            if (envPropertyName.startsWith("package-jar.manifest.")) {
-                manifestProperties.add(envPropertyName);
-            }
-        }
+        Map<String, Prop> manifestProps = Props.getPropertiesWithCollapsedScope("package-jar", "manifest.*");
         // filter out and handle the short-named manifest properties
-        String version = System.getenv("package-jar.manifest.version");
-        manifestProperties.remove("package-jar.manifest.version");
+        String version = Props.getValue("package-jar", Props.DEFAULT_SCOPE, "manifest.version");
+        manifestProps.remove("manifest.version");
         if (isEmpty(version)) {
             version = "1.0";
         }
-        String createdBy = System.getenv("package-jar.manfiest.createdBy");
-        manifestProperties.remove("package-jar.manfiest.createdBy");
+        String createdBy = Props.getValue("package-jar", Props.DEFAULT_SCOPE, "manfiest.createdBy");
+        manifestProps.remove("manfiest.createdBy");
         if (isEmpty(createdBy)) {
             createdBy = "Ply";
         }
-        String mainClass = System.getenv("package-jar.manifest.mainClass");
-        manifestProperties.remove("package-jar.manifest.mainClass");
-        String classPath = System.getenv("package-jar.manifest.classPath");
-        manifestProperties.remove("package-jar.manifest.classPath");
-        String specTitle = System.getenv("package-jar.manifest.spec.title");
-        manifestProperties.remove("package-jar.manifest.spec.title");
-        String specVersion = System.getenv("package-jar.manifest.spec.version");
-        manifestProperties.remove("package-jar.manifest.spec.version");
-        String implTitle = System.getenv("package-jar.manifest.impl.title");
-        manifestProperties.remove("package-jar.manifest.impl.title");
-        String implVersion = System.getenv("package-jar.manifest.impl.version");
-        manifestProperties.remove("package-jar.manifest.impl.version");
+        String mainClass = Props.getValue("package-jar", Props.DEFAULT_SCOPE, "manifest.mainClass");
+        manifestProps.remove("manifest.mainClass");
+        String classPath = Props.getValue("package-jar", Props.DEFAULT_SCOPE, "manifest.classPath");
+        manifestProps.remove("manifest.classPath");
+        String specTitle = Props.getValue("package-jar", Props.DEFAULT_SCOPE, "manifest.spec.title");
+        manifestProps.remove("manifest.spec.title");
+        String specVersion = Props.getValue("package-jar", Props.DEFAULT_SCOPE, "manifest.spec.version");
+        manifestProps.remove("manifest.spec.version");
+        String implTitle = Props.getValue("package-jar", Props.DEFAULT_SCOPE, "manifest.impl.title");
+        manifestProps.remove("manifest.impl.title");
+        String implVersion = Props.getValue("package-jar", Props.DEFAULT_SCOPE, "manifest.impl.version");
+        manifestProps.remove("manifest.impl.version");
 
         StringBuilder buffer = new StringBuilder();
         appendManifestInformation("Manifest-Version", version, buffer);
@@ -107,9 +103,8 @@ public class JarPackageScript {
         appendManifestInformation("Implementation-Version", implVersion, buffer);
 
         // add user defined information, if any.
-        for (String property : manifestProperties) {
-            String name = property.replace("package-jar.manifest.", "");
-            appendManifestInformation(name, System.getenv(property), buffer);
+        for (String property : manifestProps.keySet()) {
+            appendManifestInformation(property, manifestProps.get(property).value, buffer);
         }
         File manifestFile = new File(getManifestFilePath());
         PrintWriter writer = null;
@@ -139,21 +134,22 @@ public class JarPackageScript {
     }
 
     private String[] createArgs() {
-        String jarScript = System.getenv("ply.java").replace("bin" + File.separator + "java", "bin" + File.separator + "jar");
+        String jarScript = Props.getValue("java").replace("bin" + File.separator + "java",
+                "bin" + File.separator + "jar");
         String options = "cfm";
-        if (getBoolean(System.getenv("package-jar.verbose"))) {
+        if (getBoolean(Props.getValue("package-jar", Props.DEFAULT_SCOPE, "verbose"))) {
             options += "v";
         }
-        if (!getBoolean(System.getenv("package-jar.compress"))) {
+        if (!getBoolean(Props.getValue("package-jar", Props.DEFAULT_SCOPE, "compress"))) {
             options += "0";
         }
-        String jarName = System.getenv("package-jar.jarName");
+        String jarName = Props.getValue("package-jar", Props.DEFAULT_SCOPE, "jarName");
         if (isEmpty(jarName)) {
             Output.print("^warn^ Property 'package-jar.jarName' was empty, defaulting to value of ${project.artifact.name}.");
-            jarName = System.getenv("project.artifact.name");
+            jarName = Props.getValue("project", Props.DEFAULT_SCOPE, "artifact.name");
             if (isEmpty(jarName)) {
                 Output.print("^warn^ Property 'project.artifact.name' was empty, defaulting to value of ${project.name}.");
-                jarName = System.getenv("project.artifact.name");
+                jarName = Props.getValue("project", Props.DEFAULT_SCOPE, "name");
                 if (isEmpty(jarName)) {
                     Output.print("^warn^ Property 'project.name' was empty, defaulting to 'no-name'.");
                     jarName = "no-name";
@@ -163,9 +159,9 @@ public class JarPackageScript {
         }
         jarName = getJarFilePath(jarName);
         String manifestFile = getManifestFilePath();
-        String inputFiles = System.getenv("compiler.buildPath");
+        String inputFiles = Props.getValue("compiler", Props.DEFAULT_SCOPE, "buildPath");
 
-        String buildDir = System.getenv("project.build.dir");
+        String buildDir = Props.getValue("project", Props.DEFAULT_SCOPE, "build.dir");
         buildDir = buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator);
         File dependenciesFile = createDependenciesFile(buildDir);
         if (dependenciesFile == null) {
@@ -177,14 +173,14 @@ public class JarPackageScript {
     }
 
     private static String getManifestFilePath() {
-        String buildDirPath = System.getenv("project.build.dir");
+        String buildDirPath = Props.getValue("project", Props.DEFAULT_SCOPE, "build.dir");
         File metaInfDir = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) + "META-INF");
         metaInfDir.mkdir();
         return (metaInfDir.getPath() + (metaInfDir.getPath().endsWith(File.separator) ? "" : File.separator) + "Manifest.mf");
     }
 
     private static String getJarFilePath(String jarName) {
-        String buildDirPath = System.getenv("project.build.dir");
+        String buildDirPath = Props.getValue("project", Props.DEFAULT_SCOPE, "build.dir");
         return buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) + jarName;
     }
 
@@ -199,12 +195,12 @@ public class JarPackageScript {
     private static File createDependenciesFile(String buildDirPath) {
         // read in resolved-deps.properties file
         Properties dependencies = new Properties();
-        Properties resolvedDeps = PropertiesUtil.load(buildDirPath + "resolved-deps.properties", true);
+        Properties resolvedDeps = PropertiesFileUtil.load(buildDirPath + "resolved-deps.properties", true);
         for (String propertyName : resolvedDeps.stringPropertyNames()) {
             dependencies.put(propertyName, "");
         }
         File metaInfPlyDepFile = new File(buildDirPath + "META-INF/ply/dependencies.properties");
-        PropertiesUtil.store(dependencies, metaInfPlyDepFile.getPath(), true);
+        PropertiesFileUtil.store(dependencies, metaInfPlyDepFile.getPath(), true);
         return metaInfPlyDepFile;
     }
 
