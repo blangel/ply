@@ -67,7 +67,7 @@ public class Props {
         }
         String filtered = value.value;
         // first attempt to resolve via the value's context and scope.
-        Map<String, Map<String, Prop>> all = Props.getPropertiesWithCollapsedScope();
+        Map<String, Map<String, Prop>> all = getPropertiesWithCollapsedScope();
         filtered = filterBy(filtered, "", all.get(value.getContextScope()));
         // also attempt to filter context-prefixed values
         for (String context : all.keySet()) {
@@ -152,8 +152,8 @@ public class Props {
 
         Map<String, Map<String, Map<String, Prop>>> props = get();
         if (!props.containsKey(context) || !props.get(context).containsKey(scope)) {
-            // TODO - should we return null if scope not found (and not default)? if not default then the default
-            // TODO - should be returned
+            // Note, if the scope is not found the default is not returned.  This is a bit confusing as if the scope
+            // is found but the propertyName is not found within the scope, then the default is returned
             return null;
         }
 
@@ -191,8 +191,8 @@ public class Props {
             scope = (scope == null ? DEFAULT_SCOPE : scope);
             Map<String, Map<String, Map<String, Prop>>> props = get();
             if (!props.containsKey(context) || !props.get(context).containsKey(scope)) {
-                // TODO - should we return null if scope not found (and not default)? if not default then the default
-                // TODO - should be returned
+                // Note, if the scope is not found the default is not returned.  This is a bit confusing as if the scope
+                // is found but the propertyName is not found within the scope, then the default is returned
                 return null;
             }
             if (!DEFAULT_SCOPE.equals(scope) && props.get(context).containsKey(DEFAULT_SCOPE)) {
@@ -222,6 +222,9 @@ public class Props {
     }
 
     /**
+     * The returned map does not collapse the context's scopes nor doesdoes include any inherited values for
+     * a scope (i.e.; if compiler.property1=value1 but compiler.scope does not contain property1 then it's mapping
+     * will not contain such property1).
      * @return a resolved mapping of context -> scope -> property_name -> prop
      */
     public static Map<String, Map<String, Map<String, Prop>>> getAllProperties() {
@@ -250,6 +253,8 @@ public class Props {
     }
 
     /**
+     * The returned map does include any inherited values for a scope (i.e.; if compiler.property1=value1 but
+     * compiler.scope does not contain property1 then it's mapping will not contain such property1).
      * @param context for which to retrieve properties for {@code scope}
      * @param scope within {@code context} for which to retrieve properties
      * @return a resolved mapping of property_name -> prop for the given {@code context} and {@code scope} or null
@@ -424,7 +429,7 @@ public class Props {
      * in the {@link #PROPS} if its key is prefixed with {@literal ply$}.  It then must conform to the format:
      * context[#scope]#propertyName
      * where scope is optional.  Thus the minimal length of a ply environment key is 7; 4 for the 'ply$' prefix
-     * one for the context, one for the period and one for the property name.
+     * one for the context, one for the hash-symbol and one for the property name.
      */
     private static void initPropsByEnv() {
         Map<String, String> env = System.getenv();
