@@ -142,7 +142,7 @@ public class JarExec {
                     continue;
                 }
                 String repoType = repositoryProps.get(repoUri).value;
-                String repoAtom = repoUri + "::" + repoType;
+                String repoAtom = repoType + ":" + repoUri;
                 RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
                 if (repo == null) {
                     Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);

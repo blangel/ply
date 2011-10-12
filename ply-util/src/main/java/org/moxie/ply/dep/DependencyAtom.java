@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Date: 10/2/11
  * Time: 1:31 PM
  *
- * Represents a dependency atom made up of namespace::name::version[::artifactName]
+ * Represents a dependency atom made up of namespace:name:version[:artifactName]
  * If artifactName is null then (name-version.jar) will be used when necessary.
  */
 public class DependencyAtom {
@@ -32,15 +32,15 @@ public class DependencyAtom {
     }
 
     public String getPropertyName() {
-        return namespace + "::" + name;
+        return namespace + ":" + name;
     }
 
     public String getPropertyValue() {
-        return (version == null ? "" : version) + (artifactName != null ? "::" + artifactName : "");
+        return (version == null ? "" : version) + (artifactName != null ? ":" + artifactName : "");
     }
 
     public String getResolvedPropertyValue() {
-        return version + "::" + getArtifactName();
+        return version + ":" + getArtifactName();
     }
 
     public String getArtifactName() {
@@ -48,11 +48,11 @@ public class DependencyAtom {
     }
 
     @Override public String toString() {
-        return getPropertyName() + "::" + getResolvedPropertyValue();
+        return getPropertyName() + ":" + getResolvedPropertyValue();
     }
 
     public static DependencyAtom parse(String atom, AtomicReference<String> error) {
-        String[] parsed = atom.split("::");
+        String[] parsed = atom.split(":");
         if ((parsed.length < 3) || (parsed.length > 4)) {
             if (error != null) {
                 switch (parsed.length) {

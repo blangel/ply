@@ -154,12 +154,12 @@ public interface MavenPomParser {
                     }
                 }
                 // iterating child->parent, per maven, child overrides parent, only place in if not already exists.
-                if (!parseResult.mavenDependencies.containsKey(groupId + "::" + artifactId)) {
+                if (!parseResult.mavenDependencies.containsKey(groupId + ":" + artifactId)) {
                     if (classifier.isEmpty() && (type.isEmpty() || "jar".equals(type))) {
-                        parseResult.mavenDependencies.put(groupId + "::" + artifactId, version);
+                        parseResult.mavenDependencies.put(groupId + ":" + artifactId, version);
                     } else {
                         String artifactName = artifactId + "-" + version + (classifier.isEmpty() ? "" : "-" + classifier) + "." + (type.isEmpty() ? "jar" : type);
-                        parseResult.mavenDependencies.put(groupId + "::" + artifactId, version + "::" + artifactName);
+                        parseResult.mavenDependencies.put(groupId + ":" + artifactId, version + ":" + artifactName);
                     }
                 }
             }

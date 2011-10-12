@@ -9,7 +9,7 @@ import java.net.URI;
  * Date: 10/2/11
  * Time: 1:36 PM
  * 
- * Represents a repository atom made up of repositoryURI[::type].
+ * Represents a repository atom made up of [type:]repositoryURI.
  * Type is either ply or maven.  If type is null then ply will be used when necessary.
  */
 public class RepositoryAtom {
@@ -17,6 +17,10 @@ public class RepositoryAtom {
     public static enum Type {
         ply, maven
     }
+
+    public static final String MAVEN_REPO_TYPE_PREFIX = "maven:";
+
+    public static final String PLY_REPO_TYPE_PREFIX = "ply:";
 
     public final URI repositoryUri;
 
@@ -42,27 +46,23 @@ public class RepositoryAtom {
         return getResolvedType().name();
     }
     @Override public String toString() {
-        return getPropertyName() + "::" + getResolvedPropertyValue();
+        return getResolvedPropertyValue() + ":" + getPropertyName();
     }
     public static RepositoryAtom parse(String atom) {
         if (atom == null) {
             return null;
         }
-        String[] resolved = atom.split("::");
-        if ((resolved.length < 1) && (resolved.length > 2)) {
-            return null;
-        }
-        URI repositoryUri = URI.create(resolved[0]);
         Type type = null;
-        if (resolved.length == 2) {
-            if ("ply".equals(resolved[1])) {
-                type = Type.ply;
-            } else if ("maven".equals(resolved[1])) {
-                type = Type.maven;
-            } else {
-                Output.print("^warn^ unsupported type %s, must be either null, ply or maven.", resolved[1]);
-            }
+        if (atom.startsWith(MAVEN_REPO_TYPE_PREFIX)) {
+            type = Type.maven;
+            atom = atom.substring(MAVEN_REPO_TYPE_PREFIX.length());
+        } else if (atom.startsWith(PLY_REPO_TYPE_PREFIX)) {
+            type = Type.ply;
+            atom = atom.substring(PLY_REPO_TYPE_PREFIX.length());
+        } else {
+            type = Type.ply;
         }
+        URI repositoryUri = URI.create(atom);
         return new RepositoryAtom(repositoryUri, type);
     }
 }

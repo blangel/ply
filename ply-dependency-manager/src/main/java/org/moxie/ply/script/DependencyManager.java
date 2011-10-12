@@ -28,11 +28,11 @@ import java.util.concurrent.atomic.AtomicReference;
  * localRepo=string [[default=${PLY_HOME}/repo]] (this is the local repository where remote dependencies will
  *           be stored.  Note, multiple local-filesystem repositories may exist within {@literal repositories.properties}
  *           but only this, the {@literal localRepo}, will be used to store remote repositories' downloads.  The format
- *           is repoUri[::type], see below for description of this format).
+ *           is [type:]repoUri, see below for description of this format).
  *
  * Dependency information is stored in a file called {@literal dependencies[.${scope}].properties} and so the context is
  * {@literal dependencies[.${scope}]}.  The format of each property within the file is:
- * namespace::name=version::artifactName
+ * namespace:name=version:artifactName
  * where namespace provides a unique context for name.  It is analogous to {@literal groupId} in {@literal Maven} or
  * the {@literal category} portion of a base atom in {@literal portage}.
  * The name is the name of the project.  It is analogous to {@literal artifactId} in {@literal Maven} or the
@@ -53,7 +53,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * the type of the repository.  Type is currently either {@literal ply} (the default so null resolves to ply) or {@literal maven}.
  * Dependencies are then resolved by appending the namespace/name/version/artifactName to the {@literal repositoryURI}.
  * For instance, if the {@literal repositoryURI} were {@literal http://repo1.maven.org/maven2} and the dependency were
- * {@literal org.apache.commons::commons-io=1.3.2::} then the dependency would be resolved by assuming the default
+ * {@literal org.apache.commons:commons-io=1.3.2:} then the dependency would be resolved by assuming the default
  * artifactName (which would be {@literal commons-io-1.3.2.jar}) and creating a link to the artifact.  If the type
  * of the repository were null or {@literal ply} the artifact would be:
  * {@literal http://repo1.maven.org/maven2/org.apache.commons/1.3.2/commons-io-1.3.2.jar}.
@@ -104,7 +104,7 @@ public class DependencyManager {
                 Output.print("Project ^b^%s^r^ has ^b^%d^r^ %sdependenc%s: ", Props.getValue("project", "name"), size,
                         scope.forPrint, (size == 1 ? "y" : "ies"));
                 for (String key : dependencies.keySet()) {
-                    Output.print("\t%s::%s", key, dependencies.get(key));
+                    Output.print("\t%s:%s", key, dependencies.get(key));
                 }
             } else {
                 Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.getValue("project", "name"), scope.forPrint);
@@ -131,7 +131,7 @@ public class DependencyManager {
         AtomicReference<String> error = new AtomicReference<String>(null);
         DependencyAtom atom = DependencyAtom.parse(dependency, error);
         if (atom == null) {
-            Output.print("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace::name::version[::artifactName]).",
+            Output.print("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace:name:version[:artifactName]).",
                     dependency, error.get());
             System.exit(1);
         }
@@ -154,16 +154,16 @@ public class DependencyManager {
         DependencyAtom atom = DependencyAtom.parse(dependency, null);
         if (atom == null) {
             // allow non-version specification.
-            String[] split = dependency.split("::");
+            String[] split = dependency.split(":");
             if (split.length < 2) {
-                Output.print("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace::name[::version::artifactName]).",
+                Output.print("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace:name[:version:artifactName]).",
                         dependency, (split.length == 1 ? "name" : "namespace and name"));
                 System.exit(1);
             }
             atom = new DependencyAtom(split[0], split[1], null);
         }
         if (Props.get("dependencies", scope.name, atom.getPropertyName()) == null) {
-            Output.print("^warn^ Could not find %sdependency; given %s::%s", scope.forPrint, atom.getPropertyName(),
+            Output.print("^warn^ Could not find %sdependency; given %s:%s", scope.forPrint, atom.getPropertyName(),
                     atom.getPropertyValue());
         } else {
             Properties dependencies = loadDependenciesFile(scope);
@@ -175,7 +175,7 @@ public class DependencyManager {
     private static void addRepository(String repository) {
         RepositoryAtom atom = RepositoryAtom.parse(repository);
         if (atom == null) {
-            Output.print("^error^ Repository %s not of format repoUri[::type].", repository);
+            Output.print("^error^ Repository %s not of format [type:]repoUri.", repository);
             System.exit(1);
         }
         try {
@@ -197,13 +197,13 @@ public class DependencyManager {
     private static void removeRepository(String repository) {
         RepositoryAtom atom = RepositoryAtom.parse(repository);
         if (atom == null) {
-            Output.print("^error^ Repository %s not of format repoUri[::type].", repository);
+            Output.print("^error^ Repository %s not of format [type:]repoUri.", repository);
             System.exit(1);
         }
 
         if (Props.get("repositories", atom.getPropertyName()) == null) {
-            Output.print("^warn^ Repository not found; given %s::%s", atom.getPropertyName(),
-                    atom.getPropertyValue());
+            Output.print("^warn^ Repository not found; given %s:%s", atom.getPropertyValue(),
+                    atom.getPropertyName());
         } else {
             Properties repositories = loadRepositoriesFile();
             repositories.remove(atom.getPropertyName());
@@ -225,7 +225,7 @@ public class DependencyManager {
                 continue;
             }
             String repoType = repositories.get(repoUri).value;
-            String repoAtom = repoUri + "::" + repoType;
+            String repoAtom = repoType + ":" + repoUri;
             RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
             if (repo == null) {
                 Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);
@@ -242,9 +242,9 @@ public class DependencyManager {
         for (String dependencyKey : dependencies.keySet()) {
             error.set(null);
             String dependencyValue = dependencies.get(dependencyKey);
-            DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + "::" + dependencyValue, error);
+            DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + ":" + dependencyValue, error);
             if (dependencyAtom == null) {
-                Output.print("^warn^ Invalid dependency %s::%s; missing %s", dependencyKey, dependencyValue,
+                Output.print("^warn^ Invalid dependency %s:%s; missing %s", dependencyKey, dependencyValue,
                         error.get());
                 continue;
             }
@@ -331,8 +331,8 @@ public class DependencyManager {
         Output.print("    ^b^list^r^\t\t\t: list all dependencies (within context).");
         Output.print("    ^b^add-repo <rep-atom>^r^\t: adds rep-atom to the list of repositories.");
         Output.print("    ^b^remove-repo <rep-atom>^r^: removes rep-atom from the list of repositories.");
-        Output.print("  ^b^dep-atom^r^ is namespace::name::version[::artifactName] (artifactName is optional and defaults to name-version.jar).");
-        Output.print("  ^b^rep-atom^r^ is repoURI[::type] (type is optional and defaults to ply, must be either ply or maven).");
+        Output.print("  ^b^dep-atom^r^ is namespace:name:version[:artifactName] (artifactName is optional and defaults to name-version.jar).");
+        Output.print("  ^b^rep-atom^r^ is [type:]repoURI (type is optional and defaults to ply, must be either ply or maven).");
         Output.print("  if no command is passed then dependency resolution is done for all dependencies against the known repositories.");
         Output.print("  Dependencies can be grouped by ^b^context^r^ (i.e. test).  The default context is null.");
     }

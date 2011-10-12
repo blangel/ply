@@ -32,9 +32,9 @@ public class Deps {
         String version = Props.getValue("project", Props.DEFAULT_SCOPE, "version");
         String artifactName = Props.getValue("project", Props.DEFAULT_SCOPE, "artifact.name");
         String defaultArtifactName = name + "-" + version + ".jar";
-        String propName = namespace + "::" + name;
+        String propName = namespace + ":" + name;
         // don't pollute by placing artifactName explicitly even though it's the default
-        String propValue = version + (artifactName.equals(defaultArtifactName) ? "" : "::" + artifactName);
+        String propValue = version + (artifactName.equals(defaultArtifactName) ? "" : ":" + artifactName);
         return new Prop("project", Props.DEFAULT_SCOPE, propName, propValue, true);
     }
 
@@ -69,7 +69,7 @@ public class Deps {
         if (localDepFile.exists()) {
             // use the unresolved property value as we don't want to pollute by specifying an artifactName when it
             // is in fact just the default.
-            String dependencyAtomKey = dependencyAtom.getPropertyName() + "::" + dependencyAtom.getPropertyValue();
+            String dependencyAtomKey = dependencyAtom.getPropertyName() + ":" + dependencyAtom.getPropertyValue();
             if (!dependencyFiles.contains(dependencyAtomKey)) {
                 dependencyFiles.put(dependencyAtomKey, localDepFile.getPath());
                 // TODO - should this also resave the transitive deps file?
@@ -153,9 +153,9 @@ public class Deps {
         for (String dependency : transitiveDependencies.stringPropertyNames()) {
             error.set(null);
             String dependencyVersion = transitiveDependencies.getProperty(dependency);
-            DependencyAtom transitiveDependencyAtom = DependencyAtom.parse(dependency + "::" + dependencyVersion, error);
+            DependencyAtom transitiveDependencyAtom = DependencyAtom.parse(dependency + ":" + dependencyVersion, error);
             if (transitiveDependencyAtom == null) {
-                Output.print("^info^ Dependency %s::%s invalid; missing %s, skipping.", dependency,
+                Output.print("^info^ Dependency %s:%s invalid; missing %s, skipping.", dependency,
                         dependencyVersion, error.get());
                 continue;
             }

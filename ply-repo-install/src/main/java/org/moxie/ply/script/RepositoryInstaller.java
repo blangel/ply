@@ -2,6 +2,8 @@ package org.moxie.ply.script;
 
 import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
+import org.moxie.ply.dep.Deps;
+import org.moxie.ply.dep.RepositoryAtom;
 import org.moxie.ply.props.Props;
 
 import java.io.File;
@@ -37,19 +39,17 @@ public class RepositoryInstaller {
 
         String localRepoProp = Props.getValue("depmngr", Props.DEFAULT_SCOPE, "localRepo");
         // determine repo type.
-        boolean localRepoIsPly = true;
-        String[] resolvedLocalRepo = localRepoProp.split("::");
-        if (resolvedLocalRepo.length == 2) {
-            String type = resolvedLocalRepo[1];
-            if ("maven".equals(type)) {
-                localRepoIsPly = false;
-            }
+        boolean localRepoIsPly = !(localRepoProp.startsWith(RepositoryAtom.MAVEN_REPO_TYPE_PREFIX));
+        if (!localRepoIsPly) {
+            localRepoProp = localRepoProp.substring(RepositoryAtom.MAVEN_REPO_TYPE_PREFIX.length());
+        } else if (localRepoProp.startsWith(RepositoryAtom.PLY_REPO_TYPE_PREFIX)) {
+            localRepoProp = localRepoProp.substring(RepositoryAtom.PLY_REPO_TYPE_PREFIX.length());
         }
 
         String namespace = Props.getValue("project", Props.DEFAULT_SCOPE, "namespace");
         String name = Props.getValue("project", Props.DEFAULT_SCOPE, "name");
         String version = Props.getValue("project", Props.DEFAULT_SCOPE, "version");
-        File localRepoBase = new File(resolvedLocalRepo[0]);
+        File localRepoBase = new File(localRepoProp);
         if (!localRepoBase.exists()) {
             Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoBase.getPath());
             System.exit(1);
