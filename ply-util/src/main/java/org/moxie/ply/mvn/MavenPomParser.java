@@ -1,5 +1,6 @@
 package org.moxie.ply.mvn;
 
+import org.moxie.ply.Output;
 import org.moxie.ply.dep.RepositoryAtom;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -37,11 +38,101 @@ public interface MavenPomParser {
          * Holds a collection of resolved property values and un-resolved dependencies from parsing a pom file.
          */
         private static class ParseResult {
+
+            /**
+             * An interim dependency; may not have all information until things like <dependencyManagement> tags are parsed.
+             */
+            private static class Incomplete {
+                private String groupId;
+                private String artifactId;
+                private String version;
+                private String classifier;
+                private String type;
+                private String scope;
+                private String optional;
+                private Boolean systemPath;
+                private boolean resolutionOnly; // for deps found in dep-mngt (being kept for version resolution)
+                private Incomplete(String groupId, String artifactId, String version, String classifier, String type,
+                                   String scope, String optional, Boolean systemPath, boolean resolutionOnly) {
+                    this.groupId = groupId;
+                    this.artifactId = artifactId;
+                    this.version = version;
+                    this.classifier = classifier;
+                    this.type = type;
+                    this.scope = scope;
+                    this.optional = optional;
+                    this.systemPath = systemPath;
+                    this.resolutionOnly = resolutionOnly;
+                }
+                private void complete(Map<String, String> placement) {
+                    if (resolutionOnly || shouldSkip(scope, optional, systemPath)) {
+                        return; // not applicable
+                    } else if ((version == null) || version.isEmpty()) {
+                        Output.print("^warn^ Encountered dependency without a version - %s:%s:%s:%s:%s", groupId, artifactId, version, classifier, type);
+                    }
+                    if (classifier.isEmpty() && (type.isEmpty() || "jar".equals(type))) {
+                        placement.put(groupId + ":" + artifactId, version);
+                    } else {
+                        String artifactName = artifactId + "-" + version + (classifier.isEmpty() ? "" : "-" + classifier) + "." + (type.isEmpty() ? "jar" : type);
+                        placement.put(groupId + ":" + artifactId, version + ":" + artifactName);
+                    }
+                }
+            }
+
             private final Map<String, String> mavenProperties;
-            private final Map<String, String> mavenDependencies;
-            public ParseResult() {
+
+            private final Map<String, Incomplete> mavenIncompleteDeps;
+
+            private ParseResult() {
                 this.mavenProperties = new HashMap<String, String>();
-                this.mavenDependencies = new HashMap<String, String>();
+                this.mavenIncompleteDeps = new HashMap<String, Incomplete>();
+            }
+
+            private void addDep(String groupId, String artifactId, String version, String classifier, String type,
+                                String scope, String optional, Boolean systemPath, boolean overrideExisting, boolean resolutionOnly) {
+                String key = groupId + ":" + artifactId;
+                if (mavenIncompleteDeps.containsKey(key)) {
+                    Incomplete incomplete = mavenIncompleteDeps.get(key);
+                    incomplete.version = (overrideExisting
+                            || ((incomplete.version == null) || incomplete.version.isEmpty())) ? version : incomplete.version;
+                    incomplete.classifier = (overrideExisting
+                            || ((incomplete.classifier == null) || incomplete.classifier.isEmpty())) ? classifier : incomplete.classifier;
+                    incomplete.type = (overrideExisting
+                            || ((incomplete.type == null) || incomplete.type.isEmpty())) ? type : incomplete.type;
+                    incomplete.scope = (overrideExisting
+                            || ((incomplete.scope == null) || incomplete.scope.isEmpty()) ? scope : incomplete.scope);
+                    incomplete.optional = (overrideExisting
+                            || ((incomplete.optional == null) || incomplete.optional.isEmpty()) ? optional : incomplete.optional);
+                    incomplete.systemPath = (overrideExisting || incomplete.systemPath == null ? systemPath : incomplete.systemPath);
+                    // not applicable for overrides...must set regardless
+                    if (incomplete.resolutionOnly && !resolutionOnly) {
+                        incomplete.resolutionOnly = false;
+                    }
+                } else {
+                    mavenIncompleteDeps.put(key, new Incomplete(groupId, artifactId, version, classifier, type, scope,
+                            optional, systemPath, resolutionOnly));
+                }
+            }
+
+            private static boolean shouldSkip(String scope, String optional, Boolean systemPath) {
+                if ((systemPath != null) && systemPath) {
+                    return true;
+                } else if (!"compile".equals(scope)) {
+                    // TODO - revisit ... only include compile scoped deps as rest are not for compilation
+                    // TODO - and are not transitive; see http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html.
+                    return true;
+                } else if (Boolean.valueOf(optional)) {
+                    return true;
+                }
+                return false;
+            }
+
+            private Map<String, String> resolveDeps() {
+                Map<String, String> deps = new HashMap<String, String>(mavenIncompleteDeps.size());
+                for (Incomplete incomplete : mavenIncompleteDeps.values()) {
+                    incomplete.complete(deps);
+                }
+                return deps;
             }
         }
 
@@ -49,19 +140,14 @@ public interface MavenPomParser {
             try {
                 ParseResult result = parse(pomUrlPath, repositoryAtom);
                 Properties properties = new Properties();
-                for (String dependencyKey : result.mavenDependencies.keySet()) {
+                Map<String, String> resolvedDeps = result.resolveDeps();
+                for (String dependencyKey : resolvedDeps.keySet()) {
                     String filteredDependencyKey = dependencyKey;
-                    String filteredDependencyValue = result.mavenDependencies.get(dependencyKey);
+                    String filteredDependencyValue = resolvedDeps.get(dependencyKey);
                     if (filteredDependencyKey.contains("${") || filteredDependencyValue.contains("${")) {
                         for (String mavenProperty : result.mavenProperties.keySet()) {
-                            if (filteredDependencyKey.contains("${" + mavenProperty + "}")) {
-                                filteredDependencyKey = filteredDependencyKey.replaceAll("\\$\\{" + mavenProperty.replaceAll("\\.", "\\\\.") + "\\}",
-                                        result.mavenProperties.get(mavenProperty));
-                            }
-                            if (filteredDependencyValue.contains("${" + mavenProperty + "}")) {
-                                filteredDependencyValue = filteredDependencyValue.replaceAll("\\$\\{" + mavenProperty.replaceAll("\\.", "\\\\.") + "\\}",
-                                        result.mavenProperties.get(mavenProperty));
-                            }
+                            filteredDependencyKey = filter(filteredDependencyKey, mavenProperty, result.mavenProperties);
+                            filteredDependencyValue = filter(filteredDependencyValue, mavenProperty, result.mavenProperties);
                         }
                     }
                     properties.put(filteredDependencyKey, filteredDependencyValue);
@@ -97,8 +183,10 @@ public interface MavenPomParser {
             for (int i = 0; i < pomChildren.getLength(); i++) {
                 Node child = pomChildren.item(i);
                 String nodeName = child.getNodeName();
-                if ("dependencies".equals(nodeName)) {
-                    parseDependencies(child, parseResult);
+                if ("dependencyManagement".equals(nodeName)) {
+                    parseDependencyManagement(child, parseResult);
+                } else if ("dependencies".equals(nodeName)) {
+                    parseDependencies(child, parseResult, false);
                 } else if ("properties".equals(nodeName)) {
                     parseProperties(child, parseResult);
                 } else if ("groupId".equals(nodeName)) {
@@ -118,14 +206,26 @@ public interface MavenPomParser {
             }
         }
 
-        private void parseDependencies(Node dependenciesNode, ParseResult parseResult) {
+        private void parseDependencyManagement(Node dependencyManagementNode, ParseResult parseResult) {
+            NodeList dependencyManagementChildren = dependencyManagementNode.getChildNodes();
+            for (int i = 0; i < dependencyManagementChildren.getLength(); i++) {
+                Node dependenciesNode = dependencyManagementChildren.item(i);
+                if ("dependencies".equals(dependenciesNode.getNodeName())) {
+                    parseDependencies(dependenciesNode, parseResult, true);
+                    break;
+                }
+            }
+        }
+
+        private void parseDependencies(Node dependenciesNode, ParseResult parseResult, boolean resolutionOnly) {
             NodeList dependencies = dependenciesNode.getChildNodes();
-            depLoop : for (int i = 0; i < dependencies.getLength(); i++) {
+            for (int i = 0; i < dependencies.getLength(); i++) {
                 if (!"dependency".equals(dependencies.item(i).getNodeName())) {
                     continue;
                 }
                 NodeList dependencyNode = dependencies.item(i).getChildNodes();
-                String groupId = "", artifactId = "", version = "", classifier = "", type = "";
+                String groupId = "", artifactId = "", version = "", classifier = "", type = "", scope = "", optional = "";
+                Boolean systemPath = null;
                 for (int j = 0; j < dependencyNode.getLength(); j++) {
                     Node child = dependencyNode.item(j);
                     if ("groupId".equals(child.getNodeName())) {
@@ -139,29 +239,16 @@ public interface MavenPomParser {
                     } else if ("type".equals(child.getNodeName())) {
                         type = child.getTextContent();
                     } else if ("scope".equals(child.getNodeName())) {
-                        if (!"compile".equals(child.getTextContent())) {
-                            // TODO - revisit ... only include compile scoped deps as rest are not for compilation
-                            // TODO - and are not transitive; see http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html.
-                            continue depLoop;
-                        }
+                        scope = child.getTextContent();
                     } else if ("optional".equals(child.getNodeName())) {
-                        if (Boolean.valueOf(child.getTextContent())) {
-                            continue depLoop;
-                        }
+                        optional = child.getTextContent();
                     } else if ("systemPath".equals(child.getNodeName())) {
-                        // always skip these, no way to resolve them
-                        continue depLoop;
+                        systemPath = true;
                     }
                 }
-                // iterating child->parent, per maven, child overrides parent, only place in if not already exists.
-                if (!parseResult.mavenDependencies.containsKey(groupId + ":" + artifactId)) {
-                    if (classifier.isEmpty() && (type.isEmpty() || "jar".equals(type))) {
-                        parseResult.mavenDependencies.put(groupId + ":" + artifactId, version);
-                    } else {
-                        String artifactName = artifactId + "-" + version + (classifier.isEmpty() ? "" : "-" + classifier) + "." + (type.isEmpty() ? "jar" : type);
-                        parseResult.mavenDependencies.put(groupId + ":" + artifactId, version + ":" + artifactName);
-                    }
-                }
+                // iterating child->parent, per maven, child overrides parent, only place in if not already
+                // exists (hence !override).
+                parseResult.addDep(groupId, artifactId, version, classifier, type, scope, optional, systemPath, false, resolutionOnly);
             }
         }
 
@@ -176,21 +263,23 @@ public interface MavenPomParser {
                     && !parseResult.mavenProperties.containsKey("project.groupId")) {
                 return;
             }
-            Map<String, String> filteredDeps = new HashMap<String, String>(parseResult.mavenDependencies.size());
-            for (String dependencyKey : parseResult.mavenDependencies.keySet()) {
+            Map<String, ParseResult.Incomplete> filteredDeps = new HashMap<String, ParseResult.Incomplete>(parseResult.mavenIncompleteDeps.size());
+            for (String dependencyKey : parseResult.mavenIncompleteDeps.keySet()) {
                 String filteredDependencyKey = dependencyKey;
-                String filteredDependencyValue = parseResult.mavenDependencies.get(dependencyKey);
-                filteredDependencyKey = filter(filteredDependencyKey, "project.version", parseResult.mavenProperties);
+                ParseResult.Incomplete incomplete = parseResult.mavenIncompleteDeps.get(dependencyKey);
                 filteredDependencyKey = filter(filteredDependencyKey, "project.groupId", parseResult.mavenProperties);
-                filteredDependencyValue = filter(filteredDependencyValue, "project.version", parseResult.mavenProperties);
-                filteredDependencyValue = filter(filteredDependencyValue, "project.groupId", parseResult.mavenProperties);
-                filteredDeps.put(filteredDependencyKey, filteredDependencyValue);
+                incomplete.groupId = filter(incomplete.groupId, "project.groupId", parseResult.mavenProperties);
+                incomplete.version = filter(incomplete.version, "project.version", parseResult.mavenProperties);
+                filteredDeps.put(filteredDependencyKey, incomplete);
             }
-            parseResult.mavenDependencies.clear();
-            parseResult.mavenDependencies.putAll(filteredDeps);
+            parseResult.mavenIncompleteDeps.clear();
+            parseResult.mavenIncompleteDeps.putAll(filteredDeps);
         }
 
         private static String filter(String toFilter, String filterValue, Map<String, String> replacementMap) {
+            if ((toFilter == null) || (filterValue == null)) {
+                return toFilter;
+            }
             if (toFilter.contains("${" + filterValue + "}")) {
                 return toFilter.replaceAll("\\$\\{" + filterValue.replaceAll("\\.", "\\\\.") + "\\}",
                         replacementMap.get(filterValue));

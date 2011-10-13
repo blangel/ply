@@ -155,7 +155,7 @@ public class Deps {
             String dependencyVersion = transitiveDependencies.getProperty(dependency);
             DependencyAtom transitiveDependencyAtom = DependencyAtom.parse(dependency + ":" + dependencyVersion, error);
             if (transitiveDependencyAtom == null) {
-                Output.print("^info^ Dependency %s:%s invalid; missing %s, skipping.", dependency,
+                Output.print("^warn^ Dependency %s:%s invalid; missing %s, skipping.", dependency,
                         dependencyVersion, error.get());
                 continue;
             }
