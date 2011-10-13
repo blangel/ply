@@ -78,7 +78,11 @@ public class MavenReporter extends RunListener {
 
         private synchronized void endTest(Failure failure) {
             int index = reportNameMap.get(failure.getDescription().getDisplayName());
-            failureCount.addAndGet(1);
+            if (ReportTestFailure.isError(failure)) {
+                errorsCount.addAndGet(1);
+            } else {
+                failureCount.addAndGet(1);
+            }
             ReportTest test = tests.get(index);
             test.finish(failure);
         }
@@ -180,25 +184,40 @@ public class MavenReporter extends RunListener {
 
         private final String message;
 
-        private final String type;
+        private final String exceptionType;
 
         private final String trace;
 
         private ReportTestFailure(Failure failure) {
             this.message = failure.getMessage();
             this.trace = failure.getTrace();
-            this.type = failure.getException().getClass().getName();
+            this.exceptionType = failure.getException().getClass().getName();
         }
 
         private String toXml() {
-            StringBuilder xmlBuffer = new StringBuilder("<failure message=\"");
+            // be inline with surefire's 'error' notion (TODO - is this actually what surefire uses to distinguish an error?)
+            String failureType = (isError(exceptionType) ? "error" : "failure");
+            StringBuilder xmlBuffer = new StringBuilder("<");
+            xmlBuffer.append(failureType);
+            xmlBuffer.append(" message=\"");
             xmlBuffer.append(StringEscapeUtils.escapeXml(message));
             xmlBuffer.append("\" type=\"");
-            xmlBuffer.append(StringEscapeUtils.escapeXml(type));
+            xmlBuffer.append(StringEscapeUtils.escapeXml(exceptionType));
             xmlBuffer.append("\">");
             xmlBuffer.append(StringEscapeUtils.escapeXml(trace));
-            xmlBuffer.append("\n</failure>");
+            xmlBuffer.append("\n    </");
+            xmlBuffer.append(failureType);
+            xmlBuffer.append(">");
             return xmlBuffer.toString();
+        }
+
+        private static boolean isError(Failure failure) {
+            Throwable excep = failure.getException();
+            return isError(excep.getClass().getName());
+        }
+
+        private static boolean isError(String exceptionType) {
+            return exceptionType.startsWith("junit") ? false : true;
         }
     }
 

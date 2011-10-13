@@ -33,7 +33,8 @@ public class Junit4RunListener extends RunListener {
         // need to go directly to stdout to avoid Output parsing prior to Exec handling
         if (failures.containsKey(description)) {
             Failure failure = failures.get(description);
-            System.out.println(String.format("^no_prefix^^red^^i^ \u2620 FAILURE \u2620 ^r^ [ %s ]", failure.getMessage()));
+            String message = (failure.getMessage() == null ? "" : String.format("[ %s ]", failure.getMessage()));
+            System.out.println(String.format("^no_prefix^^red^^i^ \u2620 FAILURE \u2620 ^r^ %s", message));
         } else {
             System.out.println("^no_prefix^^green^^i^ \u2713 SUCCESS \u2713 ^r^");
         }
