@@ -115,6 +115,41 @@ public class Output {
     }
 
     public static void print(String message, Object ... args) {
+        String formatted = resolve(message, args);
+        if (formatted == null) {
+            return;
+        }
+        System.out.println(formatted);
+    }
+
+    public static void printNoLine(String message, Object ... args) {
+        String formatted = resolve(message, args);
+        if (formatted == null) {
+            return;
+        }
+        System.out.print(formatted);
+    }
+
+    static void printFromExec(String message, Object ... args) {
+        String scriptArg = (String) args[1];
+        boolean noLine = scriptArg.contains("^no_line^");
+        boolean noPrefix = scriptArg.contains("^no_prefix^");
+        if (noPrefix && noLine) {
+            printNoLine("%s", scriptArg.replaceFirst("\\^no_line\\^", "").replaceFirst("\\^no_prefix\\^", ""));
+        } else if (noPrefix) {
+            print("%s", scriptArg.replaceFirst("\\^no_prefix\\^", ""));
+        } else if (noLine) {
+            printNoLine(message, args[0], scriptArg.replaceFirst("\\^no_line\\^", ""));
+        } else {
+            print(message, args);
+        }
+    }
+
+    public static void print(Throwable t) {
+        print("^error^ Message: ^i^^red^%s^r^", (t == null ? "" : t.getMessage()));
+    }
+
+    private static String resolve(String message, Object[] args) {
         String formatted = String.format(message, args);
         // TODO - fix!  this case fails: ^cyan^warn^r^ if ^warn^ is evaluated first...really meant for ^cyan^ and ^r^
         // TODO - to be resolved
@@ -125,15 +160,11 @@ public class Output {
                 if (("warn".equals(key) && !warnLevel.get()) || ("info".equals(key) && !infoLevel.get())
                         || ("dbug".equals(key) && !dbugLevel.get())) {
                     // this is a log statement for a disabled log-level, skip.
-                    return;
+                    return null;
                 }
                 formatted = matcher.replaceAll(termCode.output);
             }
         }
-        System.out.println(formatted);
-    }
-
-    public static void print(Throwable t) {
-        Output.print("^error^ Message: ^i^^red^%s^r^", (t == null ? "" : t.getMessage()));
+        return formatted;
     }
 }

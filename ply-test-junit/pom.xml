@@ -1,15 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.moxie.ply</groupId>
-    <artifactId>ply</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
 
-    <!-- project information -->
-    <name>A simple build system.</name>
+    <groupId>org.moxie.ply</groupId>
+    <artifactId>ply-test-junit</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <name>Script used to execute the project's junit tests.</name>
 
     <dependencies>
         <dependency>
@@ -17,11 +16,16 @@
             <artifactId>ply-util</artifactId>
             <version>1.0</version>
         </dependency>
+        <!-- for xml escaping -->
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.10</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -50,6 +54,19 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>org.moxie.ply.script.RepositoryInstaller</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-idea-plugin</artifactId>
                 <version>2.2</version>
                 <configuration>
@@ -60,31 +77,5 @@
         </plugins>
 
     </build>
-
-    <distributionManagement>
-        <repository>
-            <id>alana-nexus</id>
-            <name>Alana Nexus Repository</name>
-            <url>http://173.45.236.244:8080/nexus/content/repositories/releases/</url>
-        </repository>
-        <snapshotRepository>
-            <id>alana-nexus</id>
-            <name>Alana Nexus Snapshot Repository</name>
-            <url>http://173.45.236.244:8080/nexus/content/repositories/snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
-
-    <repositories>
-        <repository>
-            <id>alana-nexus</id>
-            <name>Alana Nexus Repository</name>
-            <url>http://173.45.236.244:8080/nexus/content/repositories/releases/</url>
-        </repository>
-        <repository>
-            <id>jboss</id>
-            <name>JBoss Repository</name>
-            <url>https://repository.jboss.org/nexus/content/groups/public-jboss/</url>
-        </repository>
-    </repositories>
 
 </project>

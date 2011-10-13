@@ -59,7 +59,7 @@ public final class Exec {
             BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
             String processStdoutLine;
             while ((processStdoutLine = lineReader.readLine()) != null) {
-                Output.print("[^green^%s^r^] %s", originalScriptName, processStdoutLine);
+                Output.printFromExec("[^green^%s^r^] %s", originalScriptName, processStdoutLine);
             }
             int result = process.waitFor();
             if (result == 0) {
