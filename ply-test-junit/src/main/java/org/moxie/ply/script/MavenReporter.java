@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -64,6 +65,7 @@ public class MavenReporter extends RunListener {
             totalCount.addAndGet(1);
             skippedCount.addAndGet(1);
             ReportTest test = new ReportTest(description);
+            test.finishByIgnore();
             tests.add(test);
             reportNameMap.put(test.name, index);
         }
@@ -130,6 +132,8 @@ public class MavenReporter extends RunListener {
 
         private final AtomicReference<ReportTestFailure> failure = new AtomicReference<ReportTestFailure>(null);
 
+        private final AtomicBoolean ignored = new AtomicBoolean(false);
+
         private ReportTest(Description description) {
             this.name = description.getDisplayName();
             this.className = description.getClassName();
@@ -139,6 +143,11 @@ public class MavenReporter extends RunListener {
 
         private void finish() {
             duration.set(System.currentTimeMillis() - startTime);
+        }
+
+        private void finishByIgnore() {
+            finish();
+            ignored.set(true);
         }
 
         private void finish(Failure failure) {
@@ -155,9 +164,11 @@ public class MavenReporter extends RunListener {
             xmlBuffer.append(methodName);
             xmlBuffer.append("\"");
             if (failure.get() != null) {
-                xmlBuffer.append(">\n  ");
+                xmlBuffer.append(">\n    ");
                 xmlBuffer.append(failure.get().toXml());
-                xmlBuffer.append("\n</testcase>");
+                xmlBuffer.append("\n  </testcase>");
+            } else if (ignored.get()) {
+                xmlBuffer.append(">\n    <skipped/>\n  </testcase>");
             } else {
                 xmlBuffer.append("/>");
             }
