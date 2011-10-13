@@ -133,7 +133,7 @@ public class CompilerScript {
         this.srcDir = srcDir;
         this.sourceFilePaths = new HashSet<String>();
         // ensure the build directories are created
-        String buildClassesPath = Props.getValue("compiler", scope, "buildPath"); // TODO scope
+        String buildClassesPath = Props.getValue("compiler", scope, "buildPath");
         File buildClassesDir = new File(buildClassesPath);
         buildClassesDir.mkdirs();
         // load the src-changed.properties file from the build directory.
@@ -263,7 +263,9 @@ public class CompilerScript {
     private static Properties addDependenciesToClasspathArgs(String scope) {
         String buildPath = Props.getValue("project", scope, "build.dir");
         // load the resolved-deps.properties file from the build directory.
-        File dependenciesFile = new File(buildPath + (buildPath.endsWith(File.separator) ? "" : File.separator) + "resolved-deps.properties");
+        String suffix = (scope.isEmpty() ? "" : scope + ".");
+        File dependenciesFile = new File(buildPath + (buildPath.endsWith(File.separator) ? "" : File.separator)
+                + "resolved-deps." + suffix + "properties");
         if (!dependenciesFile.exists()) {
             return new Properties();
         }
