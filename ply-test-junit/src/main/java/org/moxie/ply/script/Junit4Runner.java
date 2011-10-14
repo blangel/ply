@@ -23,6 +23,8 @@ public class Junit4Runner {
 
     private final Filter filter;
 
+    private final AllFilterCollectPad padding;
+
     private final String originalMatchers;
 
     public Junit4Runner(Set<Class> classes) {
@@ -40,7 +42,8 @@ public class Junit4Runner {
                 filter.union(new DescriptionMatcher(matcher));
             }
         }
-        this.filter = filter;
+        this.padding = new AllFilterCollectPad();
+        this.filter = (filter == null ? padding : padding.intersect(filter));
         this.originalMatchers = unsplitMatchers;
     }
 
@@ -51,7 +54,7 @@ public class Junit4Runner {
         }
 
         JUnitCore jUnitCore = new JUnitCore();
-        jUnitCore.addListener(new Junit4RunListener());
+        jUnitCore.addListener(new Junit4RunListener(padding));
         // TODO - allow skipping of report generation or always skip and allow override
         jUnitCore.addListener(new MavenReporter());
 

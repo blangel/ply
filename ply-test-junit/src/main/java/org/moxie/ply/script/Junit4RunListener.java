@@ -15,9 +15,19 @@ import java.util.Map;
  */
 public class Junit4RunListener extends RunListener {
 
-    final Map<Description, Failure> failures = new HashMap<Description, Failure>();
+    private final Map<Description, Failure> failures = new HashMap<Description, Failure>();
 
-    final Map<String, Integer> methodNameOffsets = new HashMap<String, Integer>();
+    private final Map<String, Integer> methodNameOffsets = new HashMap<String, Integer>();
+
+    private final AllFilterCollectPad padding;
+
+    public Junit4RunListener() {
+        this.padding = null;
+    }
+
+    public Junit4RunListener(AllFilterCollectPad padding) {
+        this.padding = padding;
+    }
 
     @Override public void testRunStarted(Description description) throws Exception {
         if (isSyntheticDescription(description)) {
@@ -33,7 +43,7 @@ public class Junit4RunListener extends RunListener {
         }
         handleNewDescription(description);
         // need to go directly to stdout to avoid Output parsing prior to Exec handling
-        System.out.println(String.format("^no_line^\t^b^%s^r^ \t", description.getMethodName()));
+        System.out.println(String.format("^no_line^\t^b^%s^r^ ", description.getMethodName()));
     }
 
     @Override public void testFinished(Description description) throws Exception {
@@ -44,9 +54,9 @@ public class Junit4RunListener extends RunListener {
         if (failures.containsKey(description)) {
             Failure failure = failures.get(description);
             String message = createEasilyIdentifiableDiffMessage(failure, failure.getMessage());
-            System.out.println(String.format("^no_prefix^^red^^i^ \u2620 FAILURE \u2620 ^r^ %s", message));
+            System.out.println(String.format("^no_prefix^%s^red^^i^ \u2620 FAILURE \u2620 ^r^ %s", getPad(description), message));
         } else {
-            System.out.println("^no_prefix^^green^^i^ \u2713 SUCCESS \u2713 ^r^");
+            System.out.println(String.format("^no_prefix^%s^green^^i^ \u2713 SUCCESS \u2713 ^r^", getPad(description)));
         }
     }
 
@@ -62,8 +72,8 @@ public class Junit4RunListener extends RunListener {
             return;
         }
         handleNewDescription(description);
-        System.out.println(String.format("^no_line^\t^b^%s^r^ \t", description.getMethodName()));
-        System.out.println("^no_prefix^^yellow^^i^ \u26A0 IGNORED \u26A0 ^r^");
+        System.out.println(String.format("^no_line^\t^b^%s^r^ ", description.getMethodName()));
+        System.out.println(String.format("^no_prefix^%s^yellow^^i^ \u26A0 IGNORED \u26A0 ^r^", getPad(description)));
     }
 
     public static boolean isSyntheticDescription(Description description) {
@@ -77,6 +87,18 @@ public class Junit4RunListener extends RunListener {
             methodNameOffsets.put(description.getClassName(), 0); // TODO - method name pad
             Output.print("^b^%s^r^", description.getClassName());
         }
+    }
+
+    private String getPad(Description description) {
+        if (padding == null) {
+            return "";
+        }
+        int pad = padding.getMaxMethodNameLength() - description.getMethodName().length();
+        StringBuilder buffer = new StringBuilder(pad);
+        for (int i = 0; i < pad; i++) {
+            buffer.append(' ');
+        }
+        return buffer.toString();
     }
 
     private static String createEasilyIdentifiableDiffMessage(Failure failure, String message) {
