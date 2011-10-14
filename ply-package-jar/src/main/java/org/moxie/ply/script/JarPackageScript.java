@@ -18,29 +18,27 @@ import java.util.Properties;
  * The script takes one optional parameter; scope.  The parameter, by convention with other scripts, is prepended
  * with '--'.  If it is null, the default scope is used.
  *
- * Packages all files within {@literal compiler[.scope].buildPath} into a jar file and stores within
- * {@literal project[.scope].build.dir} as {@literal package-jar[.scope].jar-name}.jar
+ * Packages all files within {@literal compiler[#scope]#buildPath} and {@literal project[#scope]#res.build.dir} into a
+ * jar file and stores within {@literal project[#scope]#build.dir} as {@literal package-jar[#scope]#jar-name}.jar
  * The property file used to configure this script is {@literal package-jar[.scope].properties} and so the context is
  * {@literal package-jar}.
  * The following properties exist:
- * jarName=string [[default=${project[.scope].artifact.name}]] (the name of the jar file to create [excluding the '.jar'])
+ * jarName=string [[default=${project[#scope]#artifact.name}]] (the name of the jar file to create [excluding the '.jar'])
  * verbose=boolean [[default=false]] (print verbose output).
  * compress=boolean [[default=true]] (if true, the jar file will be compressed).
  * manifest.version=number [[default=1.0]] (the manifest version number to use).
  * manifest.createdBy=string [[default=ply]] (who created the manifest).
  * manifest.mainClass=string [[default=""]] (the main class to make the jar executable).
  * manifest.classPath=string [[default=""]] (the class path associated with the jar).
- * manifest.spec.title=string [[default=${project[.scope].name}]] (the specification title).
- * manifest.spec.version=string [[default=${project[.scope].version}]] (the specification version).
- * manifest.impl.title=string [[default=${project[.scope].name}]] (the implementation title).
- * manifest.impl.version=string [[default=${project[.scope].version}]] (the implementation title).
- * Additionally, any other project name starting with package-jar[.scope].manifest.* will be included.  For instance,
+ * manifest.spec.title=string [[default=${project[#scope]#name}]] (the specification title).
+ * manifest.spec.version=string [[default=${project[#scope]#version}]] (the specification version).
+ * manifest.impl.title=string [[default=${project[#scope]#name}]] (the implementation title).
+ * manifest.impl.version=string [[default=${project[#scope]#version}]] (the implementation title).
+ * Additionally, any other project name starting with package-jar[#scope]#manifest.* will be included.  For instance,
  * if there is a property=value of manifest.Implementation-Vendor=Moxie in the package-jar[.scope].properties file then
  * there will be an entry in the manifest for 'Implementation-Vendor' with value 'Moxie'.
  * Any manifest property with a null or empty-string value will not be included in the manifest.
  *
- * TODO
- *   - Handle resources
  */
 public class JarPackageScript {
 
@@ -180,7 +178,16 @@ public class JarPackageScript {
             System.exit(1);
         }
 
-        return new String[] { jarScript, options, jarName, manifestFile, "-C", inputFiles, ".", "-C", buildDir, "META-INF/ply" };
+        String resBuildDir = Props.getValue("project", scope, "res.build.dir");
+        File resBuildDirFile = new File(resBuildDir);
+        if (resBuildDirFile.exists()) {
+            return new String[] { jarScript, options, jarName, manifestFile, "-C", inputFiles, ".",
+                                                                         "-C", buildDir, "META-INF/ply",
+                                                                         "-C", resBuildDir, "." };
+        } else {
+            return new String[] { jarScript, options, jarName, manifestFile, "-C", inputFiles, ".",
+                                                                         "-C", buildDir, "META-INF/ply" };
+        }
     }
 
     private static String getManifestFilePath(String scope) {
