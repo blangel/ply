@@ -84,7 +84,7 @@ public class Junit4RunListener extends RunListener {
 
     private void handleNewDescription(Description description) {
         if (!methodNameOffsets.containsKey(description.getClassName())) {
-            methodNameOffsets.put(description.getClassName(), 0); // TODO - method name pad
+            methodNameOffsets.put(description.getClassName(), 0);
             Output.print("^b^%s^r^", description.getClassName());
         }
     }

@@ -4,6 +4,8 @@ import org.junit.runner.Description;
 import org.junit.runner.manipulation.Filter;
 import org.moxie.ply.Output;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -17,11 +19,18 @@ public class AllFilterCollectPad extends Filter {
 
     private final AtomicInteger maxMethodName = new AtomicInteger(0);
 
+    private final List<Filter> intersections = new ArrayList<Filter>();
+
     public int getMaxMethodNameLength() {
         return maxMethodName.get();
     }
 
     @Override public boolean shouldRun(Description description) {
+        for (Filter filter : intersections) {
+            if (!filter.shouldRun(description)) {
+                return false;
+            }
+        }
         if ((description.getMethodName() != null) && (description.getMethodName().length() > maxMethodName.get())) {
             maxMethodName.set(description.getMethodName().length());
         }
@@ -32,4 +41,10 @@ public class AllFilterCollectPad extends Filter {
         return "all tests (collecting padding information)";
     }
 
+    @Override public Filter intersect(Filter second) {
+        if (second != this) {
+            intersections.add(second);
+        }
+        return this;
+    }
 }
