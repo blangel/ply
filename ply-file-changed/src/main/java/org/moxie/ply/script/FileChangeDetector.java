@@ -66,7 +66,11 @@ public class FileChangeDetector {
     private static void collectAllFileChanges(File from, Properties changedList, Properties into, Properties existing,
                                               String invocationName) {
         String epochTime = String.valueOf(System.currentTimeMillis());
-        for (File file : from.listFiles()) {
+        File[] subfiles = from.listFiles();
+        if (subfiles == null) {
+            return;
+        }
+        for (File file : subfiles) {
             if (file.isDirectory()) {
                 collectAllFileChanges(file, changedList, into, existing, invocationName);
             } else {
