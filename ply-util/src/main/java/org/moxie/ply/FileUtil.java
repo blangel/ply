@@ -13,6 +13,30 @@ import java.net.URL;
 public class FileUtil {
 
     /**
+     * Copies the contents of {@code fromDir} to {@code toDir} recursively.
+     * @param fromDir from which to copy
+     * @param toDir to which to copy
+     * @return true on success; false otherwise
+     */
+    public static boolean copyDir(File fromDir, File toDir) {
+        if (!fromDir.isDirectory() || !fromDir.exists()) {
+            return false;
+        }
+        toDir.mkdirs();
+        for (File subFile : fromDir.listFiles()) {
+            File toDirSubFile = new File(toDir.getPath() + File.separator + subFile.getName());
+            if (subFile.isDirectory()) {
+                if (!copyDir(subFile, toDirSubFile)) {
+                    return false;
+                }
+            } else if (!copy(subFile, toDirSubFile)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Copies {@code from} to {@code to}, creating all directories up to {@code to} and the file itself.
      * @param from which to copy
      * @param to which to copy
