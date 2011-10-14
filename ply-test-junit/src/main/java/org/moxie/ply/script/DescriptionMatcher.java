@@ -2,56 +2,73 @@ package org.moxie.ply.script;
 
 import org.junit.runner.Description;
 import org.junit.runner.manipulation.Filter;
+import org.moxie.ply.Output;
+
+import java.util.regex.Pattern;
 
 /**
  * User: blangel
  * Date: 10/13/11
  * Time: 6:06 PM
  *
- * Given an ant-style wildcard path, will match package.class.method's for test execution.
+ * Given an ant-style wildcard path, will match package.class#method's for test execution.
  */
 public class DescriptionMatcher extends Filter {
 
-    private static class MatchPart {
-        private static enum Type { PKG_CLASS, METHOD }
-        private static enum Location { STARTS, CONTAINS, ENDS }
-
-        private final Type type;
-        private final Location location;
-        private final String matchSegment;
-
-        private MatchPart(Type type, Location location, String matchSegment) {
-            this.type = type;
-            this.location = location;
-            this.matchSegment = matchSegment;
-        }
-
-        private boolean matches(String match, Type type) {
-            if (this.type != type) {
-                return true;
-            }
-            switch (location) {
-                case STARTS:
-                    return match.startsWith(matchSegment);
-                case CONTAINS:
-                    return match.contains(matchSegment);
-                case ENDS:
-                    return match.endsWith(matchSegment);
-                default:
-                    throw new AssertionError("Programming error; unsupported MatchPart.Location " + location.name());
-            }
-        }
-    }
-
     private final String match;
 
-    public DescriptionMatcher(String match) {
-        this.match = match;
+    private final Pattern classOnlyPattern;
 
+    private final Pattern pattern;
+
+    public DescriptionMatcher(String match) {
+        this.match = match.replaceAll("\\.", "/"); // normalize to '/'
+        String regex = this.match;
+        String prefix = "", suffix = "";
+        // if no package specified, use any
+        if (!regex.contains("/") && !regex.startsWith("**")) {
+            prefix = ".*?/";
+        }
+        // if no method specified, use any
+        String packageClassOnly = regex;
+        if (!regex.contains("#")) {
+            suffix = "#.*";
+        } else {
+            packageClassOnly = regex.substring(0, regex.indexOf("#"));
+        }
+
+        // replace all '?' with a single character match
+        regex = regex.replaceAll("\\?", ".{1}");
+        packageClassOnly = packageClassOnly.replaceAll("\\?", ".{1}");
+        // replace all '**' with a match for any package
+        regex = regex.replaceAll("\\*\\*", ".+?");
+        packageClassOnly = packageClassOnly.replaceAll("\\*\\*", ".+?");
+        // replace all remaining '*' with a match for any character not package separator
+        regex = regex.replaceAll("\\*", "[^/]*?");
+        packageClassOnly = packageClassOnly.replaceAll("\\*", "[^/]*?");
+        this.pattern = Pattern.compile(prefix + regex + suffix);
+        this.classOnlyPattern = Pattern.compile(prefix + packageClassOnly);
     }
 
     @Override public boolean shouldRun(Description description) {
-        return false;
+        if (description.getMethodName() == null) {
+            String toMatch = description.getClassName();
+            toMatch = toMatch.replaceAll("\\.", "/"); // normalize to '/'
+            if (!classOnlyPattern.matcher(toMatch).matches()) {
+                return false;
+            }
+            for (Description child : description.getChildren()) {
+                String fullMatch = toMatch + "#" + child.getMethodName();
+                if (pattern.matcher(fullMatch).matches()) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            String toMatch = (description.getClassName() + "#" + description.getMethodName());
+            toMatch = toMatch.replaceAll("\\.", "/"); // normalize to '/'
+            return pattern.matcher(toMatch).matches();
+        }
     }
 
     @Override public String describe() {

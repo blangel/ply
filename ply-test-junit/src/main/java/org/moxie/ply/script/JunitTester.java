@@ -69,11 +69,18 @@ public class JunitTester {
             @Override public boolean accept(File dir, String name) {
                 return name.endsWith(".class");
             }
-        }; // TODO - augment with args[0]
+        };
         Set<String> classNames = getClasses(artifact, filter);
         Set<Class> classes = loadClasses(classNames, loader);
 
-        Junit4Runner junit4Runner = new Junit4Runner(classes);
+        String[] matchers = null;
+        String unsplitMatchers = null;
+        if (args.length == 1) {
+            unsplitMatchers = args[0];
+            matchers = args[0].split(",");
+        }
+
+        Junit4Runner junit4Runner = new Junit4Runner(classes, matchers, unsplitMatchers);
         junit4Runner.runTests();
 
     }
