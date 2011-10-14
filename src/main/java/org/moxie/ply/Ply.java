@@ -31,6 +31,7 @@ public class Ply {
         } catch (IllegalStateException ise) { // thrown from Config to indicate there is no local properties directory
             if (!"init".equals(args[0])) {
                 Output.print(ise.getMessage());
+                return;
             }
         }
         if ("--usage".equals(args[0])) {
