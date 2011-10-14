@@ -31,14 +31,13 @@ public class Junit4Runner {
 
     public Junit4Runner(Set<Class> classes, String[] matchers, String unsplitMatchers) {
         this.classes = classes;
-        Filter filter = null;
+        UnionFilter filter = null;
         if (matchers != null) {
             for (String matcher : matchers) {
                 if (filter == null) {
-                    filter = new DescriptionMatcher(matcher);
-                } else {
-                    filter.intersect(new DescriptionMatcher(matcher));
+                    filter = new UnionFilter();
                 }
+                filter.union(new DescriptionMatcher(matcher));
             }
         }
         this.filter = filter;

@@ -21,7 +21,7 @@ public class BitUtil {
             }
             sb.append(Integer.toHexString(v));
         }
-        return sb.toString();
+        return sb.toString().toUpperCase();
     }
 
 }

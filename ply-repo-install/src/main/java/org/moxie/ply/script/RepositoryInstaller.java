@@ -2,7 +2,6 @@ package org.moxie.ply.script;
 
 import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
-import org.moxie.ply.dep.Deps;
 import org.moxie.ply.dep.RepositoryAtom;
 import org.moxie.ply.props.Props;
 

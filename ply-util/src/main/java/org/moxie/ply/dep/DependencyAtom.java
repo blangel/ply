@@ -52,9 +52,22 @@ public class DependencyAtom {
     }
 
     public static DependencyAtom parse(String atom, AtomicReference<String> error) {
+        if (atom == null) {
+            return null;
+        }
+        atom = atom.trim();
+        if (atom.contains(" ")) {
+            if (error != null) {
+                error.set("Spaces not allowed in dependency atom.");
+            }
+            return null;
+        }
         String[] parsed = atom.split(":");
         if ((parsed.length < 3) || (parsed.length > 4)) {
             if (error != null) {
+                if ((parsed.length == 1) && parsed[0].isEmpty()) {
+                    parsed = new String[0];
+                }
                 switch (parsed.length) {
                     case 0: error.set("namespace, name and version"); break;
                     case 1: error.set("name and version"); break;
