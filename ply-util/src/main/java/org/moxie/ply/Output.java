@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * Support for colored VT-100 terminal output is controlled by the property {@literal color} within the
  * default context, {@literal ply}.
  */
-public class Output {
+public final class Output {
 
     /**
      * A regex {@link java.util.regex.Pattern} paired with its corresponding output string.
@@ -167,4 +167,6 @@ public class Output {
         }
         return formatted;
     }
+
+    private Output() { }
 }

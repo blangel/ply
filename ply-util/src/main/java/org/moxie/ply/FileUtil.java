@@ -10,7 +10,7 @@ import java.net.URL;
  *
  * Provides utilities when interacting with {@link File} objects.
  */
-public class FileUtil {
+public final class FileUtil {
 
     /**
      * Copies the contents of {@code fromDir} to {@code toDir} recursively.
@@ -116,5 +116,7 @@ public class FileUtil {
         }
         return false;
     }
+
+    private FileUtil() { }
 
 }

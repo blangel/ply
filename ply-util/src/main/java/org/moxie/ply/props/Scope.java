@@ -35,6 +35,11 @@ public class Scope {
     public final String fileSuffix;
 
     /**
+     * Either the empty string if name is empty or "#" + name.
+     */
+    public final String envSuffix;
+
+    /**
      * Either the empty string if name is empty or "^b^" + name + "^r^"
      */
     public final String forPrint;
@@ -42,6 +47,7 @@ public class Scope {
     public Scope(String scope) {
         this.name = (scope == null ? "" : scope);
         this.fileSuffix = (name.isEmpty() ? "" : "." + name);
+        this.envSuffix = (name.isEmpty() ? "" : "#" + name);
         this.forPrint = (name.isEmpty() ? "" : "^b^" + name + "^r^ ");
     }
 }

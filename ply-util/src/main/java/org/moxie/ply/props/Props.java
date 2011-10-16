@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 
 /**
  * User: blangel
@@ -75,7 +76,7 @@ public class Props {
         }
         for (String enivronmentProperty : System.getenv().keySet()) {
             if (filtered.contains("${" + enivronmentProperty + "}")) {
-                filtered = filtered.replaceAll("\\$\\{" + enivronmentProperty.replaceAll("\\.", "\\\\.") + "\\}",
+                filtered = filtered.replaceAll("\\$\\{" + Pattern.quote(enivronmentProperty) + "\\}",
                                                System.getenv(enivronmentProperty));
             }
         }
@@ -91,7 +92,7 @@ public class Props {
         for (String name : props.keySet()) {
             String toFind = prefix + name;
             if (value.contains("${" + toFind + "}")) {
-                value = value.replaceAll("\\$\\{" + toFind.replaceAll("\\.", "\\\\.") + "\\}",
+                value = value.replaceAll("\\$\\{" + Pattern.quote(toFind) + "\\}",
                                                filter(props.get(name)));
             }
         }
@@ -253,7 +254,7 @@ public class Props {
     }
 
     /**
-     * The returned map does include any inherited values for a scope (i.e.; if compiler.property1=value1 but
+     * The returned map does not include any inherited values for a scope (i.e.; if compiler.property1=value1 but
      * compiler.scope does not contain property1 then it's mapping will not contain such property1).
      * @param context for which to retrieve properties for {@code scope}
      * @param scope within {@code context} for which to retrieve properties
@@ -261,7 +262,7 @@ public class Props {
      *         if there is no such mapping
      */
     public static Map<String, Prop> getProperties(String context, String scope) {
-       return getProperties(context, scope, false);
+       return getProperties(context, scope, true);
     }
 
     /**

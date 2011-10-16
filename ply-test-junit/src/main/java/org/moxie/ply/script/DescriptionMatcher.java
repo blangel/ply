@@ -2,6 +2,7 @@ package org.moxie.ply.script;
 
 import org.junit.runner.Description;
 import org.junit.runner.manipulation.Filter;
+import org.moxie.ply.AntStyleWildcardUtil;
 import org.moxie.ply.Output;
 
 import java.util.regex.Pattern;
@@ -37,15 +38,8 @@ public class DescriptionMatcher extends Filter {
             packageClassOnly = regex.substring(0, regex.indexOf("#"));
         }
 
-        // replace all '?' with a single character match
-        regex = regex.replaceAll("\\?", ".{1}");
-        packageClassOnly = packageClassOnly.replaceAll("\\?", ".{1}");
-        // replace all '**' with a match for any package
-        regex = regex.replaceAll("\\*\\*", ".+?");
-        packageClassOnly = packageClassOnly.replaceAll("\\*\\*", ".+?");
-        // replace all remaining '*' with a match for any character not package separator
-        regex = regex.replaceAll("\\*", "[^/]*?");
-        packageClassOnly = packageClassOnly.replaceAll("\\*", "[^/]*?");
+        regex = AntStyleWildcardUtil.regexString(regex);
+        packageClassOnly = AntStyleWildcardUtil.regexString(packageClassOnly);
         this.pattern = Pattern.compile(prefix + regex + suffix);
         this.classOnlyPattern = Pattern.compile(prefix + packageClassOnly);
     }

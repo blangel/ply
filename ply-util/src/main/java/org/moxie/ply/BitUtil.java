@@ -7,7 +7,7 @@ package org.moxie.ply;
  *
  * Utility class to deal with bits and bytes within the java language.
  */
-public class BitUtil {
+public final class BitUtil {
 
     public static String toHexString(byte[] array) {
         if (array == null) {
@@ -23,5 +23,7 @@ public class BitUtil {
         }
         return sb.toString().toUpperCase();
     }
+
+    private BitUtil() { }
 
 }

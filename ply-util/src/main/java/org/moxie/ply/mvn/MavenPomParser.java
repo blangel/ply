@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 /**
  * User: blangel
@@ -281,7 +282,7 @@ public interface MavenPomParser {
                 return toFilter;
             }
             if (toFilter.contains("${" + filterValue + "}")) {
-                return toFilter.replaceAll("\\$\\{" + filterValue.replaceAll("\\.", "\\\\.") + "\\}",
+                return toFilter.replaceAll("\\$\\{" + Pattern.quote(filterValue) + "\\}",
                         replacementMap.get(filterValue));
             }
             return toFilter;

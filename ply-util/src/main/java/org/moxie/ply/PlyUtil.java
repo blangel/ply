@@ -10,7 +10,7 @@ import java.io.IOException;
  *
  * Utility class to retrieve ply specific information like location of the ply installation and project directories.
  */
-public class PlyUtil {
+public final class PlyUtil {
 
     /**
      * The directory in which ply is installed, passed in by the invoking script.
@@ -80,5 +80,7 @@ public class PlyUtil {
             return null; // not reachable
         }
     }
+
+    private PlyUtil() { }
 
 }
