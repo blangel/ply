@@ -24,8 +24,8 @@ import java.io.File;
 public class RepositoryInstaller {
 
     public static void main(String[] args) {
-        String buildDirPath = Props.getValue("project", Props.DEFAULT_SCOPE, "build.dir");
-        String artifactName = Props.getValue("project", Props.DEFAULT_SCOPE, "artifact.name");
+        String buildDirPath = Props.getValue("project", "build.dir");
+        String artifactName = Props.getValue("project", "artifact.name");
         File artifact = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) +
                                     artifactName);
         if (!artifact.exists()) {
@@ -36,7 +36,7 @@ public class RepositoryInstaller {
         File dependenciesFile = new File(plyProjectDirPath + (plyProjectDirPath.endsWith(File.separator) ? "" : File.separator)
                                             + "config/dependencies.properties");
 
-        String localRepoProp = Props.getValue("depmngr", Props.DEFAULT_SCOPE, "localRepo");
+        String localRepoProp = Props.getValue("depmngr", "localRepo");
         // determine repo type.
         boolean localRepoIsPly = !(localRepoProp.startsWith(RepositoryAtom.MAVEN_REPO_TYPE_PREFIX));
         if (!localRepoIsPly) {
@@ -45,9 +45,9 @@ public class RepositoryInstaller {
             localRepoProp = localRepoProp.substring(RepositoryAtom.PLY_REPO_TYPE_PREFIX.length());
         }
 
-        String namespace = Props.getValue("project", Props.DEFAULT_SCOPE, "namespace");
-        String name = Props.getValue("project", Props.DEFAULT_SCOPE, "name");
-        String version = Props.getValue("project", Props.DEFAULT_SCOPE, "version");
+        String namespace = Props.getValue("project", "namespace");
+        String name = Props.getValue("project", "name");
+        String version = Props.getValue("project", "version");
         File localRepoBase = new File(localRepoProp);
         if (!localRepoBase.exists()) {
             Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoBase.getPath());

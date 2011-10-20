@@ -232,9 +232,9 @@ public class MavenReporter extends RunListener {
             }
         }
         // save the reports.
-        Prop reportDirProp = Props.get("project", "test", "reports.dir");
+        Prop reportDirProp = Props.get("project", "reports.dir");
         if (reportDirProp == null) {
-            Output.print("^warn^ Could not find property project#test#reports.dir, skipping report save.");
+            Output.print("^warn^ Could not find property project.reports.dir, skipping report save.");
             return;
         }
         File reportDir = new File(reportDirProp.value);

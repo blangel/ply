@@ -38,10 +38,10 @@ public class JunitTester {
 
     public static void main(String[] args) {
 
-        Prop testBuildDirProp = Props.get("project", "test", "build.dir");
-        Prop testArtifactNameProp = Props.get("project", "test", "artifact.name");
+        Prop testBuildDirProp = Props.get("project", "build.dir");
+        Prop testArtifactNameProp = Props.get("project", "artifact.name");
         if ((testBuildDirProp == null) || (testArtifactNameProp == null)) {
-            Output.print("^warn^ No project#test#build.dir or project#test#artifact.name found, skipping test execution.");
+            Output.print("^warn^ No project.build.dir or project.artifact.name found, skipping test execution.");
             return;
         }
         File artifact = new File(testBuildDirProp.value + File.separator + testArtifactNameProp.value);

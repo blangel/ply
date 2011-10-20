@@ -12,23 +12,16 @@ import java.io.File;
  * Date: 10/14/11
  * Time: 1:59 PM
  *
- * Simply copies {@literal project[#scope]#res.dir} to {@literal project[#scope]#res.build.dir} priming the resources
+ * Simply copies {@literal project[.scope].res.dir} to {@literal project[.scope].res.build.dir} priming the resources
  * for filtering/packaging/etc.
- * This script takes one optional parameter which is the scope.  By convention it is prefixed with '--'
  */
 public class ResourcesScript {
 
     public static void main(String[] args) {
-        String scope = "";
-        if ((args.length == 1) && args[0].startsWith("--")) {
-            scope = args[0].substring(2);
-        }
-
-        Prop resourcesDirProp = Props.get("project", scope, "res.dir");
-        Prop resourcesBuildDirProp = Props.get("project", scope, "res.build.dir");
+        Prop resourcesDirProp = Props.get("project", "res.dir");
+        Prop resourcesBuildDirProp = Props.get("project", "res.build.dir");
         if ((resourcesDirProp == null) || (resourcesBuildDirProp == null)) {
-            String scopeParam = (scope.isEmpty() ? "" : "#" + scope);
-            Output.print("^error^ Could not find properties 'project%s#res.dir' or 'project%s#res.build.dir'", scopeParam, scopeParam);
+            Output.print("^error^ Could not find properties 'project.res.dir' or 'project.res.build.dir'");
             System.exit(1);
         }
 

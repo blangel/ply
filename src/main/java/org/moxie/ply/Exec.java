@@ -12,46 +12,140 @@ import java.util.*;
  * Time: 9:09 PM
  *
  * Executes build scripts.  The determination of where/which build script to execute is as follows:
- * -1- First resolve the script via the {@literal scripts} context {@link Config} properties in case it is aliased.
+ * -1- First resolve the script against the {@literal aliases} context properties in case it is an alias.
  * -2- For each resolved script (from -1-), check for an executable in the {@literal scripts.dir}
  * -3- If not there, check for an executable in the installation's scripts directory.
  * -4- If not there, check for executable directly (via the system path)
  * -5- else fail
+ *
+ * Note, any script or alias can be prefixed with a scope via 'scope_name:'.  This scope will determine the
+ * set of resolved properties to pass to the execution.  If nothing is specified, it is the default scope and
+ * so the default scoped properties are used (i.e., for context 'compiler' with default scope the properties are
+ * resolved from the config dir from file 'compiler.properties').  If a scope is specified then that scope's properties
+ * (inheriting from default if not overridden explicitly by the scope) are used (i.e., for context 'compiler' with
+ * scope 'test' then the properties are resolved from the config dir from file 'compiler.test.properties' and if there
+ * are any properties within the default, 'compiler.properties' which are not present in the scoped
+ * 'compiler.test.properties' then they are also included).
+ * For an alias with a scope then every script defined by the alias also has the scope.  For instance, say there exists
+ * an alias 'install' which resolves to scripts 'file-changed compile package'.  If 'test:install' is invoked, in other
+ * words the install alias is invoked with 'test' scope, then the resolved scripts to be invoked would be
+ * 'test:file-changed test:compile test:package'.
  */
 public final class Exec {
 
-    public static boolean invoke(String script) {
-        String[] cmdArgs = splitScript(script);
-        String originalScript = cmdArgs[0];
-        List<String[]> resolvedCmds = new ArrayList<String[]>();
-        Set<String> encountered = new HashSet<String>();
-        resolveAlias(cmdArgs, resolvedCmds, encountered);
+    /**
+     * A struct of execution information.
+     */
+    static final class Execution {
+
+        /**
+         * The original, unresolved, script/alias.
+         */
+        final String originalScript;
+
+        /**
+         * The scope of this execution.
+         */
+        final String scope;
+
+        /**
+         * The resolved script.
+         */
+        final String script;
+
+        /**
+         * The arguments to the execution for the script.  By convention of {@link Process} the
+         * first item is the {@link #script} itself.  So for an execution without args this
+         * array has one value, the script to execute.
+         */
+        final String[] scriptArgs;
+
+        Execution(String originalScript, String scope, String script, String[] scriptArgs) {
+            this.originalScript = originalScript;
+            this.scope = scope;
+            this.script = script;
+            this.scriptArgs = scriptArgs;
+        }
+
+        Execution with(String script) {
+            String[] args = new String[this.scriptArgs.length];
+            System.arraycopy(this.scriptArgs, 1, args, 1, this.scriptArgs.length - 1);
+            args[0] = script;
+            return new Execution(this.originalScript, this.scope, script, args);
+        }
+
+        Execution with(String[] args) {
+            return new Execution(this.originalScript, this.scope, args[0], args);
+        }
+    }
+
+    public static boolean invoke(String unresolved) {
+        List<Execution> executions = resolveExecutions(unresolved);
         // all invoked scripts will be started from the parent of the '.ply' directory.
         // this provides a consistent view of execution for all scripts.  if a script wants to actually know
         // which directory from which the 'ply' command was invoked, look at 'parent.user.dir' environment property.
         String plyDirPath = PlyUtil.LOCAL_PROJECT_DIR.getPath();
         File projectRoot = new File(plyDirPath + (plyDirPath.endsWith(File.separator) ? "" : File.separator) + ".." + File.separator);
-        for (String[] resolvedCmd : resolvedCmds) {
-            if (!invoke(originalScript, resolvedCmd, projectRoot)) {
+        for (Execution execution : executions) {
+            if (!invoke(execution, projectRoot)) {
                 return false;
             }
         }
         return true;
     }
 
-    private static boolean invoke(String originalScriptName, String[] cmdArgs, File projectRoot) {
-        String scriptWithoutPath = cmdArgs[0];
-        cmdArgs[0] = resolveExecutable(cmdArgs[0]);
-        cmdArgs = handleNonNativeExecutable(scriptWithoutPath, cmdArgs);
-        String script = buildScriptName(cmdArgs);
-        try {
-            ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true).directory(projectRoot);
-            Map<String, String> environment = processBuilder.environment();
-            Map<String, Prop> properties = Config.getResolvedEnvironmentalProperties();
-            for (String propKey : properties.keySet()) {
-                Prop prop = properties.get(propKey);
-                environment.put(propKey, Props.filter(prop));
+    private static List<Execution> resolveExecutions(String unresolved) {
+        return resolveExecutions(unresolved, "", new ArrayList<Execution>());
+    }
+
+    private static List<Execution> resolveExecutions(String unresolved, String propagatedScope, List<Execution> executions) {
+        String[] cmdArgs = splitScript(unresolved);
+        String originalScript = cmdArgs[0];
+        String scope = propagatedScope;
+        if (originalScript.contains(":")) {
+            int index = originalScript.indexOf(":");
+            scope = originalScript.substring(0, index);
+            if (index >= originalScript.length() - 1) {
+                Output.print("^error^ Scoped value [ ^b^%s^r^ ] must be followed by an alias or a script.", scope);
+                System.exit(1);
             }
+            cmdArgs[0] = originalScript.substring(originalScript.indexOf(":") + 1);
+        }
+        resolveAlias(originalScript, cmdArgs, scope, executions);
+        return executions;
+    }
+
+    private static void resolveAlias(String originalScript, String[] cmdArgs, String scope, List<Execution> executions) {
+        String script = cmdArgs[0];
+        Prop resolved = Props.get("scripts", scope, script);
+        // TODO - circular invocation?
+        if (resolved == null) { // not an alias
+            filter(cmdArgs, scope);
+            executions.add(new Execution(originalScript, scope, cmdArgs[0], cmdArgs));
+            return;
+        }
+        String scopeInfo = ((scope == null) || scope.isEmpty() ? "" : String.format(" (with scope ^b^%s^r^)", scope));
+        Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^%s", script, resolved.value, scopeInfo);
+        String[] splitResolved = splitScript(resolved.value);
+        for (String split : splitResolved) { // TODO - original script funkiness (as well as scope prefix)
+            resolveExecutions(split, scope, executions); // TODO - combine args?
+        }
+//        String[] splitResolved = splitScript(resolved.value);
+//        for (String split : splitResolved) {
+//            String[] splitArgs = splitScript(split);
+//            String[] combined = combine(splitArgs, 0, splitArgs.length, args, 1, args.length - 1);
+//            resolveAlias(combined, scope, resolvedArgs, encountered);
+//        }
+    }
+
+    private static boolean invoke(Execution execution, File projectRoot) {
+        execution = resolveExecutable(execution);
+        execution = handleNonNativeExecutable(execution);
+        String script = buildScriptName(execution.scriptArgs);
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder(execution.scriptArgs).redirectErrorStream(true).directory(projectRoot);
+            Map<String, String> environment = processBuilder.environment();
+            environment.putAll(Props.getPropsForEnv(execution.scope));
             Output.print("^dbug^ invoking %s", script);
             // the Process thread reaps the child if the parent (this) is terminated
             Process process = processBuilder.start();
@@ -59,15 +153,15 @@ public final class Exec {
             BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
             String processStdoutLine;
             while ((processStdoutLine = lineReader.readLine()) != null) {
-                Output.printFromExec("[^green^%s^r^] %s", originalScriptName, processStdoutLine);
+                Output.printFromExec("[^green^%s^r^] %s", execution.originalScript, processStdoutLine);
             }
             int result = process.waitFor();
             if (result == 0) {
                 return true;
             }
-            Output.print("^error^ script ^green^%s^r^ failed [ result = %d ].", originalScriptName, result);
+            Output.print("^error^ script ^green^%s^r^ failed [ result = %d ].", execution.originalScript, result);
         } catch (IOException ioe) {
-            Output.print("^error^ executing script ^green^%s^r^", originalScriptName);
+            Output.print("^error^ executing script ^green^%s^r^", execution.originalScript);
             Output.print(ioe);
         } catch (InterruptedException ie) {
             Output.print(ie);
@@ -76,26 +170,27 @@ public final class Exec {
     }
 
     /**
-     * Looks up {@code args[0]} in the {@literal scripts} context of {@link Config} properties to see if it is an alias
+     * Looks up {@code args[0]} in the {@literal aliases} context of {@link Config} properties to see if it is an alias
      * for another command (or chain of commands).
      *
      * @param args the script and arguments to it where {@code args[0]} is the script per convention of {@link Process}
-     * @param resolvedArgs the list of resolved scripts (as {@code args[0]} could be aliased as multiple commands) where
-     *         each command's arguments have been filtered ({@literal ${xx}} is replaced by property named {@literal xx}
+     * @param scope to resolve the alias against
+     * @param resolvedArgs the list of resolved executions (as {@code args[0]} could be aliased as multiple commands) where
+     *         each commands' arguments have been filtered ({@literal ${xx}} is replaced by property named {@literal xx}
      *         from {@link org.moxie.ply.props.Props#get(String, String)}).
      * @param encountered set of scripts already encountered while trying to resolve aliases.  Used to keep track
      *         of possible circular references.
      */
-    private static void resolveAlias(String[] args, List<String[]> resolvedArgs, Set<String> encountered) {
+    private static void resolveAlias(String[] args, String scope, List<String[]> resolvedArgs, Set<String> encountered) {
         String script = args[0];
         if (encountered.contains(script)) {
             Output.print("^error^ script contains a circular reference to another script [ %s ].", script);
             System.exit(1);
         }
         encountered.add(script);
-        Prop resolved = Props.get("scripts", script);
+        Prop resolved = Props.get("scripts", scope, script);
         if (resolved == null) {
-            filter(args);
+            filter(args, scope);
             resolvedArgs.add(args);
             return;
         }
@@ -104,17 +199,18 @@ public final class Exec {
         for (String split : splitResolved) {
             String[] splitArgs = splitScript(split);
             String[] combined = combine(splitArgs, 0, splitArgs.length, args, 1, args.length - 1);
-            resolveAlias(combined, resolvedArgs, encountered);
+            resolveAlias(combined, scope, resolvedArgs, encountered);
         }
     }
 
     /**
      * Runs {@link org.moxie.ply.props.Props#filter(Prop)} on each value within {@code array}, the context will be scripts.
      * @param array to filter
+     * @param scope of the {@code array} object's execution.
      */
-    private static void filter(String[] array) {
+    private static void filter(String[] array, String scope) {
         for (int i = 0; i < array.length; i++) {
-            array[i] = Props.filter(new Prop("scripts", "", "", array[i], true));
+            array[i] = Props.filterForPly(new Prop("scripts", "", "", array[i], true), scope);
         }
     }
 
@@ -168,45 +264,45 @@ public final class Exec {
         return buffer.toString();
     }
 
-    private static String resolveExecutable(String script) {
-        String originalScript = script;
-        String localScriptsDir = Props.getValue("project", "scripts.dir");
+    private static Execution resolveExecutable(Execution execution) {
+        String passedInScript = execution.script;
+        String script = execution.script;
+        String localScriptsDir = Props.getValue("project", execution.scope, "scripts.dir");
         script = (localScriptsDir.endsWith(File.separator) ? localScriptsDir :
                 localScriptsDir + File.separator) + script;
         File scriptFile = new File(script);
         if (scriptFile.exists() && scriptFile.canExecute()) {
-            return script;
+            return execution.with(script);
         } else if (scriptFile.exists()) {
             Output.print("^warn^ ^b^%s^r^ exists but is not executable, skipping.", scriptFile.getPath());
         }
         try {
-            script = PlyUtil.SYSTEM_SCRIPTS_DIR.getCanonicalPath() + File.separator + originalScript;
+            script = PlyUtil.SYSTEM_SCRIPTS_DIR.getCanonicalPath() + File.separator + passedInScript;
             scriptFile = new File(script);
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
         }
         if (scriptFile.exists() && scriptFile.canExecute()) {
-            return script;
+            return execution.with(script);
         } else if (scriptFile.exists()) {
             Output.print("^warn^ ^b^%s^r^ exists but is not executable, skipping.", scriptFile.getPath());
         }
-        return originalScript;
+        return execution;
     }
 
     /**
-     * Translates {@code cmdArray[0]} into an executable statement if it needs an invoker like a VM.
+     * Translates {@code execution#scriptArgs} into an executable statement if it needs an invoker like a VM.
      * The whole command array needs to be processed as parameters to the VM may need to be inserted
      * into the command array.
-     * @param unresolvedScript the unresolved script name (i.e., with path information).
-     * @param cmdArray to translate
-     * @return the translated command array.
+     * @param execution to invoke
+     * @return the translated execution.
      */
-    private static String[] handleNonNativeExecutable(String unresolvedScript, String[] cmdArray) {
-        String script = cmdArray[0];
+    private static Execution handleNonNativeExecutable(Execution execution) {
+        String script = execution.script;
         if (script.endsWith(".jar")) {
-            cmdArray = JarExec.createJarExecutable(unresolvedScript, cmdArray);
+            return JarExec.createJarExecutable(execution);
         }
-        return cmdArray;
+        return execution;
     }
 
 }

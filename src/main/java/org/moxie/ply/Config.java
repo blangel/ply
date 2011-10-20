@@ -44,17 +44,6 @@ public final class Config {
     }
 
     /**
-     * Returns the resolved properties for use as environmental variables.  By convention,
-     * the context and the property name will be combined to form the environmental variable name.
-     * The combination consists of the context concatenated with the property name by a '.'.  For example,
-     * for context 'ply' and property name 'color' the concatenation would be 'ply.color'.
-     * @return the resolved properties for use as environmental variables.
-     */
-    static Map<String, Prop> getResolvedEnvironmentalProperties() {
-        return get()._getResolvedEnvironmentalProperties();
-    }
-
-    /**
      * @return the singleton instance of this class.
      */
     private static Config get() {
@@ -144,11 +133,13 @@ public final class Config {
      * @param value to append
      */
     private void appendProperty(String context, String name, String value) {
-        String existingValue = Props.getPropertiesWithCollapsedScope(context, name).get(name).value;
+        String existingValue = Props.getValue(context, name);
         if (existingValue == null) {
             existingValue = "";
+        } else if (!existingValue.isEmpty()) {
+            existingValue = existingValue + " ";
         }
-        setProperty(context, name, (existingValue + " " + value).trim());
+        setProperty(context, name, (existingValue + value).trim());
     }
 
     /**
@@ -159,11 +150,13 @@ public final class Config {
      * @param value to prepend
      */
     private void prependProperty(String context, String name, String value) {
-        String existingValue = Props.getPropertiesWithCollapsedScope(context, name).get(name).value;
+        String existingValue = Props.getValue(context, name);
         if (existingValue == null) {
             existingValue = "";
+        } else if (!existingValue.isEmpty()) {
+            existingValue = " " + existingValue;
         }
-        setProperty(context, name, (value + " " + existingValue).trim());
+        setProperty(context, name, (value + existingValue).trim());
     }
 
     /**
@@ -190,7 +183,7 @@ public final class Config {
      * Print all properties for all contexts and all scopes.
      */
     private void print() {
-        print(Props.getPropertiesWithCollapsedScope());
+        print(Props.getProps());
     }
 
     /**
@@ -198,11 +191,17 @@ public final class Config {
      * @param name to match (may include wildcard) from within any context and any scope.
      */
     private void print(String name) {
-        Map<String, Map<String, Prop>> props = Props.getPropertiesWithCollapsedScope(name);
-        if (props.isEmpty()) {
+        Map<String, Map<String, Prop>> matches = new HashMap<String, Map<String, Prop>>();
+        for (String context : Props.getProps().keySet()) {
+            Map<String, Prop> matchedProps = Props.getProps(context, name);
+            if ((matchedProps != null) && !matchedProps.isEmpty()) {
+                matches.put(context, matchedProps);
+            }
+        }
+        if (matches.isEmpty()) {
             Output.print("No property matched ^b^%s^r^ in any context.", name);
         } else {
-            print(props);
+            print(matches);
         }
     }
 
@@ -211,7 +210,7 @@ public final class Config {
      * @param contextDotScope the context[.scope] to print
      */
     private void printContext(String contextDotScope) {
-        Map<String, Prop> contextProps = Props.getPropertiesWithCollapsedScope().get(contextDotScope);
+        Map<String, Prop> contextProps = Props.getProps(contextDotScope);
         if (contextProps == null) {
             Output.print("No context ^b^%s^r^ found.", contextDotScope);
         } else {
@@ -225,9 +224,9 @@ public final class Config {
      * @param name to match (may include wildcard) from within {@code context}.
      */
     private void print(String contextDotScope, String name) {
-        Map<String, Prop> props = Props.getPropertiesWithCollapsedScope(contextDotScope, name);
+        Map<String, Prop> props = Props.getProps(contextDotScope, name);
         Map<String, Map<String, Prop>> contextDotScopeProps = new HashMap<String, Map<String, Prop>>();
-        if (props.isEmpty()) {
+        if ((props == null) || props.isEmpty()) {
             Output.print("No property matched ^b^%s^r^ in ^b^%s^r^.", name, contextDotScope);
         } else {
             contextDotScopeProps.put(contextDotScope, props);
@@ -289,26 +288,6 @@ public final class Config {
         } else {
             Output.print("No property ^b^%s^r^ in ^b^%s^r^.", name, contextDotScope);
         }
-    }
-
-    /**
-     * Returns the resolved properties for use as environmental variables.  By convention, "ply$",
-     * the context, the scope and the property name will be combined to form the environmental variable name.
-     * The combination consists of "ply$" concatenated with the context concatenated with the scope (if any) by '#',
-     * concatenated with the property name by a '.'.  For example,
-     * for context 'ply', the default scope and property name 'color' the result would be 'ply$ply.color'.  If the
-     * context was 'project' the scope 'test' and the property src.dir then the result would be 'ply$project#test.src.dir'
-     * @return the resolved properties for use as environmental variables.
-     */
-    private Map<String, Prop> _getResolvedEnvironmentalProperties() {
-        Map<String, Prop> environmentalProperties = Props.exportPropsToEnv();
-        // now add some synthetic properties like the local ply directory location.
-        environmentalProperties.put("ply$ply#project.dir", new Prop("ply", "", "project.dir", PlyUtil.LOCAL_PROJECT_DIR.getPath(), true));
-        environmentalProperties.put("ply$ply#java", new Prop("ply", "", "java", System.getProperty("ply.java"), true));
-        // scripts are always executed from the parent to '.ply/' directory, allow them to know where the 'ply' invocation
-        // actually occurred.
-        environmentalProperties.put("ply$ply#parent.user.dir", new Prop("parent", "", "user.dir", System.getProperty("user.dir"), true));
-        return environmentalProperties;
     }
 
     private static File getContextPropertyFile(String context) {

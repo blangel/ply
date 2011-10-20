@@ -49,7 +49,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.moxie.ply.script.RepositoryInstaller</mainClass>
+                            <mainClass>org.moxie.ply.script.ResourcesScript</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

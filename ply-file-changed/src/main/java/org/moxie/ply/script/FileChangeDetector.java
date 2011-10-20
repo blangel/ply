@@ -17,17 +17,15 @@ import java.util.concurrent.atomic.AtomicReference;
  * Date: 9/12/11
  * Time: 9:20 PM
  *
- * There is one argument to this script: the scope.  Its default is null.  To match convention of other scripts, the
- * scope must be prefixed with '--'
- * This scope argument is used as a prefix to the file
+ * This scope property (ply.scope) is used as a prefix to the file
  * names created by this script.  If the scope is null then 'src' will be used for file names prefix.  This file name
  * prefix is referred to as '${prefix}' below.
  *
  * Determines which files within {@literal project[.scope].src.dir} have changed since last invocation.
  * The information used to determine if a file has changed is saved in the {@literal project.build.dir} in a file named
  * {@literal ${prefix}-changed-meta.properties}.  The list of files which have changed since last invocation is stored
- * in a file named {@literal ${prefix}-changed.properties} in directory {@literal project[#scope]#build.dir}.
- * The information used to determine change is stored relative to {@literal project[#scope]#build.dir} to allow for cleans to
+ * in a file named {@literal ${prefix}-changed.properties} in directory {@literal project[.scope].build.dir}.
+ * The information used to determine change is stored relative to {@literal project[.scope].build.dir} to allow for cleans to
  * force a full-recompilation.  The format of the {@literal ${prefix}-changed-meta.properties} file is:
  * file-path=timestamp,sha1-hash
  * and the format of the {@literal ${prefix}-changed.properties} is simply a listing of file paths which have changed.
@@ -36,10 +34,10 @@ import java.util.concurrent.atomic.AtomicReference;
 public class FileChangeDetector {
 
     public static void main(String[] args) {
-        String scope = ((args.length > 0) && args[0].startsWith("--") ? args[0].substring(2) : "");
+        String scope = Props.getValue("ply", "scope");
         String prefix = (scope.isEmpty() ? "src" : scope);
-        String srcDirPath = Props.getValue("project", scope, "src.dir");
-        String buildDirPath = Props.getValue("project", scope, "build.dir");
+        String srcDirPath = Props.getValue("project", "src.dir");
+        String buildDirPath = Props.getValue("project", "build.dir");
         File lastSrcChanged = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
                 + prefix + "-changed-meta.properties");
         File changedPropertiesFile = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)

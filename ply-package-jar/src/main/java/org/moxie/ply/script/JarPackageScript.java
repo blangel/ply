@@ -43,8 +43,7 @@ import java.util.Properties;
 public class JarPackageScript {
 
     public static void main(String[] args) {
-        String scope = (args.length == 1 && args[0].startsWith("--") ? args[0].substring(2) : Props.DEFAULT_SCOPE);
-        JarPackageScript jarPackageScript = new JarPackageScript(scope);
+        JarPackageScript jarPackageScript = new JarPackageScript();
         try {
             jarPackageScript.invoke();
         } catch (IOException ioe) {
@@ -52,12 +51,6 @@ public class JarPackageScript {
         } catch (InterruptedException ie) {
             Output.print(ie);
         }
-    }
-
-    private final String scope;
-
-    public JarPackageScript(String scope) {
-        this.scope = scope;
     }
 
     private void invoke() throws IOException, InterruptedException {
@@ -76,29 +69,29 @@ public class JarPackageScript {
     }
 
     private void createManifestFile() {
-        Map<String, Prop> manifestProps = Props.getLike("package-jar", scope, "manifest.*");
+        Map<String, Prop> manifestProps = Props.getProps("package-jar", "manifest.*");
         // filter out and handle the short-named manifest properties
-        String version = Props.getValue("package-jar", scope, "manifest.version");
+        String version = Props.getValue("package-jar", "manifest.version");
         manifestProps.remove("manifest.version");
         if (isEmpty(version)) {
             version = "1.0";
         }
-        String createdBy = Props.getValue("package-jar", scope, "manfiest.createdBy");
+        String createdBy = Props.getValue("package-jar", "manfiest.createdBy");
         manifestProps.remove("manfiest.createdBy");
         if (isEmpty(createdBy)) {
             createdBy = "Ply";
         }
-        String mainClass = Props.getValue("package-jar", scope, "manifest.mainClass");
+        String mainClass = Props.getValue("package-jar", "manifest.mainClass");
         manifestProps.remove("manifest.mainClass");
-        String classPath = Props.getValue("package-jar", scope, "manifest.classPath");
+        String classPath = Props.getValue("package-jar", "manifest.classPath");
         manifestProps.remove("manifest.classPath");
-        String specTitle = Props.getValue("package-jar", scope, "manifest.spec.title");
+        String specTitle = Props.getValue("package-jar", "manifest.spec.title");
         manifestProps.remove("manifest.spec.title");
-        String specVersion = Props.getValue("package-jar", scope, "manifest.spec.version");
+        String specVersion = Props.getValue("package-jar", "manifest.spec.version");
         manifestProps.remove("manifest.spec.version");
-        String implTitle = Props.getValue("package-jar", scope, "manifest.impl.title");
+        String implTitle = Props.getValue("package-jar", "manifest.impl.title");
         manifestProps.remove("manifest.impl.title");
-        String implVersion = Props.getValue("package-jar", scope, "manifest.impl.version");
+        String implVersion = Props.getValue("package-jar", "manifest.impl.version");
         manifestProps.remove("manifest.impl.version");
 
         StringBuilder buffer = new StringBuilder();
@@ -115,7 +108,7 @@ public class JarPackageScript {
         for (String property : manifestProps.keySet()) {
             appendManifestInformation(property, manifestProps.get(property).value, buffer);
         }
-        File manifestFile = new File(getManifestFilePath(scope));
+        File manifestFile = new File(getManifestFilePath());
         PrintWriter writer = null;
         try {
             manifestFile.createNewFile();
@@ -146,19 +139,19 @@ public class JarPackageScript {
         String jarScript = Props.getValue("java").replace("bin" + File.separator + "java",
                 "bin" + File.separator + "jar");
         String options = "cfm";
-        if (getBoolean(Props.getValue("package-jar", scope, "verbose"))) {
+        if (getBoolean(Props.getValue("package-jar", "verbose"))) {
             options += "v";
         }
-        if (!getBoolean(Props.getValue("package-jar", scope, "compress"))) {
+        if (!getBoolean(Props.getValue("package-jar", "compress"))) {
             options += "0";
         }
-        String jarName = Props.getValue("package-jar", scope, "jarName");
+        String jarName = Props.getValue("package-jar", "jarName");
         if (isEmpty(jarName)) {
             Output.print("^warn^ Property 'package-jar.jarName' was empty, defaulting to value of ${project.artifact.name}.");
-            jarName = Props.getValue("project", scope, "artifact.name");
+            jarName = Props.getValue("project", "artifact.name");
             if (isEmpty(jarName)) {
                 Output.print("^warn^ Property 'project.artifact.name' was empty, defaulting to value of ${project.name}.");
-                jarName = Props.getValue("project", scope, "name");
+                jarName = Props.getValue("project", "name");
                 if (isEmpty(jarName)) {
                     Output.print("^warn^ Property 'project.name' was empty, defaulting to 'no-name'.");
                     jarName = "no-name";
@@ -166,19 +159,19 @@ public class JarPackageScript {
             }
             jarName = jarName + ".jar";
         }
-        jarName = getJarFilePath(jarName, scope);
-        String manifestFile = getManifestFilePath(scope);
-        String inputFiles = Props.getValue("compiler", scope, "buildPath");
+        jarName = getJarFilePath(jarName);
+        String manifestFile = getManifestFilePath();
+        String inputFiles = Props.getValue("compiler", "buildPath");
 
-        String buildDir = Props.getValue("project", scope, "build.dir");
+        String buildDir = Props.getValue("project", "build.dir");
         buildDir = buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator);
-        File dependenciesFile = createDependenciesFile(buildDir, new Scope(scope));
+        File dependenciesFile = createDependenciesFile(buildDir, new Scope(Props.getValue("ply", "scope")));
         if (dependenciesFile == null) {
             Output.print("^error^ Error creating the %sMETA-INF/ply/dependencies.properties file.", buildDir);
             System.exit(1);
         }
 
-        String resBuildDir = Props.getValue("project", scope, "res.build.dir");
+        String resBuildDir = Props.getValue("project", "res.build.dir");
         File resBuildDirFile = new File(resBuildDir);
         if (resBuildDirFile.exists()) {
             return new String[] { jarScript, options, jarName, manifestFile, "-C", inputFiles, ".",
@@ -190,15 +183,15 @@ public class JarPackageScript {
         }
     }
 
-    private static String getManifestFilePath(String scope) {
-        String buildDirPath = Props.getValue("project", scope, "build.dir");
+    private static String getManifestFilePath() {
+        String buildDirPath = Props.getValue("project", "build.dir");
         File metaInfDir = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) + "META-INF");
         metaInfDir.mkdir();
         return (metaInfDir.getPath() + (metaInfDir.getPath().endsWith(File.separator) ? "" : File.separator) + "Manifest.mf");
     }
 
-    private static String getJarFilePath(String jarName, String scope) {
-        String buildDirPath = Props.getValue("project", scope, "build.dir");
+    private static String getJarFilePath(String jarName) {
+        String buildDirPath = Props.getValue("project", "build.dir");
         return buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) + jarName;
     }
 
@@ -208,6 +201,7 @@ public class JarPackageScript {
      * the values are the resolved local-repo paths to the dependencies).  If there is no {@literal resolved-deps.properties}
      * file then a blank file will be copied to {@literal project[.scope].build.dir}/META-INF/ply/dependencies.properties.
      * @param buildDirPath the build directory path (assumed to end in {@link File#separator}).
+     * @param scope of the execution
      * @return the handle to the created dependencies.properties file or null if an error occurred while creating the file.
      */
     private static File createDependenciesFile(String buildDirPath, Scope scope) {

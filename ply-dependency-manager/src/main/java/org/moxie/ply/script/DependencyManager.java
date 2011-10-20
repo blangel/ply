@@ -20,9 +20,6 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * The default dependency manager for the ply build system.
  *
- * Dependencies are grouped by a scope (i.e., test).  The default scope is null.  Below ${scope} represents this
- * dependency scope.
- *
  * The property file used to configure this script is {@literal depmngr.properties} and so the context is {@literal depmngr}.
  * The following properties exist:
  * localRepo=string [[default=${PLY_HOME}/repo]] (this is the local repository where remote dependencies will
@@ -30,8 +27,8 @@ import java.util.concurrent.atomic.AtomicReference;
  *           but only this, the {@literal localRepo}, will be used to store remote repositories' downloads.  The format
  *           is [type:]repoUri, see below for description of this format).
  *
- * Dependency information is stored in a file called {@literal dependencies[.${scope}].properties} and so the context is
- * {@literal dependencies[.${scope}]}.  The format of each property within the file is:
+ * Dependency information is stored in a file called {@literal dependencies[.scope].properties} and so the context is
+ * {@literal dependencies[.scope]}.  The format of each property within the file is:
  * namespace:name=version:artifactName
  * where namespace provides a unique context for name.  It is analogous to {@literal groupId} in {@literal Maven} or
  * the {@literal category} portion of a base atom in {@literal portage}.
@@ -62,13 +59,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * The difference between the two is that with the {@literal maven} type the dependency's {@literal namespace}'s periods
  * are resolved to forward slashes as is convention in the {@literal Maven} build system.
  *
- * This script, run without arguments (except, perhaps, the scope), will resolve all the dependencies listed
- * in {@literal dependencies[.${scope}].properties} and store the values in file {@literal resolved-deps[.${scope}].properties}
+ * This script, run without arguments will resolve all the dependencies listed in
+ * {@literal dependencies[.scope].properties} and store the values in file {@literal resolved-deps[.scope].properties}
  * under the {@literal project.build.dir}.  This file will contain local file references (local to the {@literal localRepo})
  * for dependencies and transitive dependencies so that compilation and packaging may succeed.
  *
  * The dependency script's usage is:
- * <pre>dep [--usage] [--scope] [add|remove|list|add-repo|remove-repo]</pre>
+ * <pre>dep [--usage] [add|remove|list|add-repo|remove-repo]</pre>
  * where {@literal --usage} prints the usage information.
  * The {@literal add} command takes an atom and adds it as a dependency for the supplied scope, resolving it eagerly
  * from the known repos and failing if it cannot be resolved.
@@ -76,7 +73,6 @@ import java.util.concurrent.atomic.AtomicReference;
  * The {@literal list} command lists all dependencies for the scope.
  * The {@literal add-repo} command takes a repository and adds it to the repositories.
  * The {@literal remove-repo} command removes the repository.
- * The scope groups dependencies into logical units (i.e., test).  The default is null.  It is not applicable to repositories.
  *
  * If nothing is passed to the script then dependency resolution is done for all dependencies against the known
  * repositories.
@@ -88,11 +84,7 @@ public class DependencyManager {
             usage();
             return;
         }
-        Scope scope = new Scope(((args.length > 0) && args[0].startsWith("--")) ? args[0].substring(2) : "");
-        if (!scope.name.isEmpty()) {
-            args = removeScope(args);
-        }
-
+        Scope scope = new Scope(Props.getValue("ply", "scope"));
         if ((args.length > 1) && "add".equals(args[0])) {
             addDependency(args[1], scope);
         } else if ((args.length > 1) && "remove".equals(args[0])) {
@@ -162,7 +154,7 @@ public class DependencyManager {
             }
             atom = new DependencyAtom(split[0], split[1], null);
         }
-        if (Props.get("dependencies", scope.name, atom.getPropertyName()) == null) {
+        if (Props.get("dependencies", atom.getPropertyName()) == null) {
             Output.print("^warn^ Could not find %sdependency; given %s:%s", scope.forPrint, atom.getPropertyName(),
                     atom.getPropertyValue());
         } else {
@@ -219,7 +211,7 @@ public class DependencyManager {
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
         repositoryAtoms.add(localRepo);
-        Map<String, Prop> repositories = Props.getProperties("repositories", Props.DEFAULT_SCOPE);
+        Map<String, Prop> repositories = Props.getProps("repositories");
         for (String repoUri : repositories.keySet()) {
             if (localRepo.getPropertyName().equals(repoUri)) {
                 continue;
@@ -259,10 +251,12 @@ public class DependencyManager {
     }
 
     private static Map<String, String> getResolvedDependencies(Scope scope) {
-        // non-default scoped dependencies do not inherit; they simply are dependent upon the default scope dep itself
-        Map<String, Prop> scopedDependencies = Props.getProperties("dependencies", scope.name, false);
+        // note, for non-default scoped invocations this is redundant as we add a dependency to the
+        // default scope itself (which via transitive deps will depend upon all the inherited deps anyway).
+        // TODO - is this wrong? essentially saying transitive deps are first level deps for non-default scopes
+        Map<String, Prop> scopedDependencies = Props.getProps("dependencies");
         Map<String, String> dependencies = new HashMap<String, String>();
-        if (!Props.DEFAULT_SCOPE.equals(scope.name)) {
+        if (!scope.name.isEmpty()) {
             // add the project itself as this is not the default scope
             Prop self = Deps.getProjectDependencyProp();
             dependencies.put(self.name, self.value);
