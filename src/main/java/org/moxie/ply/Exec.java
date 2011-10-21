@@ -184,16 +184,20 @@ public final class Exec {
             filter(cmdArgs, scope);
             Execution execution = new Execution(originalScript, scope, cmdArgs[0], cmdArgs);
             if (executions.contains(execution)) {
-                // TODO - remove already encountered executions? (already guaranteed to not by circular, so just print warning and not add?
+                Output.print("^warn^ ^b^%s^r^ already in list of executions, skipping.", cmdArgs[0]);
+                // TODO - do this across original command line args (see Ply)
+            } else {
+                executions.add(execution);
             }
-            executions.add(execution);
             return;
         }
         String scopeInfo = ((scope == null) || scope.isEmpty() ? "" : String.format(" (with scope ^b^%s^r^)", scope));
         Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^%s", script, resolved.value, scopeInfo);
         String[] splitResolved = splitScript(resolved.value);
         for (String split : splitResolved) {
+            int index = encountered.size() - 1;
             resolveExecutions(split, originalScript, scope, executions, encountered); // TODO - combine args? // TODO - better original script; use 'split'?
+            encountered = encountered.subList(0, index + 1); // treat like a stack, pop off
         }
     }
 
