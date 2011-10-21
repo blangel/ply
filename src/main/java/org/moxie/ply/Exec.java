@@ -3,6 +3,7 @@ package org.moxie.ply;
 import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
 
+import javax.print.DocFlavor;
 import java.io.*;
 import java.util.*;
 
@@ -94,27 +95,50 @@ public final class Exec {
         return true;
     }
 
+    /**
+     * @param unresolved the alias/script to resolve into {@link Execution} objects.
+     * @return the list of {@link Execution} objects resolved by {@code unresolved}
+     */
     private static List<Execution> resolveExecutions(String unresolved) {
-        return resolveExecutions(unresolved, "", new ArrayList<Execution>());
+        return resolveExecutions(unresolved, null, "", new ArrayList<Execution>());
     }
 
-    private static List<Execution> resolveExecutions(String unresolved, String propagatedScope, List<Execution> executions) {
+    /**
+     * The recursive variant of {@link #resolveExecutions(String)}
+     * @param unresolved the alias/script to resolve into {@link Execution} objects.
+     * @param propagatedOriginalScript the original script name before resolution from a previous recursive invocation
+     * @param propagatedScope the scope from a previous recursive invocation
+     * @param executions the list to add into for all {@link Execution} objects found from {@code unresolved}
+     * @return {@code executions} augmented with any resolved from {@code unresolved}
+     */
+    private static List<Execution> resolveExecutions(String unresolved, String propagatedOriginalScript,
+                                                     String propagatedScope, List<Execution> executions) {
         String[] cmdArgs = splitScript(unresolved);
-        String originalScript = cmdArgs[0];
+        String originalScript = (propagatedOriginalScript == null ? cmdArgs[0] : propagatedOriginalScript);
+        String script = cmdArgs[0];
         String scope = propagatedScope;
-        if (originalScript.contains(":")) {
-            int index = originalScript.indexOf(":");
-            scope = originalScript.substring(0, index);
-            if (index >= originalScript.length() - 1) {
+        if (script.contains(":")) {
+            int index = script.indexOf(":");
+            scope = script.substring(0, index);
+            if (index >= script.length() - 1) {
                 Output.print("^error^ Scoped value [ ^b^%s^r^ ] must be followed by an alias or a script.", scope);
                 System.exit(1);
             }
-            cmdArgs[0] = originalScript.substring(originalScript.indexOf(":") + 1);
+            cmdArgs[0] = script.substring(script.indexOf(":") + 1);
         }
         resolveAlias(originalScript, cmdArgs, scope, executions);
         return executions;
     }
 
+    /**
+     * Looks up {@code args[0]} in the {@literal aliases} context of {@link Config} properties to see if it is an alias
+     * for another command (or chain of commands).
+     *
+     * @param originalScript the original unresolved script name
+     * @param cmdArgs the script and arguments to it where {@code args[0]} is the script per convention of {@link Process}
+     * @param scope to resolve the alias against
+     * @param executions the list of resolved {@link Execution} objects.
+     */
     private static void resolveAlias(String originalScript, String[] cmdArgs, String scope, List<Execution> executions) {
         String script = cmdArgs[0];
         Prop resolved = Props.get("scripts", scope, script);
@@ -128,16 +152,16 @@ public final class Exec {
         Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^%s", script, resolved.value, scopeInfo);
         String[] splitResolved = splitScript(resolved.value);
         for (String split : splitResolved) { // TODO - original script funkiness (as well as scope prefix)
-            resolveExecutions(split, scope, executions); // TODO - combine args?
+            resolveExecutions(split, originalScript, scope, executions); // TODO - combine args? // TODO - better original script; use 'split'?
         }
-//        String[] splitResolved = splitScript(resolved.value);
-//        for (String split : splitResolved) {
-//            String[] splitArgs = splitScript(split);
-//            String[] combined = combine(splitArgs, 0, splitArgs.length, args, 1, args.length - 1);
-//            resolveAlias(combined, scope, resolvedArgs, encountered);
-//        }
     }
 
+    /**
+     * Invokes {@code execution} and routes all output to this process's output stream.
+     * @param execution to invoke
+     * @param projectRoot for which to set the root directory for the process handling the {@code execution}
+     * @return false if the invocation of {@code execution} failed for any reason.
+     */
     private static boolean invoke(Execution execution, File projectRoot) {
         execution = resolveExecutable(execution);
         execution = handleNonNativeExecutable(execution);
@@ -167,40 +191,6 @@ public final class Exec {
             Output.print(ie);
         }
         return false;
-    }
-
-    /**
-     * Looks up {@code args[0]} in the {@literal aliases} context of {@link Config} properties to see if it is an alias
-     * for another command (or chain of commands).
-     *
-     * @param args the script and arguments to it where {@code args[0]} is the script per convention of {@link Process}
-     * @param scope to resolve the alias against
-     * @param resolvedArgs the list of resolved executions (as {@code args[0]} could be aliased as multiple commands) where
-     *         each commands' arguments have been filtered ({@literal ${xx}} is replaced by property named {@literal xx}
-     *         from {@link org.moxie.ply.props.Props#get(String, String)}).
-     * @param encountered set of scripts already encountered while trying to resolve aliases.  Used to keep track
-     *         of possible circular references.
-     */
-    private static void resolveAlias(String[] args, String scope, List<String[]> resolvedArgs, Set<String> encountered) {
-        String script = args[0];
-        if (encountered.contains(script)) {
-            Output.print("^error^ script contains a circular reference to another script [ %s ].", script);
-            System.exit(1);
-        }
-        encountered.add(script);
-        Prop resolved = Props.get("scripts", scope, script);
-        if (resolved == null) {
-            filter(args, scope);
-            resolvedArgs.add(args);
-            return;
-        }
-        Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^", script, resolved.value);
-        String[] splitResolved = splitScript(resolved.value);
-        for (String split : splitResolved) {
-            String[] splitArgs = splitScript(split);
-            String[] combined = combine(splitArgs, 0, splitArgs.length, args, 1, args.length - 1);
-            resolveAlias(combined, scope, resolvedArgs, encountered);
-        }
     }
 
     /**
