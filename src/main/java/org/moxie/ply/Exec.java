@@ -78,8 +78,35 @@ public final class Exec {
         Execution with(String[] args) {
             return new Execution(this.originalScript, this.scope, args[0], args);
         }
+
+        @Override public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
+            Execution execution = (Execution) o;
+            if (scope != null ? !scope.equals(execution.scope) : execution.scope != null) {
+                return false;
+            }
+            return (script == null ? (execution.script == null) : script.equals(execution.script));
+        }
+
+        @Override public int hashCode() {
+            int result = scope != null ? scope.hashCode() : 0;
+            result = 31 * result + (script != null ? script.hashCode() : 0);
+            return result;
+        }
     }
 
+    /**
+     * Invokes all scripts associated with {@code unresolved} by resolving it to a list of {@code Execution} objects
+     * and then invoking them.
+     * @param unresolved to resolve any aliases or script location
+     * @return false if any of the invocations of the resolved {@link Execution} objects failed for any reason
+     */
     public static boolean invoke(String unresolved) {
         List<Execution> executions = resolveExecutions(unresolved);
         // all invoked scripts will be started from the parent of the '.ply' directory.
@@ -100,7 +127,7 @@ public final class Exec {
      * @return the list of {@link Execution} objects resolved by {@code unresolved}
      */
     private static List<Execution> resolveExecutions(String unresolved) {
-        return resolveExecutions(unresolved, null, "", new ArrayList<Execution>());
+        return resolveExecutions(unresolved, null, "", new ArrayList<Execution>(), new ArrayList<String>());
     }
 
     /**
@@ -109,13 +136,22 @@ public final class Exec {
      * @param propagatedOriginalScript the original script name before resolution from a previous recursive invocation
      * @param propagatedScope the scope from a previous recursive invocation
      * @param executions the list to add into for all {@link Execution} objects found from {@code unresolved}
+     * @param encountered the list of scripts already encountered while resolving {@code unresolved} (used to detect
+     *                    circular definitions of aliases).
      * @return {@code executions} augmented with any resolved from {@code unresolved}
      */
     private static List<Execution> resolveExecutions(String unresolved, String propagatedOriginalScript,
-                                                     String propagatedScope, List<Execution> executions) {
+                                                     String propagatedScope, List<Execution> executions,
+                                                     List<String> encountered) {
         String[] cmdArgs = splitScript(unresolved);
         String originalScript = (propagatedOriginalScript == null ? cmdArgs[0] : propagatedOriginalScript);
         String script = cmdArgs[0];
+        if (encountered.contains(script)) {
+            Output.print("^error^ Alias (^b^%s^r^) contains a circular reference (run '^b^ply config --scripts get %s^r^' to analyze).",
+                         script, script);
+            System.exit(1);
+        }
+        encountered.add(script);
         String scope = propagatedScope;
         if (script.contains(":")) {
             int index = script.indexOf(":");
@@ -126,7 +162,7 @@ public final class Exec {
             }
             cmdArgs[0] = script.substring(script.indexOf(":") + 1);
         }
-        resolveAlias(originalScript, cmdArgs, scope, executions);
+        resolveAlias(originalScript, cmdArgs, scope, executions, encountered);
         return executions;
     }
 
@@ -138,21 +174,26 @@ public final class Exec {
      * @param cmdArgs the script and arguments to it where {@code args[0]} is the script per convention of {@link Process}
      * @param scope to resolve the alias against
      * @param executions the list of resolved {@link Execution} objects.
+     * @param encountered list of scripts already encountered while resolving {@code cmdArgs[0]}.
      */
-    private static void resolveAlias(String originalScript, String[] cmdArgs, String scope, List<Execution> executions) {
+    private static void resolveAlias(String originalScript, String[] cmdArgs, String scope, List<Execution> executions,
+                                     List<String> encountered) {
         String script = cmdArgs[0];
         Prop resolved = Props.get("scripts", scope, script);
-        // TODO - circular invocation?
         if (resolved == null) { // not an alias
             filter(cmdArgs, scope);
-            executions.add(new Execution(originalScript, scope, cmdArgs[0], cmdArgs));
+            Execution execution = new Execution(originalScript, scope, cmdArgs[0], cmdArgs);
+            if (executions.contains(execution)) {
+                // TODO - remove already encountered executions? (already guaranteed to not by circular, so just print warning and not add?
+            }
+            executions.add(execution);
             return;
         }
         String scopeInfo = ((scope == null) || scope.isEmpty() ? "" : String.format(" (with scope ^b^%s^r^)", scope));
         Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^%s", script, resolved.value, scopeInfo);
         String[] splitResolved = splitScript(resolved.value);
-        for (String split : splitResolved) { // TODO - original script funkiness (as well as scope prefix)
-            resolveExecutions(split, originalScript, scope, executions); // TODO - combine args? // TODO - better original script; use 'split'?
+        for (String split : splitResolved) {
+            resolveExecutions(split, originalScript, scope, executions, encountered); // TODO - combine args? // TODO - better original script; use 'split'?
         }
     }
 
@@ -165,7 +206,7 @@ public final class Exec {
     private static boolean invoke(Execution execution, File projectRoot) {
         execution = resolveExecutable(execution);
         execution = handleNonNativeExecutable(execution);
-        String script = buildScriptName(execution.scriptArgs);
+        String script = buildScriptName(execution.scriptArgs); // TODO - only if need be; augment Output to have way of computing values only if the log level is valid
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(execution.scriptArgs).redirectErrorStream(true).directory(projectRoot);
             Map<String, String> environment = processBuilder.environment();
