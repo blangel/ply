@@ -258,8 +258,10 @@ public class DependencyManager {
         Map<String, String> dependencies = new HashMap<String, String>();
         if (!scope.name.isEmpty()) {
             // add the project itself as this is not the default scope
-            Prop self = Deps.getProjectDependencyProp();
-            dependencies.put(self.name, self.value);
+            DependencyAtom self = Deps.getProjectDep();
+            // TODO - not correct as it is scoped, need non-scoped and simply removing artifact.name may not be
+            // TODO - sufficient as other property values may have been overidden by the scope
+            dependencies.put(self.namespace + ":" + self.name, self.version);
         }
         if (scopedDependencies == null) {
             return dependencies;

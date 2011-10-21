@@ -2,6 +2,7 @@ package org.moxie.ply;
 
 import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
+import org.moxie.ply.props.PropsExt;
 
 import javax.print.DocFlavor;
 import java.io.*;
@@ -185,7 +186,7 @@ public final class Exec {
                                      List<String> encountered) {
         String script = cmdArgs[0];
         String namedScript = (propagatedScript == null ? originalScript : propagatedScript);
-        Prop resolved = Props.get("aliases", scope, script);
+        Prop resolved = PropsExt.get("aliases", scope, script);
         if (resolved == null) { // not an alias
             filter(cmdArgs, scope);
             executions.add(new Execution(namedScript, scope, cmdArgs[0], cmdArgs));
@@ -195,9 +196,10 @@ public final class Exec {
         Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^%s", script, resolved.value, scopeInfo);
         String[] splitResolved = splitScript(resolved.value);
         for (String split : splitResolved) {
-            int index = encountered.size() - 1;
-            // TODO - how to propagate arguments? passed to each? passed to last?
-            resolveExecutions(split, originalScript, scope, executions, encountered);
+            int index = encountered.size() - 1; // mark position to pop after recursive call to resolveExecutions
+            cmdArgs[0] = split;
+            String unresolved = buildScriptName(cmdArgs); // TODO - how to propagate arguments? passed to each? passed to last?
+            resolveExecutions(unresolved, originalScript, scope, executions, encountered);
             encountered = encountered.subList(0, index + 1); // treat like a stack, pop off
         }
     }
@@ -215,7 +217,7 @@ public final class Exec {
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(execution.scriptArgs).redirectErrorStream(true).directory(projectRoot);
             Map<String, String> environment = processBuilder.environment();
-            environment.putAll(Props.getPropsForEnv(execution.scope));
+            environment.putAll(PropsExt.getPropsForEnv(execution.scope));
             Output.print("^dbug^ invoking %s", script);
             // the Process thread reaps the child if the parent (this) is terminated
             Process process = processBuilder.start();
@@ -246,7 +248,7 @@ public final class Exec {
      */
     private static void filter(String[] array, String scope) {
         for (int i = 0; i < array.length; i++) {
-            array[i] = Props.filterForPly(new Prop("aliases", "", "", array[i], true), scope);
+            array[i] = PropsExt.filterForPly(new Prop("aliases", "", "", array[i], true), scope);
         }
     }
 
@@ -303,7 +305,7 @@ public final class Exec {
     private static Execution resolveExecutable(Execution execution) {
         String passedInScript = execution.script;
         String script = execution.script;
-        String localScriptsDir = Props.getValue("project", execution.scope, "scripts.dir");
+        String localScriptsDir = PropsExt.getValue("project", execution.scope, "scripts.dir");
         script = (localScriptsDir.endsWith(File.separator) ? localScriptsDir :
                 localScriptsDir + File.separator) + script;
         File scriptFile = new File(script);

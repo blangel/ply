@@ -24,20 +24,21 @@ import java.util.concurrent.atomic.AtomicReference;
 public class Deps {
 
     /**
-     * @return the {@link Prop} representing this project as a dependency.
+     * @return a {@link DependencyAtom} representing this project
      */
-    public static Prop getProjectDependencyProp() {
+    public static DependencyAtom getProjectDep() {
         String namespace = Props.getValue("project", "namespace");
         String name = Props.getValue("project", "name");
         String version = Props.getValue("project", "version");
         String artifactName = Props.getValue("project", "artifact.name");
         String defaultArtifactName = name + "-" + version + ".jar";
-        String propName = namespace + ":" + name;
         // don't pollute by placing artifactName explicitly even though it's the default
-        String propValue = version + (artifactName.equals(defaultArtifactName) ? "" : ":" + artifactName);
-        return new Prop("project", "" /* TODO - remove scope from Prop */, propName, propValue, true);
+        if (artifactName.equals(defaultArtifactName)) {
+            return new DependencyAtom(namespace, name, version);
+        } else {
+            return new DependencyAtom(namespace, name, version, artifactName);
+        }
     }
-
 
     public static Properties resolveDependencies(List<DependencyAtom> dependencyAtoms, List<RepositoryAtom> repositoryAtoms) {
         Properties dependencyFiles = new Properties();

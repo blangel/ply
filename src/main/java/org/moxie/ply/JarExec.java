@@ -5,6 +5,7 @@ import org.moxie.ply.dep.Deps;
 import org.moxie.ply.dep.RepositoryAtom;
 import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
+import org.moxie.ply.props.PropsExt;
 
 import java.io.File;
 import java.io.IOException;
@@ -125,8 +126,8 @@ public class JarExec {
     }
 
     private static List<RepositoryAtom> createRepositoryList(String scope) {
-        Prop prop = Props.get("depmngr", scope, "localRepo");
-        String filteredLocalRepo = Props.filterForPly(new Prop("depmngr", "", "localRepo", prop.value, prop.localOverride), scope);
+        Prop prop = PropsExt.get("depmngr", scope, "localRepo");
+        String filteredLocalRepo = PropsExt.filterForPly(new Prop("depmngr", "", "localRepo", prop.value, prop.localOverride), scope);
         RepositoryAtom localRepo = RepositoryAtom.parse(filteredLocalRepo);
         if (localRepo == null) {
             Output.print("^error^ Local repository not defined.  Set 'localRepo' property in context 'depmngr'");
@@ -134,15 +135,7 @@ public class JarExec {
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
         repositoryAtoms.add(localRepo);
-        Map<String, Prop> repositoryProps = Props.getProps("repositories");
-        if ((scope != null) && !scope.isEmpty()) {
-            Map<String, Prop> scopedToOverride = Props.getProps("repositories." + scope);
-            if ((repositoryProps != null) && (scopedToOverride != null)) {
-                repositoryProps.putAll(scopedToOverride);
-            } else if (repositoryProps == null) {
-                repositoryProps = scopedToOverride;
-            }
-        }
+        Map<String, Prop> repositoryProps = PropsExt.getPropsForScope("repositories", scope);
         if (repositoryProps != null) {
             for (String repoUri : repositoryProps.keySet()) {
                 if (localRepo.getPropertyName().equals(repoUri)) {
@@ -170,11 +163,11 @@ public class JarExec {
      * @return the split jvm options for {@code script}
      */
     private static String[] getJarScriptOptions(String script, String scope, AtomicBoolean staticClasspath) {
-        String options = Props.getValue("scripts-jar", scope, "options." + script);
+        String options = PropsExt.getValue("scripts-jar", scope, "options." + script);
         if (options.isEmpty()) {
-            options = Props.getValue("scripts-jar", scope, "options.default");
+            options = PropsExt.getValue("scripts-jar", scope, "options.default");
         }
-        options = Props.filterForPly(new Prop("scripts-jar", "", "", options, true), scope);
+        options = PropsExt.filterForPly(new Prop("scripts-jar", "", "", options, true), scope);
         if (options.contains("-cp") || options.contains("-classpath")) {
             staticClasspath.set(true);
         }

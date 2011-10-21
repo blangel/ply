@@ -25,7 +25,7 @@ public class Props {
      */
     public static final String DEFAULT_CONTEXT = "ply";
 
-    private static final class Cache {
+    static final class Cache {
 
         static final Map<Object, Object> map = new HashMap<Object, Object>();
 
@@ -50,11 +50,6 @@ public class Props {
     private static final class Singleton {
 
         static final Map<String, Map<String, Prop>> PROPS = new HashMap<String, Map<String, Prop>>();
-
-        /**
-         * The default scope to use if none is specified.
-         */
-        static final String DEFAULT_SCOPE = "";
 
         /**
          * A {@link java.io.FilenameFilter} for {@link java.util.Properties} files.
@@ -116,7 +111,7 @@ public class Props {
          * @see {@link #PROPERTIES_FILENAME_FILTER}
          */
         static void resolvePropertiesFromDirectory(File fromDirectory, boolean local) {
-            File[] subFiles = (fromDirectory == null ? null : fromDirectory.listFiles(PROPERTIES_FILENAME_FILTER));
+            File[] subFiles = fromDirectory.listFiles(PROPERTIES_FILENAME_FILTER);
             if (subFiles == null) {
                 return;
             }
@@ -211,6 +206,7 @@ public class Props {
          * @return a mapping of all property names to properties from within {@code context} which match
          *         {@code propertyNameLike} or null if nothing is found.
          */
+        @SuppressWarnings("serial")
         static Map<String, Prop> getProps(final String context, final String propertyNameLike) {
             if (!propertyNameLike.contains("*")) {
                 final Map<String, Prop> contextProps = getProps(context);
@@ -253,68 +249,6 @@ public class Props {
                 resolvedProps = getPropertyValuesByWildcardName(endsWithName, startsWithProps);
             }
             return resolvedProps;
-        }
-
-        /**
-         * From the resolved properties, creates a mapping appropriate for exporting to a process's system environment
-         * variables.  The mapping returned by this method will only include the contexts' default scopes.
-         * The key is composed of 'ply$' (to distinguish ply variables from other system environment variables) concatenated with
-         * the context concatenated with '.' and the property name.
-         * @return a mapping of env-property name to property value (using the default scope).
-         */
-        static Map<String, String> getPropsForEnv() {
-            return getPropsForEnv(DEFAULT_SCOPE);
-        }
-
-        /**
-         * From the resolved properties, creates a mapping appropriate for exporting to a process's system environment
-         * variables.  The mapping returned by this method will only include the contexts' {@code scope} (and the default scope's
-         * if the given {@code scope} didn't override the default scope's property).
-         * The key is composed of 'ply$' (to distinguish ply variables from other system environment variables) concatenated with
-         * the context concatenated with '.' and the property name (note, the scope has been discarded).
-         * @return a mapping of env-property-name to property value (using {@code scope})
-         */
-        static Map<String, String> getPropsForEnv(String scope) {
-            if (Cache.contains(scope)) {
-                return Cache.get(scope, Map.class);
-            }
-            Map<String, Map<String, Prop>> props = PROPS; // TODO - this can go away now with the getPropsForScope, logic too, just iterate over and add to env-map
-            boolean defaultScope = (scope == null || DEFAULT_SCOPE.equals(scope));
-            Map<String, String> envProps = new HashMap<String, String>(props.size() * 5); // assume avg of 5 props per context?
-            Map<String, Map<String, Prop>> scopedProps = getPropsForScope(scope);
-            for (String context : props.keySet()) {
-                String contextKey = context;
-                boolean scoped = context.contains(".");
-                if (scoped && defaultScope) {
-                    continue; // scoped but only care for default
-                }
-                if (scoped && context.endsWith("." + scope)) {
-                    contextKey = context.substring(0, context.indexOf("." + scope));
-                } else if (scoped) {
-                    continue; //scoped but doesn't match desired scope
-                }
-                Map<String, Prop> contextProps = props.get(context);
-                for (String propertyName : contextProps.keySet()) {
-                    String envKey = "ply$" + contextKey + "." + propertyName;
-                    if (!scoped && envProps.containsKey(envKey)) {
-                        continue; // already placed prop into env-map via an overriding scope, don't override with default
-                    }
-                    Prop scopeProp = contextProps.get(propertyName);
-                    Prop noScopeProp = new Prop(contextKey, "", propertyName, scopeProp.value, false);
-                    envProps.put(envKey, filter(noScopeProp, scopedProps));
-                }
-            }
-            // now add some synthetic properties like the local ply directory location.
-            envProps.put("ply$ply.project.dir", PlyUtil.LOCAL_PROJECT_DIR.getPath());
-            envProps.put("ply$ply.java", System.getProperty("ply.java"));
-            // scripts are always executed from the parent to '.ply/' directory, allow them to know where the 'ply' invocation
-            // actually occurred.
-            envProps.put("ply$ply.parent.user.dir", System.getProperty("user.dir"));
-            // allow scripts access to which scope in which they are being invoked.
-            envProps.put("ply$ply.scope", (scope == null ? "" : scope));
-
-            Cache.put(scope, envProps);
-            return envProps;
         }
 
         private static Map<String, Map<String, Prop>> getPropsForScope(String scope) {
@@ -399,7 +333,7 @@ public class Props {
                 String toFind = prefix + name;
                 if (value.contains("${" + toFind + "}")) {
                     value = value.replaceAll(Pattern.quote("${" + toFind + "}"),
-                                            filter(props.get(name), all));
+                            filter(props.get(name), all));
                 }
             }
             return value;
@@ -449,38 +383,6 @@ public class Props {
     }
 
     /**
-     * If the scope is not the default and the property is not found the default-scope will be consulted
-     * @param context to find {@code propertyName}
-     * @param scope to find {@code propertyName}
-     * @param propertyName of the property to retrieve
-     * @return the property for {@code context} and {@code scope} named {@code propertyName} or null if
-     *         no such property exists
-     */
-    // TODO - somehow only make visible to the ply code not dependent libraries
-    public static Prop get(String context, String scope, String propertyName) {
-        String contextScope = context + ((scope == null) || scope.isEmpty() ? "" : "." + scope);
-        Prop prop = get(contextScope, propertyName);
-        if (prop == null) {
-            prop = get(context, propertyName);
-        }
-        return prop;
-    }
-
-    /**
-     * If the scope is not the default and the property is not found the default-scope will be consulted
-     * @param context to find {@code propertyName}
-     * @param scope to find {@code propertyName}
-     * @param propertyName of the property to retrieve
-     * @return the property value for {@code context} and {@code scope} named {@code propertyName} or empty string if
-     *         no such property exists
-     */
-    // TODO - somehow only make visible to the ply code not dependent libraries
-    public static String getValue(String context, String scope, String propertyName) {
-        Prop prop = get(context, scope, propertyName);
-        return (prop == null ? "" : prop.value);
-    }
-
-    /**
      * @return a mapping from context to its map of properties
      */
     public static Map<String, Map<String, Prop>> getProps() {
@@ -509,31 +411,6 @@ public class Props {
     }
 
     /**
-     * From the resolved properties, creates a mapping appropriate for exporting to a process's system environment
-     * variables.  The mapping returned by this method will only include the contexts' default scopes.
-     * The key is composed of 'ply$' (to distinguish ply variables from other system environment variables) concatenated with
-     * the context concatenated with '.' and the property name.
-     * @return a mapping of env-property name to property value (using the default scope).
-     */
-    // TODO - somehow only make visible to the ply code not dependent libraries
-    public static Map<String, String> getPropsForEnv() {
-        return Singleton.getPropsForEnv();
-    }
-
-    /**
-     * From the resolved properties, creates a mapping appropriate for exporting to a process's system environment
-     * variables.  The mapping returned by this method will only include the contexts' {@code scope} (and the default scope's
-     * if the given {@code scope} didn't override the default scope's property).
-     * The key is composed of 'ply$' (to distinguish ply variables from other system environment variables) concatenated with
-     * the context concatenated with '.' and the property name (note, the scope has been discarded).
-     * @return a mapping of env-property-name to property value (using {@code scope})
-     */
-    // TODO - somehow only make visible to the ply code not dependent libraries
-    public static Map<String, String> getPropsForEnv(String scope) {
-        return Singleton.getPropsForEnv(scope);
-    }
-
-    /**
      * Filters {@code prop} by resolving all unix-style properties defined within against the resolved properties
      * of this configuration as well as the system environment variables (to capture things like {@literal PLY_HOME}).
      * @param prop to filter
@@ -543,9 +420,12 @@ public class Props {
         return Singleton.filter(prop);
     }
 
-    // TODO - make this private
-    public static String filterForPly(Prop prop, String scope) {
+    static String filterForPly(Prop prop, String scope) {
         return Singleton.filter(prop, Singleton.getPropsForScope(scope));
+    }
+
+    static String filterForPly(Prop prop, Map<String, Map<String, Prop>> props) {
+        return Singleton.filter(prop, props);
     }
 
     private Props() { }
