@@ -144,14 +144,7 @@ public final class Exec {
                                                      String propagatedScope, List<Execution> executions,
                                                      List<String> encountered) {
         String[] cmdArgs = splitScript(unresolved);
-        String originalScript = (propagatedOriginalScript == null ? cmdArgs[0] : propagatedOriginalScript);
         String script = cmdArgs[0];
-        if (encountered.contains(script)) {
-            Output.print("^error^ Alias (^b^%s^r^) contains a circular reference (run '^b^ply config --scripts get %s^r^' to analyze).",
-                         script, script);
-            System.exit(1);
-        }
-        encountered.add(script);
         String scope = propagatedScope;
         if (script.contains(":")) {
             int index = script.indexOf(":");
@@ -161,8 +154,16 @@ public final class Exec {
                 System.exit(1);
             }
             cmdArgs[0] = script.substring(script.indexOf(":") + 1);
+        } else if ((scope != null) && !scope.isEmpty()) {
+            script = scope + ":" + script;
         }
-        resolveAlias(originalScript, cmdArgs, scope, executions, encountered);
+        if (encountered.contains(script)) {
+            Output.print("^error^ Alias (^b^%s^r^) contains a circular reference (run '^b^ply config --scripts get %s^r^' to analyze).",
+                         script, script);
+            System.exit(1);
+        }
+        encountered.add(script);
+        resolveAlias(propagatedOriginalScript, script, cmdArgs, scope, executions, encountered);
         return executions;
     }
 
@@ -170,25 +171,24 @@ public final class Exec {
      * Looks up {@code args[0]} in the {@literal aliases} context of {@link Config} properties to see if it is an alias
      * for another command (or chain of commands).
      *
+     * @param propagatedScript the previously encountered script (i.e., if 'install' -> 'compile' and 'compile' ->
+     *                         file.jar compiler.jar, then the sequence of recursion for this variable would be:
+     *                         null -> install -> compile (so that the end file.jar and compiler.jar's script name
+     *                         will be the last alias value which is 'compile' (as that is more readable for the user).
      * @param originalScript the original unresolved script name
      * @param cmdArgs the script and arguments to it where {@code args[0]} is the script per convention of {@link Process}
      * @param scope to resolve the alias against
      * @param executions the list of resolved {@link Execution} objects.
      * @param encountered list of scripts already encountered while resolving {@code cmdArgs[0]}.
      */
-    private static void resolveAlias(String originalScript, String[] cmdArgs, String scope, List<Execution> executions,
+    private static void resolveAlias(String propagatedScript, String originalScript, String[] cmdArgs, String scope, List<Execution> executions,
                                      List<String> encountered) {
         String script = cmdArgs[0];
-        Prop resolved = Props.get("scripts", scope, script);
+        String namedScript = (propagatedScript == null ? originalScript : propagatedScript);
+        Prop resolved = Props.get("aliases", scope, script);
         if (resolved == null) { // not an alias
             filter(cmdArgs, scope);
-            Execution execution = new Execution(originalScript, scope, cmdArgs[0], cmdArgs);
-            if (executions.contains(execution)) {
-                Output.print("^warn^ ^b^%s^r^ already in list of executions, skipping.", cmdArgs[0]);
-                // TODO - do this across original command line args (see Ply)
-            } else {
-                executions.add(execution);
-            }
+            executions.add(new Execution(namedScript, scope, cmdArgs[0], cmdArgs));
             return;
         }
         String scopeInfo = ((scope == null) || scope.isEmpty() ? "" : String.format(" (with scope ^b^%s^r^)", scope));
@@ -196,7 +196,8 @@ public final class Exec {
         String[] splitResolved = splitScript(resolved.value);
         for (String split : splitResolved) {
             int index = encountered.size() - 1;
-            resolveExecutions(split, originalScript, scope, executions, encountered); // TODO - combine args? // TODO - better original script; use 'split'?
+            // TODO - how to propagate arguments? passed to each? passed to last?
+            resolveExecutions(split, originalScript, scope, executions, encountered);
             encountered = encountered.subList(0, index + 1); // treat like a stack, pop off
         }
     }
@@ -245,7 +246,7 @@ public final class Exec {
      */
     private static void filter(String[] array, String scope) {
         for (int i = 0; i < array.length; i++) {
-            array[i] = Props.filterForPly(new Prop("scripts", "", "", array[i], true), scope);
+            array[i] = Props.filterForPly(new Prop("aliases", "", "", array[i], true), scope);
         }
     }
 
