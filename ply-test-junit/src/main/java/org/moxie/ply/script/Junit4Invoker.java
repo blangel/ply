@@ -1,6 +1,5 @@
 package org.moxie.ply.script;
 
-import org.junit.runner.Computer;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
 import org.junit.runner.Result;
@@ -17,7 +16,7 @@ import java.util.Set;
  *
  * Executes {@literal junit}-4 unit tests.
  */
-public class Junit4Runner {
+public class Junit4Invoker {
 
     private final Set<Class> classes;
 
@@ -27,11 +26,11 @@ public class Junit4Runner {
 
     private final String originalMatchers;
 
-    public Junit4Runner(Set<Class> classes) {
+    public Junit4Invoker(Set<Class> classes) {
         this(classes, null, null);
     }
 
-    public Junit4Runner(Set<Class> classes, String[] matchers, String unsplitMatchers) {
+    public Junit4Invoker(Set<Class> classes, String[] matchers, String unsplitMatchers) {
         this.classes = classes;
         UnionFilter filter = null;
         if (matchers != null) {

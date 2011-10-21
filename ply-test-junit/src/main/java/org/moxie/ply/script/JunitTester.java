@@ -4,7 +4,6 @@ import org.moxie.ply.Output;
 import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
 
-import javax.xml.transform.Result;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FilenameFilter;
@@ -46,7 +45,7 @@ public class JunitTester {
         }
         File artifact = new File(testBuildDirProp.value + File.separator + testArtifactNameProp.value);
         if (!artifact.exists()) {
-            Output.print("^info^ No test artifact, skipping test execution.");
+            Output.print("^warn^ No test artifact, skipping test execution.");
             return;
         }
         URL artifactUrl;
@@ -80,7 +79,7 @@ public class JunitTester {
             matchers = args[0].split(",");
         }
 
-        Junit4Runner junit4Runner = new Junit4Runner(classes, matchers, unsplitMatchers);
+        Junit4Invoker junit4Runner = new Junit4Invoker(classes, matchers, unsplitMatchers);
         junit4Runner.runTests();
 
     }

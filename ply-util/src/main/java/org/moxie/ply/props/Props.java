@@ -6,8 +6,10 @@ import org.moxie.ply.PropertiesFileUtil;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 /**
@@ -27,18 +29,41 @@ public class Props {
 
     static final class Cache {
 
-        static final Map<Object, Object> map = new HashMap<Object, Object>();
-
-        static void put(Object key, Object value) {
-            map.put(key, value);
+        static enum Type {
+            Filter, Env
         }
 
-        static <T> T get(Object key, Class<T> valueClass) {
-            return valueClass.cast(map.get(key));
+        static final Map<Object, Object> filterCache = new HashMap<Object, Object>();
+        static final Map<Object, Object> envCache = new HashMap<Object, Object>();
+
+        static void put(Type type, Object key, Object value) {
+            switch (type) {
+                case Filter:
+                    filterCache.put(key, value); return;
+                case Env:
+                    envCache.put(key, value); return;
+            }
+            throw new AssertionError(String.format("Unknown type %s", type));
         }
 
-        static boolean contains(Object key) {
-            return map.containsKey(key);
+        static <T> T get(Type type, Object key, Class<T> valueClass) {
+            switch (type) {
+                case Filter:
+                    return valueClass.cast(filterCache.get(key));
+                case Env:
+                    return valueClass.cast(envCache.get(key));
+            }
+            throw new AssertionError(String.format("Unknown type %s", type));
+        }
+
+        static boolean contains(Type type, Object key) {
+            switch (type) {
+                case Filter:
+                    return filterCache.containsKey(key);
+                case Env:
+                    return envCache.containsKey(key);
+            }
+            throw new AssertionError(String.format("Unknown type %s", type));
         }
 
     }
@@ -304,8 +329,8 @@ public class Props {
             if ((value == null) || (!value.value.contains("${"))) {
                 return (value == null ? null : value.value);
             }
-            if (Cache.contains(value.value)) {
-                return Cache.get(value.value, String.class);
+            if (Cache.contains(Cache.Type.Filter, value.scope + "#" + value.value)) {
+                return Cache.get(Cache.Type.Filter, value.scope + "#" + value.value, String.class);
             }
             String filtered = value.value;
             // first attempt to resolve via the value's own context.
@@ -321,7 +346,7 @@ public class Props {
                 }
             }
             Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", value.value, filtered, value.context);
-            Cache.put(value.value, filtered);
+            Cache.put(Cache.Type.Filter, value.scope + "#" + value.value, filtered);
             return filtered;
         }
 

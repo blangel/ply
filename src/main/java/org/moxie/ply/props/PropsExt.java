@@ -57,8 +57,8 @@ public final class PropsExt {
      */
     @SuppressWarnings("unchecked")
     public static Map<String, String> getPropsForEnv(String scope) {
-        if (Props.Cache.contains(scope)) {
-            return Props.Cache.get(scope, Map.class);
+        if (Props.Cache.contains(Props.Cache.Type.Env, scope)) {
+            return Props.Cache.get(Props.Cache.Type.Env, scope, Map.class);
         }
         Map<String, Map<String, Prop>> scopedProps = getPropsForScope(scope);
         Map<String, String> envProps = new HashMap<String, String>(scopedProps.size() * 5); // assume avg of 5 props per context?
@@ -66,9 +66,9 @@ public final class PropsExt {
             Map<String, Prop> contextProps = scopedProps.get(context);
             for (String propertyName : contextProps.keySet()) {
                 String envKey = "ply$" + context + "." + propertyName;
-                Prop scopeProp = contextProps.get(propertyName);
-                Prop noScopeProp = new Prop(context, "", propertyName, scopeProp.value, false);
-                envProps.put(envKey, Props.filterForPly(noScopeProp, scopedProps));
+                Prop prop = contextProps.get(propertyName);
+                Prop userScopedProp = new Prop(context, scope, propertyName, prop.value, false);
+                envProps.put(envKey, Props.filterForPly(userScopedProp, scopedProps));
             }
         }
         // now add some synthetic properties like the local ply directory location.
@@ -80,7 +80,7 @@ public final class PropsExt {
         // allow scripts access to which scope in which they are being invoked.
         envProps.put("ply$ply.scope", (scope == null ? "" : scope));
 
-        Props.Cache.put(scope, envProps);
+        Props.Cache.put(Props.Cache.Type.Env, scope, envProps);
         return envProps;
     }
 
