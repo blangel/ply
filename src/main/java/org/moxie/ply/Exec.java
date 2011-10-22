@@ -112,7 +112,7 @@ public final class Exec {
         List<Execution> executions = resolveExecutions(unresolved);
         // all invoked scripts will be started from the parent of the '.ply' directory.
         // this provides a consistent view of execution for all scripts.  if a script wants to actually know
-        // which directory from which the 'ply' command was invoked, look at 'parent.user.dir' environment property.
+        // which directory from which the 'ply' command was invoked, look at 'original.user.dir' environment property.
         String plyDirPath = PlyUtil.LOCAL_PROJECT_DIR.getPath();
         File projectRoot = new File(plyDirPath + (plyDirPath.endsWith(File.separator) ? "" : File.separator) + ".." + File.separator);
         for (Execution execution : executions) {

@@ -1,9 +1,11 @@
 package org.moxie.ply.script;
 
 import org.moxie.ply.BitUtil;
+import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
 import org.moxie.ply.PropertiesFileUtil;
 import org.moxie.ply.props.Props;
+import org.moxie.ply.props.Scope;
 
 import java.io.*;
 import java.security.DigestInputStream;
@@ -17,31 +19,28 @@ import java.util.concurrent.atomic.AtomicReference;
  * Date: 9/12/11
  * Time: 9:20 PM
  *
- * This scope property (ply.scope) is used as a prefix to the file
- * names created by this script.  If the scope is null then 'src' will be used for file names prefix.  This file name
- * prefix is referred to as '${prefix}' below.
+ * This scope property (ply.scope) is used as a suffix to the file
+ * names created by this script.  If the scope is the default then there will be no suffix.  This file name suffix is
+ * referred to as '${suffix}' below.
  *
  * Determines which files within {@literal project[.scope].src.dir} have changed since last invocation.
  * The information used to determine if a file has changed is saved in the {@literal project.build.dir} in a file named
- * {@literal ${prefix}-changed-meta.properties}.  The list of files which have changed since last invocation is stored
- * in a file named {@literal ${prefix}-changed.properties} in directory {@literal project[.scope].build.dir}.
+ * {@literal changed-meta[.${suffix}].properties}.  The list of files which have changed since last invocation is stored
+ * in a file named {@literal changed[.${suffix}].properties} in directory {@literal project[.scope].build.dir}.
  * The information used to determine change is stored relative to {@literal project[.scope].build.dir} to allow for cleans to
- * force a full-recompilation.  The format of the {@literal ${prefix}-changed-meta.properties} file is:
+ * force a full-recompilation.  The format of the {@literal changed-meta[.${suffix}].properties} file is:
  * file-path=timestamp,sha1-hash
- * and the format of the {@literal ${prefix}-changed.properties} is simply a listing of file paths which have changed.
+ * and the format of the {@literal changed[.${suffix}].properties} is simply a listing of file paths which have changed.
  *
  */
 public class FileChangeDetector {
 
     public static void main(String[] args) {
-        String scope = Props.getValue("ply", "scope");
-        String prefix = (scope.isEmpty() ? "src" : scope);
+        Scope scope = new Scope(Props.getValue("ply", "scope"));
         String srcDirPath = Props.getValue("project", "src.dir");
         String buildDirPath = Props.getValue("project", "build.dir");
-        File lastSrcChanged = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
-                + prefix + "-changed-meta.properties");
-        File changedPropertiesFile = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
-                + prefix + "-changed.properties");
+        File lastSrcChanged = FileUtil.fromParts(buildDirPath, "changed-meta" + scope.fileSuffix + ".properties");
+        File changedPropertiesFile = FileUtil.fromParts(buildDirPath, "changed" + scope.fileSuffix + ".properties");
         File srcDir = new File(srcDirPath);
         Properties existing = PropertiesFileUtil.load(lastSrcChanged.getPath(), true);
         try {
@@ -49,20 +48,20 @@ public class FileChangeDetector {
         } catch (IOException ioe) {
             Output.print(ioe);
         }
-        computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing, prefix);
+        computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing, scope);
     }
 
     private static void computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir,
-                                            Properties existing, String invocationName) {
+                                            Properties existing, Scope scope) {
         Properties changedList = new Properties();
         Properties properties = new Properties();
-        collectAllFileChanges(srcDir, changedList, properties, existing, invocationName);
+        collectAllFileChanges(srcDir, changedList, properties, existing, scope);
         PropertiesFileUtil.store(changedList, changedPropertiesFile.getPath());
         PropertiesFileUtil.store(properties, lastSrcChanged.getPath());
     }
 
     private static void collectAllFileChanges(File from, Properties changedList, Properties into, Properties existing,
-                                              String invocationName) {
+                                              Scope scope) {
         String epochTime = String.valueOf(System.currentTimeMillis());
         File[] subfiles = from.listFiles();
         if (subfiles == null) {
@@ -70,12 +69,12 @@ public class FileChangeDetector {
         }
         for (File file : subfiles) {
             if (file.isDirectory()) {
-                collectAllFileChanges(file, changedList, into, existing, invocationName);
+                collectAllFileChanges(file, changedList, into, existing, scope);
             } else {
                 try {
                     AtomicReference<String> sha1HashRef = new AtomicReference<String>();
                     String path = file.getCanonicalPath();
-                    if (hasChanged(file, existing, sha1HashRef, invocationName)) {
+                    if (hasChanged(file, existing, sha1HashRef, scope)) {
                         String sha1Hash = (sha1HashRef.get() == null ? computeSha1Hash(file) : sha1HashRef.get());
                         into.setProperty(path, epochTime + "," + sha1Hash);
                         changedList.setProperty(path, "");
@@ -89,7 +88,7 @@ public class FileChangeDetector {
         }
     }
 
-    private static boolean hasChanged(File file, Properties existing, AtomicReference<String> computedSha1, String invocationName) {
+    private static boolean hasChanged(File file, Properties existing, AtomicReference<String> computedSha1, Scope scope) {
         try {
             String propertyValue;
             if ((propertyValue = existing.getProperty(file.getCanonicalPath())) == null) {
@@ -97,7 +96,7 @@ public class FileChangeDetector {
             }
             String[] split = propertyValue.split("\\,");
             if (split.length != 2) {
-                Output.print("^warn^ corrupted %s-changed-meta.properties file, recomputing.", invocationName);
+                Output.print("^warn^ corrupted changed-meta%s.properties file, recomputing.", scope.fileSuffix);
                 return true;
             }
             long timestamp = Long.valueOf(split[0]);
@@ -111,7 +110,7 @@ public class FileChangeDetector {
         } catch (IOException ioe) {
             throw new AssertionError(ioe);
         } catch (NumberFormatException nfe) {
-            Output.print("^warn^ corrupted %s-changed-meta.properties file, recomputing.", invocationName);
+            Output.print("^warn^ corrupted changed-meta%s.properties file, recomputing.", scope.fileSuffix);
             return true;
         }
     }

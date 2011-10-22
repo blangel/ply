@@ -117,6 +117,41 @@ public final class FileUtil {
         return false;
     }
 
+    /**
+     * Concatenates {@code parts} together ensuring they are correctly separated by {@link File#separator} where
+     * appropriate.
+     * @param parts to concatenate.
+     * @return the path created from {@code parts} (with the appropriate {@link File#separator} separating them).
+     */
+    public static String pathFromParts(String ... parts) {
+        if ((parts == null) || (parts.length < 1)) {
+            return null;
+        }
+        StringBuilder buf = new StringBuilder();
+        for (String part : parts) {
+            if ((buf.length() > 0) && (buf.charAt(buf.length() - 1) != File.separatorChar)) {
+                buf.append(File.separatorChar);
+            }
+            buf.append(part);
+        }
+        return buf.toString();
+    }
+
+    /**
+     * Concatenates {@code parts} together ensuring they are correctly separated by {@link File#separator} where
+     * appropriate.
+     * @param parts to concatenate.
+     * @return a {@link File} created from {@code parts} (with the appropriate {@link File#separator} separating them).
+     */
+    public static File fromParts(String ... parts) {
+        String path = pathFromParts(parts);
+        if (path == null) {
+            return null;
+        } else {
+            return new File(path);
+        }
+    }
+
     private FileUtil() { }
 
 }

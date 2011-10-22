@@ -1,5 +1,6 @@
 package org.moxie.ply.script;
 
+import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
 import org.moxie.ply.PropertiesFileUtil;
 import org.moxie.ply.props.Props;
@@ -114,8 +115,7 @@ public class CompilerScript {
     private final Set<String> sourceFilePaths;
 
     private CompilerScript() {
-        String scope = Props.getValue("ply", "scope");
-        String fileChangedPrefix = (scope.isEmpty() ? "src" : scope);
+        Scope scope = new Scope(Props.getValue("ply", "scope"));
         String srcDir = Props.getValue("project", "src.dir");
         String buildDir = Props.getValue("project", "build.dir");
         if ((srcDir.isEmpty()) || (buildDir.isEmpty())) {
@@ -131,12 +131,11 @@ public class CompilerScript {
         String buildClassesPath = Props.getValue("compiler", "buildPath");
         File buildClassesDir = new File(buildClassesPath);
         buildClassesDir.mkdirs();
-        // load the src-changed.properties file from the build directory.
-        File changedPropertiesFile = new File(buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator) +
-                                              fileChangedPrefix + "-changed.properties");
+        // load the changed[.scope].properties file from the build  directory.
+        File changedPropertiesFile = FileUtil.fromParts(buildDir, "changed" + scope.fileSuffix + ".properties");
         Properties changedProperties = PropertiesFileUtil.load(changedPropertiesFile.getPath(), false, true);
         if (changedProperties == null) {
-            Output.print("^error^ %s-changed.properties not found, please run 'file-changed' before 'compiler'.", fileChangedPrefix);
+            Output.print("^error^ changed%s.properties not found, please run 'file-changed' before 'compiler'.", scope.fileSuffix);
         } else {
             for (String filePath : changedProperties.stringPropertyNames()) {
                 if (filePath.endsWith(".java")) {

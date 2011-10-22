@@ -329,6 +329,9 @@ public class Props {
             if ((value == null) || (!value.value.contains("${"))) {
                 return (value == null ? null : value.value);
             }
+            // the cache key must contain the scope as the same value name may be used in each different scope with
+            // different filtered values (i.e., ${project.src.dir} may be the same key in both the default and 'test'
+            // scopes but its resolution may be different).
             if (Cache.contains(Cache.Type.Filter, value.scope + "#" + value.value)) {
                 return Cache.get(Cache.Type.Filter, value.scope + "#" + value.value, String.class);
             }

@@ -10,6 +10,7 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNull;
 
 /**
  * User: blangel
@@ -106,6 +107,42 @@ public class FileUtilTest {
                 assertEquals(content, copied);
             }
         }
+    }
+
+    @Test
+    public void pathFromParts() {
+        assertNull(FileUtil.pathFromParts());
+        assertNull(FileUtil.pathFromParts((String[]) null));
+
+        assertEquals("", FileUtil.pathFromParts(""));
+        assertEquals("test", FileUtil.pathFromParts("test"));
+        assertEquals("null", FileUtil.pathFromParts((String) null));
+
+        assertEquals("test" + File.separator + "again", FileUtil.pathFromParts("test", "again"));
+        assertEquals("test" + File.separator + "again" + File.separator + "more", FileUtil.pathFromParts("test", "again", "more"));
+
+        assertEquals("test" + File.separator + "again", FileUtil.pathFromParts("test" + File.separator, "again"));
+        assertEquals("test" + File.separator + "again" + File.separator + "more" + File.separator,
+                        FileUtil.pathFromParts("test" + File.separator, "again" + File.separator, "more" + File.separator));
+    }
+
+    @Test
+    public void fromParts() {
+
+        assertNull(FileUtil.fromParts());
+        assertNull(FileUtil.fromParts((String[]) null));
+
+        assertEquals("null", FileUtil.fromParts((String) null).getPath());
+        assertEquals("", FileUtil.fromParts("").getPath());
+        assertEquals("test", FileUtil.fromParts("test").getPath());
+
+        assertEquals("test" + File.separator + "again", FileUtil.fromParts("test", "again").getPath());
+        assertEquals("test" + File.separator + "again" + File.separator + "more", FileUtil.fromParts("test", "again", "more").getPath());
+
+        assertEquals("test" + File.separator + "again", FileUtil.fromParts("test" + File.separator, "again").getPath());
+        assertEquals("test" + File.separator + "again" + File.separator + "more", FileUtil.fromParts("test" + File.separator,
+                                                                                                     "again" + File.separator,
+                                                                                                     "more" + File.separator).getPath());
 
     }
 

@@ -74,12 +74,12 @@ public final class PropsExt {
         // now add some synthetic properties like the local ply directory location.
         envProps.put("ply$ply.project.dir", PlyUtil.LOCAL_PROJECT_DIR.getPath());
         envProps.put("ply$ply.java", System.getProperty("ply.java"));
-        // scripts are always executed from the parent to '.ply/' directory, allow them to know where the 'ply' invocation
+        // scripts are always executed from the '../.ply/' directory, allow them to know where the 'ply' invocation
         // actually occurred.
-        envProps.put("ply$ply.parent.user.dir", System.getProperty("user.dir"));
+        envProps.put("ply$ply.original.user.dir", System.getProperty("user.dir"));
         // allow scripts access to which scope in which they are being invoked.
         envProps.put("ply$ply.scope", (scope == null ? "" : scope));
-
+        
         Props.Cache.put(Props.Cache.Type.Env, scope, envProps);
         return envProps;
     }
