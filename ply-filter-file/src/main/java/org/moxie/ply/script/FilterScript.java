@@ -103,13 +103,13 @@ public final class FilterScript {
 
         List<FilterPattern> filterPatterns = new ArrayList<FilterPattern>(filterFiles.size());
         for (String filterExp : filterFiles.keySet()) {
+            Prop filterProp = filterFiles.get(filterExp);
             // if the filterExp is not prefixed with a directory, hard-code to be the filter.dir
             if (!filterExp.startsWith("**")) {
                 filterExp = FileUtil.pathFromParts(filterDir.getPath(), filterExp);
             }
             Pattern filterPattern = AntStyleWildcardUtil.regex(filterExp);
             boolean include = false;
-            Prop filterProp = filterFiles.get(filterExp);
             if ((filterProp == null) || "include".equalsIgnoreCase(filterProp.value)) {
                 include = true;
             }
