@@ -23,11 +23,6 @@ public class Ply {
             System.exit(0);
         }
         checkAssumptions("init".equals(args[0]));
-        // init the output information
-        String colorProp = Props.getValue("color");
-        boolean color = (colorProp == null || !"false".equals(colorProp));
-        String logLevelsProp = Props.getValue("log.levels");
-        Output.init(color, logLevelsProp);
         if ("--usage".equals(args[0])) {
             usage();
         } else if ("config".equals(args[0])) {

@@ -77,36 +77,6 @@ public final class Output {
 
     }
 
-    /**
-     * Remaps the {@link #TERM_CODES} appropriately if the {@literal color} property is false.
-     * Also figures out what log levels are available.
-     * Requires property resolution and so is post-static initialization and package protected.
-     * @param color false to unmap color terminal codes
-     * @param logLevels the {@literal ply.log.levels} property value
-     */
-    static void init(boolean color, String logLevels) {
-        if (!color) {
-            TERM_CODES.put("ply", new TermCode(TERM_CODES.get("ply").pattern, "[ply]"));
-            TERM_CODES.put("error", new TermCode(TERM_CODES.get("error").pattern, "[err!]"));
-            TERM_CODES.put("warn", new TermCode(TERM_CODES.get("warn").pattern, "[warn]"));
-            TERM_CODES.put("info", new TermCode(TERM_CODES.get("info").pattern, "[info]"));
-            TERM_CODES.put("dbug", new TermCode(TERM_CODES.get("dbug").pattern, "[dbug]"));
-            TERM_CODES.put("reset", new TermCode(TERM_CODES.get("reset").pattern, ""));
-            TERM_CODES.put("bold", new TermCode(TERM_CODES.get("bold").pattern, ""));
-            TERM_CODES.put("normal", new TermCode(TERM_CODES.get("normal").pattern, ""));
-            TERM_CODES.put("inverse", new TermCode(TERM_CODES.get("inverse").pattern, ""));
-            TERM_CODES.put("black", new TermCode(TERM_CODES.get("black").pattern, ""));
-            TERM_CODES.put("red", new TermCode(TERM_CODES.get("red").pattern, ""));
-            TERM_CODES.put("green", new TermCode(TERM_CODES.get("green").pattern, ""));
-            TERM_CODES.put("yellow", new TermCode(TERM_CODES.get("yellow").pattern, ""));
-            TERM_CODES.put("blue", new TermCode(TERM_CODES.get("blue").pattern, ""));
-            TERM_CODES.put("magenta", new TermCode(TERM_CODES.get("magenta").pattern, ""));
-            TERM_CODES.put("cyan", new TermCode(TERM_CODES.get("cyan").pattern, ""));
-            TERM_CODES.put("white", new TermCode(TERM_CODES.get("white").pattern, ""));
-        }
-        init(logLevels);
-    }
-
     static void init(String logLevels) {
         if (!logLevels.contains("warn")) {
             warnLevel.set(false);
