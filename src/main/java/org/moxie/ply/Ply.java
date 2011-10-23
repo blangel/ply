@@ -54,6 +54,7 @@ public class Ply {
 
     /**
      * Performs sanity checks on what ply assumes to exist.
+     * @param init true if current invocation is running 'init' (meaning don't fail because the project hasn't been init-ed).
      */
     private static void checkAssumptions(boolean init) {
         if (!PlyUtil.SYSTEM_CONFIG_DIR.exists()) {

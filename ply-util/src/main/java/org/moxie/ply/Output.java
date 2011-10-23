@@ -1,5 +1,6 @@
 package org.moxie.ply;
 
+import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
 
 import java.util.HashMap;
@@ -43,8 +44,12 @@ public final class Output {
      */
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
     static {
-        boolean withinTerminal = (System.getenv("TERM") != null);
-        boolean colorDisabled = (Props.get("color") != null ? "false".equals(Props.getValue("color")) : false);
+        String terminal = System.getenv("TERM");
+        boolean withinTerminal = (terminal != null);
+        // TODO - what are the range of terminal values and what looks best for each?
+        String terminalBold = ("xterm".equals(terminal) ? "1" : "0");
+        Prop colorProp = Props.get("color");
+        boolean colorDisabled = ((colorProp != null) && "false".equals(colorProp.value));
         boolean useColor = withinTerminal && !colorDisabled;
         // first place color values (in case call to Config tries to print, at least have something in
         // TERM_CODES with which to strip messages.
@@ -57,14 +62,14 @@ public final class Output {
         TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), useColor ? "\u001b[1m" : ""));
         TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), useColor ? "\u001b[2m" : ""));
         TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), useColor ? "\u001b[7m" : ""));
-        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), useColor ? "\u001b[1;30m" : ""));
-        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"), useColor ? "\u001b[1;31m" : ""));
-        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), useColor ? "\u001b[1;32m" : ""));
-        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), useColor ? "\u001b[1;33m" : ""));
-        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), useColor ? "\u001b[1;34m" : ""));
-        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), useColor ? "\u001b[1;35m" : ""));
-        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), useColor ? "\u001b[1;36m" : ""));
-        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), useColor ? "\u001b[1;37m" : ""));
+        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), useColor ? "\u001b[" + terminalBold + ";30m" : ""));
+        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"), useColor ? "\u001b[" + terminalBold + ";31m" : ""));
+        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), useColor ? "\u001b[" + terminalBold + ";32m" : ""));
+        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), useColor ? "\u001b[" + terminalBold + ";33m" : ""));
+        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), useColor ? "\u001b[" + terminalBold + ";34m" : ""));
+        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), useColor ? "\u001b[" + terminalBold + ";35m" : ""));
+        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), useColor ? "\u001b[" + terminalBold + ";36m" : ""));
+        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), useColor ? "\u001b[" + terminalBold + ";37m" : ""));
         // init log-levels for scripts which depend upon ply-util (ply itself calls init(boolean, String)
         if (Props.get("log.levels") != null) {
             init(Props.getValue("log.levels"));
