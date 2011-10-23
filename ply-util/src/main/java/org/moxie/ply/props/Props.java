@@ -178,7 +178,7 @@ public class Props {
                 contextProps = new HashMap<String, Prop>();
                 PROPS.put(context, contextProps);
             }
-            contextProps.put(propertyName, new Prop(context, "" /* TODO - remove scope from Prop */, propertyName, propertyValue, localOverride));
+            contextProps.put(propertyName, new Prop(context, "", propertyName, propertyValue, localOverride));
         }
 
         /**
@@ -337,15 +337,26 @@ public class Props {
             }
             String filtered = value.value;
             // first attempt to resolve via the value's own context.
-            filtered = filterBy(filtered, "", props.get(value.context), props);
-            // also attempt to filter context-prefixed values TODO - if nothing left to filter, short-circuit
-            for (String context : props.keySet()) {
-                filtered = filterBy(filtered, context + ".", props.get(context), props);
-            }
-            for (String enivronmentProperty : System.getenv().keySet()) {
-                if (filtered.contains("${" + enivronmentProperty + "}")) {
-                    filtered = filtered.replaceAll(Pattern.quote("${" + enivronmentProperty + "}"),
-                            System.getenv(enivronmentProperty));
+            filtering: {
+                filtered = filterBy(filtered, "", props.get(value.context), props);
+                if (!value.value.contains("${")) {
+                    break filtering;
+                }
+                // also attempt to filter context-prefixed values
+                for (String context : props.keySet()) {
+                    filtered = filterBy(filtered, context + ".", props.get(context), props);
+                    if (!value.value.contains("${")) {
+                        break filtering;
+                    }
+                }
+                for (String enivronmentProperty : System.getenv().keySet()) {
+                    if (filtered.contains("${" + enivronmentProperty + "}")) {
+                        filtered = filtered.replaceAll(Pattern.quote("${" + enivronmentProperty + "}"),
+                                System.getenv(enivronmentProperty));
+                    }
+                    if (!value.value.contains("${")) {
+                        break filtering;
+                    }
                 }
             }
             Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", value.value, filtered, value.context);

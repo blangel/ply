@@ -43,21 +43,6 @@ public final class PlyUtil {
     public static final File LOCAL_CONFIG_DIR = resolveLocalConfigDir(LOCAL_PROJECT_DIR);
 
     /**
-     * Performs sanity checks on what ply assumes to exist.
-     */
-    public static void checkAssumptions() {
-        if (!PlyUtil.SYSTEM_CONFIG_DIR.exists()) {
-            Output.print("^error^ the ply install directory is corrupt, please re-install.");
-            System.exit(1);
-        }
-        if (!PlyUtil.LOCAL_CONFIG_DIR.exists()) {
-            // TODO - need to skip if this is init
-            Output.print("^warn^ not a ply project (or any of the parent directories), please initialize first ^b^ply init^r^.");
-            System.exit(1);
-        }
-    }
-
-    /**
      * This directory has to be resolved as ply can be invoked from within a nested directory.
      * @return the resolved local ply project directory
      */

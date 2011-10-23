@@ -22,18 +22,12 @@ public class Ply {
             usage();
             System.exit(0);
         }
+        checkAssumptions("init".equals(args[0]));
         // init the output information
-        try {
-            String colorProp = Props.getValue("color");
-            boolean color = (colorProp == null || !"false".equals(colorProp));
-            String logLevelsProp = Props.getValue("log.levels");
-            Output.init(color, logLevelsProp);
-        } catch (IllegalStateException ise) { // thrown from Config to indicate there is no local properties directory
-            if (!"init".equals(args[0])) {
-                Output.print(ise.getMessage());
-                return;
-            }
-        }
+        String colorProp = Props.getValue("color");
+        boolean color = (colorProp == null || !"false".equals(colorProp));
+        String logLevelsProp = Props.getValue("log.levels");
+        Output.init(color, logLevelsProp);
         if ("--usage".equals(args[0])) {
             usage();
         } else if ("config".equals(args[0])) {
@@ -43,7 +37,7 @@ public class Ply {
         } else {
             long start = System.currentTimeMillis();
             Output.print("^ply^ building ^b^" + Props.getValue("project", "name") + "^r^, " +
-                        Props.getValue("project", "version"));
+                    Props.getValue("project", "version"));
             for (String script : args) {
                 if (!Exec.invoke(script)) {
                     System.exit(1);
@@ -56,6 +50,20 @@ public class Ply {
             Output.print("^ply^ Finished in ^b^%.3f seconds^r^ using ^b^%d/%d MB^r^.", seconds, (totalMem - freeMem), totalMem);
         }
         System.exit(0);
+    }
+
+    /**
+     * Performs sanity checks on what ply assumes to exist.
+     */
+    private static void checkAssumptions(boolean init) {
+        if (!PlyUtil.SYSTEM_CONFIG_DIR.exists()) {
+            Output.print("^error^ the ply install directory is corrupt, please re-install.");
+            System.exit(1);
+        }
+        if (!init && !PlyUtil.LOCAL_CONFIG_DIR.exists()) {
+            Output.print("^warn^ not a ply project (or any of the parent directories), please initialize first: ^b^ply init^r^.");
+            System.exit(1);
+        }
     }
 
     private static void usage() {
