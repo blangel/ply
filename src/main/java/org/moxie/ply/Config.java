@@ -62,23 +62,24 @@ public final class Config {
         if (explicitlyDefinedContext) {
             args = removeContext(args);
         }
-        if ((args.length >= 2) && "get".equals(args[1])) {
+        if ((args.length >= 2) && ("get".equals(args[1]) || "get-all".equals(args[1]))) {
+            boolean justLocal = "get".equals(args[1]);
             // has name to retrieve
             if (args.length == 3) {
                 String name = args[2];
                 if (!explicitlyDefinedContext) {
-                    print(name);
+                    print(name, justLocal);
                 } else {
-                    print(context, name);
+                    print(context, name, justLocal);
                 }
             }
             // no name, but has context
             else if (explicitlyDefinedContext) {
-                printContext(context);
+                printContext(context, justLocal);
             }
             // no name, print all
             else {
-                print();
+                print(justLocal);
             }
         } else if ((args.length == 4) && "set".equals(args[1])) {
             setProperty(context, args[2], args[3]);
@@ -176,16 +177,18 @@ public final class Config {
 
     /**
      * Print all properties for all contexts and all scopes.
+     * @param justLocal true if only the local properties are to be printed
      */
-    private void print() {
-        print(Props.getProps());
+    private void print(boolean justLocal) {
+        print(Props.getProps(), justLocal);
     }
 
     /**
      * Print all properties matching {@code name} from within any context and any scope.
      * @param name to match (may include wildcard) from within any context and any scope.
+     * @param justLocal true if only the local properties are to be printed
      */
-    private void print(String name) {
+    private void print(String name, boolean justLocal) {
         Map<String, Map<String, Prop>> matches = new HashMap<String, Map<String, Prop>>();
         for (String context : Props.getProps().keySet()) {
             Map<String, Prop> matchedProps = Props.getProps(context, name);
@@ -196,20 +199,21 @@ public final class Config {
         if (matches.isEmpty()) {
             Output.print("No property matched ^b^%s^r^ in any context.", name);
         } else {
-            print(matches);
+            print(matches, justLocal);
         }
     }
 
     /**
      * Prints all properties of {@code contextDotScope}
      * @param contextDotScope the context[.scope] to print
+     * @param justLocal true if only the local properties are to be printed
      */
-    private void printContext(String contextDotScope) {
+    private void printContext(String contextDotScope, boolean justLocal) {
         Map<String, Prop> contextProps = Props.getProps(contextDotScope);
         if (contextProps == null) {
             Output.print("No context ^b^%s^r^ found.", contextDotScope);
         } else {
-            printContext(contextDotScope, contextProps);
+            printContext(contextDotScope, contextProps, justLocal);
         }
     }
 
@@ -217,32 +221,34 @@ public final class Config {
      * Prints all properties matching {@code name} from context {@code context}
      * @param contextDotScope to look for properties matching {@code name} to print
      * @param name to match (may include wildcard) from within {@code context}.
+     * @param justLocal true if only the local properties are to be printed
      */
-    private void print(String contextDotScope, String name) {
+    private void print(String contextDotScope, String name, boolean justLocal) {
         Map<String, Prop> props = Props.getProps(contextDotScope, name);
         Map<String, Map<String, Prop>> contextDotScopeProps = new HashMap<String, Map<String, Prop>>();
         if ((props == null) || props.isEmpty()) {
             Output.print("No property matched ^b^%s^r^ in ^b^%s^r^.", name, contextDotScope);
         } else {
             contextDotScopeProps.put(contextDotScope, props);
-            print(contextDotScopeProps);
+            print(contextDotScopeProps, justLocal);
         }
     }
 
     /**
      * Print all properties from within {@code props} by their context.
      * @param props mapping of context.scope to properties to print.
+     * @param justLocal true if only the local properties are to be printed
      */
-    private void print(Map<String, Map<String, Prop>> props) {
+    private void print(Map<String, Map<String, Prop>> props, boolean justLocal) {
         boolean hasGlobal = false;
         List<String> contexts = new ArrayList<String>(props.keySet());
         Collections.sort(contexts);
         for (String context : contexts) {
-            if (printContext(context, props.get(context))) {
+            if (printContext(context, props.get(context), justLocal)) {
                 hasGlobal = true;
             }
         }
-        if (hasGlobal) {
+        if (hasGlobal && !justLocal) {
             Output.print("^green^*^r^ indicates system-wide property.");
         }
     }
@@ -251,18 +257,28 @@ public final class Config {
      * Prints all {@code props} coming from the context, {@code context} (including all scopes).
      * @param contextDotScope from which the {@code props} come
      * @param props to print
+     * @param justLocal true if only the local properties are to be printed
      * @return true if any of the properties to print are global.
      */
-    private boolean printContext(String contextDotScope, Map<String, Prop> props) {
-        boolean hasGlobal = false;
-        Output.print("Properties from ^b^%s^r^", contextDotScope);
+    private boolean printContext(String contextDotScope, Map<String, Prop> props, boolean justLocal) {
+        boolean hasGlobal = false, printedHeader = false;
         List<String> propertyNames = new ArrayList<String>(props.keySet());
         Collections.sort(propertyNames);
         for (String name : propertyNames) {
-            printPropertyValueByName("\t", contextDotScope, name, props);
             Prop prop = props.get(name);
-            if (!prop.localOverride) {
+            if (!prop.localOverride && !justLocal) {
                 hasGlobal = true;
+                if (!printedHeader) {
+                    Output.print("Properties from ^b^%s^r^", contextDotScope);
+                    printedHeader = true;
+                }
+                printPropertyValueByName("\t", contextDotScope, name, props);
+            } else if (prop.localOverride && justLocal) {
+                if (!printedHeader) {
+                    Output.print("Properties from ^b^%s^r^", contextDotScope);
+                    printedHeader = true;
+                }
+                printPropertyValueByName("\t", contextDotScope, name, props);
             }
         }
         return hasGlobal;
