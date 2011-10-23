@@ -2,6 +2,7 @@ package org.moxie.ply;
 
 import java.io.*;
 import java.net.URL;
+import java.net.URLConnection;
 
 /**
  * User: blangel
@@ -60,7 +61,11 @@ public final class FileUtil {
     public static boolean copy(URL from, File to) {
         InputStream inputStream = null;
         try {
-            inputStream = from.openStream();
+            URLConnection urlConnection = from.openConnection(); // TODO - proxy info
+            // keep this small, this is not a server, if there's an issue the user can retry.  typically, running
+            // user programs, the user wants this to fail fast so that they can retry.
+            urlConnection.setConnectTimeout(1000);
+            inputStream = urlConnection.getInputStream();
             return copy(inputStream, to);
         } catch (IOException ioe) {
             Output.print(ioe);
