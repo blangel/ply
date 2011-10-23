@@ -70,7 +70,6 @@ public final class Output {
         TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), useColor ? "\u001b[" + terminalBold + ";35m" : ""));
         TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), useColor ? "\u001b[" + terminalBold + ";36m" : ""));
         TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), useColor ? "\u001b[" + terminalBold + ";37m" : ""));
-        // init log-levels for scripts which depend upon ply-util (ply itself calls init(boolean, String)
         if (Props.get("log.levels") != null) {
             init(Props.getValue("log.levels"));
         }
