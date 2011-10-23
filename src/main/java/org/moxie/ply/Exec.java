@@ -231,7 +231,7 @@ public final class Exec {
             if (result == 0) {
                 return true;
             }
-            Output.print("^error^ script ^green^%s^r^ failed [ result = %d ].", execution.originalScript, result);
+            Output.print("^error^ script ^green^%s^r^ failed [ exit code = %d ].", execution.originalScript, result);
         } catch (IOException ioe) {
             Output.print("^error^ executing script ^green^%s^r^", execution.originalScript);
             Output.print(ioe);

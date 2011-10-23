@@ -106,16 +106,11 @@ public final class Config {
 
     /**
      * Sets property named {@code name} to {@code value} within context {@code context}.
-     * Note, property names containing '*' are not allowed.
      * @param context of the property to set
      * @param name the name of the property to set
      * @param value the value of the property to set
      */
     private void setProperty(String context, String name, String value) {
-        if (name.contains("*")) {
-            Output.print("^warn^ property names cannot contain ^b^*^r^", name);
-            return;
-        }
         File propertiesFile = getContextPropertyFile(context);
         Properties properties = PropertiesFileUtil.load(propertiesFile.getPath(), false, true);
         if (properties == null) {
