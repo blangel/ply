@@ -67,10 +67,10 @@ public class Deps {
         String localDirPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
         File localDepDirFile = new File(localDirPath.substring(7));
         File localDepFile = new File(localUrl.getFile());
+        String dependencyAtomKey = dependencyAtom.getPropertyName() + ":" + dependencyAtom.getPropertyValue();
         if (localDepFile.exists()) {
             // use the unresolved property value as we don't want to pollute by specifying an artifactName when it
             // is in fact just the default.
-            String dependencyAtomKey = dependencyAtom.getPropertyName() + ":" + dependencyAtom.getPropertyValue();
             if (!dependencyFiles.contains(dependencyAtomKey)) {
                 dependencyFiles.put(dependencyAtomKey, localDepFile.getPath());
                 // TODO - should this also resave the transitive deps file?
@@ -90,8 +90,8 @@ public class Deps {
                 continue;
             }
             if (FileUtil.copy(remoteUrl, localDepFile)) {
-                if (!dependencyFiles.contains(localDepFile.getPath())) {
-                    dependencyFiles.put(localDepFile.getPath(), "");
+                if (!dependencyFiles.contains(dependencyAtomKey)) {
+                    dependencyFiles.put(dependencyAtomKey, localDepFile.getPath());
                     Properties transitiveDeps = processTransitiveDependencies(dependencyAtom, remoteRepo, repositories,
                                                     remotePathDir, dependencyFiles);
                     storeTransitiveDependenciesFile(transitiveDeps, localDepDirFile.getPath());
