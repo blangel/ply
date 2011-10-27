@@ -273,7 +273,7 @@ public final class Config {
                     printedHeader = true;
                 }
                 printPropertyValueByName("\t", contextDotScope, name, props);
-            } else if (prop.localOverride && justLocal) {
+            } else if (prop.localOverride) {
                 if (!printedHeader) {
                     Output.print("Properties from ^b^%s^r^", contextDotScope);
                     printedHeader = true;
