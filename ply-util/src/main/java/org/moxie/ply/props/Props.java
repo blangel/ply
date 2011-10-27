@@ -27,47 +27,6 @@ public class Props {
      */
     public static final String DEFAULT_CONTEXT = "ply";
 
-    static final class Cache {
-
-        static enum Type {
-            Filter, Env
-        }
-
-        static final Map<Object, Object> filterCache = new HashMap<Object, Object>();
-        static final Map<Object, Object> envCache = new HashMap<Object, Object>();
-
-        static void put(Type type, Object key, Object value) {
-            switch (type) {
-                case Filter:
-                    filterCache.put(key, value); return;
-                case Env:
-                    envCache.put(key, value); return;
-            }
-            throw new AssertionError(String.format("Unknown type %s", type));
-        }
-
-        static <T> T get(Type type, Object key, Class<T> valueClass) {
-            switch (type) {
-                case Filter:
-                    return valueClass.cast(filterCache.get(key));
-                case Env:
-                    return valueClass.cast(envCache.get(key));
-            }
-            throw new AssertionError(String.format("Unknown type %s", type));
-        }
-
-        static boolean contains(Type type, Object key) {
-            switch (type) {
-                case Filter:
-                    return filterCache.containsKey(key);
-                case Env:
-                    return envCache.containsKey(key);
-            }
-            throw new AssertionError(String.format("Unknown type %s", type));
-        }
-
-    }
-
     /**
      * The lazily loaded singleton class/object responsible for loading the properties and making the properties
      * accessible to the static methods provided by the {@link Props} class.
@@ -75,6 +34,11 @@ public class Props {
     private static final class Singleton {
 
         static final Map<String, Map<String, Prop>> PROPS = new HashMap<String, Map<String, Prop>>();
+
+        /**
+         * A cache of unfiltered values to filtered values.
+         */
+        private static final Map<String, String> FILTER_CACHE = new HashMap<String, String>();
 
         /**
          * A {@link java.io.FilenameFilter} for {@link java.util.Properties} files.
@@ -96,6 +60,13 @@ public class Props {
         }
 
         /**
+         * Delegates loading of properties from the file system to the {@link Loader#loadProjectProps()}
+         */
+        static void initPropsbyFileSystem() {
+           PROPS.putAll(Loader.loadProjectProps());
+        }
+
+        /**
          * Populates {@link #PROPS} by extracting variables from the environment.  A variable is included
          * in the {@link #PROPS} if its key is prefixed with {@literal ply$}.  It then must conform to the format:
          * context.propertyName
@@ -114,71 +85,15 @@ public class Props {
                 int index = key.indexOf("."); // error if -1; must have been set by Ply itself
                 String context = key.substring(0, index);
                 key = key.substring(index + 1); // error if (length == index + 1) as property name's are non-null
-                // from ply itself there is never a scope as it is resolved and exported as the default
-                String propertyName = key;
-                set(context, propertyName, propertyValue, /* not applicable */ null);
-            }
-        }
-
-        static void initPropsbyFileSystem() {
-            // first add the properties from the install directory.
-            resolvePropertiesFromDirectory(PlyUtil.SYSTEM_CONFIG_DIR, false);
-            // now override with the local project's config directory.
-            resolvePropertiesFromDirectory(PlyUtil.LOCAL_CONFIG_DIR, true);
-        }
-
-        /**
-         * Iterates over the property files within {@code fromDirectory} and calls
-         * {@link #resolvePropertiesFromFile(String, java.util.Properties, boolean)} on each (provided the file is
-         * not a directory).
-         * @param fromDirectory the directory from which to resolve properties.
-         * @param local true if the {@code fromDirectory} is the local configuration directory
-         * @see {@link #PROPERTIES_FILENAME_FILTER}
-         */
-        static void resolvePropertiesFromDirectory(File fromDirectory, boolean local) {
-            File[] subFiles = fromDirectory.listFiles(PROPERTIES_FILENAME_FILTER);
-            if (subFiles == null) {
-                return;
-            }
-            for (File subFile : subFiles) {
-                if (!subFile.isDirectory()) {
-                    String fileName = subFile.getName();
-                    int index = fileName.lastIndexOf(".properties"); // not == -1 because of PROPERTIES_FILENAME_FILTER
-                    String context = fileName.substring(0, index);
-                    Properties properties = PropertiesFileUtil.load(subFile.getPath());
-                    resolvePropertiesFromFile(context, properties, local);
+                // get the context map
+                Map<String, Prop> contextProps = PROPS.get(context);
+                if (contextProps == null) {
+                    contextProps = new HashMap<String, Prop>();
+                    PROPS.put(context, contextProps);
                 }
+                // from ply itself there is never a scope as it is resolved and exported as the default
+                contextProps.put(key, new Prop(context, "", key, propertyValue, null));
             }
-        }
-
-        /**
-         * Loads the properties from {@code properties} into the {@link #PROPS} mapping for {@code context}
-         * @param context associated with {@code properties}
-         * @param properties the loaded properties file
-         * @param local true if the {@code properties} is from the local configuration directory
-         */
-        static void resolvePropertiesFromFile(String context, Properties properties, boolean local) {
-            for (String propertyName : properties.stringPropertyNames()) {
-                set(context, propertyName, properties.getProperty(propertyName), local);
-            }
-        }
-
-        /**
-         * Maps {@code propertyName} to {@code propertyValue} for the given {@code context}.
-         * If the backing {@link Map} object for the given {@code context} does not exist
-         * it will be created.
-         * @param context in which to map {@code propertyName} to {@code propertyValue}
-         * @param propertyName of the {@code propertyValue} to map
-         * @param propertyValue to map
-         * @param localOverride true if the property is overriding a system default (or null if unknown because of env resolution).
-         */
-        static void set(String context, String propertyName, String propertyValue, Boolean localOverride) {
-            Map<String, Prop> contextProps = PROPS.get(context);
-            if (contextProps == null) {
-                contextProps = new HashMap<String, Prop>();
-                PROPS.put(context, contextProps);
-            }
-            contextProps.put(propertyName, new Prop(context, "", propertyName, propertyValue, localOverride));
         }
 
         /**
@@ -276,46 +191,6 @@ public class Props {
             return resolvedProps;
         }
 
-        private static Map<String, Map<String, Prop>> getPropsForScope(String scope) {
-            Map<String, Map<String, Prop>> rawContexts = new HashMap<String, Map<String, Prop>>();
-            for (String context : PROPS.keySet()) {
-                // ignore if the context contains a scope
-                if (context.contains(".")) {
-                    continue;
-                }
-                rawContexts.put(context, getPropsForScope(context, scope));
-            }
-            return rawContexts;
-        }
-
-        /**
-         * If the scope is the default returns {@link #getProps(String)} for the supplied {@code context}, otherwise
-         * the default scope is augmented with the properties particular to {@code scope}.
-         * @param context for which to get properties
-         * @param scope for which to get properties
-         * @return the property for {@code context} and {@code scope} or null if
-         *         no such properties exists
-         */
-        private static Map<String, Prop> getPropsForScope(String context, String scope) {
-            Map<String, Prop> props = new HashMap<String, Prop>();
-            Map<String, Prop> defaultScopedProps = getProps(context);
-            if (defaultScopedProps != null) {
-                props.putAll(defaultScopedProps);
-            }
-            if ((scope != null) && !scope.isEmpty()) {
-                String contextScope = context + "." + scope;
-                Map<String, Prop> scopedProps = getProps(contextScope);
-                if (scopedProps != null) {
-                    // must strip the scope
-                    for (String scopedPropsKey : scopedProps.keySet()) {
-                        Prop prop = scopedProps.get(scopedPropsKey);
-                        props.put(scopedPropsKey, new Prop(context, "", prop.name, prop.value, prop.localOverride));
-                    }
-                }
-            }
-            return props;
-        }
-
         /**
          * Filters {@code value} by resolving all unix-style properties defined within against the resolved properties
          * of this configuration as well as the system environment variables (to capture things like {@literal PLY_HOME}).
@@ -332,8 +207,8 @@ public class Props {
             // the cache key must contain the scope as the same value name may be used in each different scope with
             // different filtered values (i.e., ${project.src.dir} may be the same key in both the default and 'test'
             // scopes but its resolution may be different).
-            if (Cache.contains(Cache.Type.Filter, value.scope + "#" + value.value)) {
-                return Cache.get(Cache.Type.Filter, value.scope + "#" + value.value, String.class);
+            if (FILTER_CACHE.containsKey(value.scope + "#" + value.value)) {
+                return FILTER_CACHE.get(value.scope + "#" + value.value);
             }
             String filtered = value.value;
             // first attempt to resolve via the value's own context.
@@ -360,11 +235,11 @@ public class Props {
                 }
             }
             Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", value.value, filtered, value.context);
-            Cache.put(Cache.Type.Filter, value.scope + "#" + value.value, filtered);
+            FILTER_CACHE.put(value.scope + "#" + value.value, filtered);
             return filtered;
         }
 
-        static String filterBy(String value, String prefix, Map<String, Prop> props, Map<String, Map<String, Prop>> all) {
+        private static String filterBy(String value, String prefix, Map<String, Prop> props, Map<String, Map<String, Prop>> all) {
             if (props == null) {
                 return value;
             }
@@ -460,7 +335,7 @@ public class Props {
     }
 
     static String filterForPly(Prop prop, String scope) {
-        return Singleton.filter(prop, Singleton.getPropsForScope(scope));
+        return Singleton.filter(prop, Loader.loadProjectProps(scope));
     }
 
     static String filterForPly(Prop prop, Map<String, Map<String, Prop>> props) {

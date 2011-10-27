@@ -3,6 +3,7 @@ package org.moxie.ply.props;
 import org.moxie.ply.Output;
 import org.moxie.ply.PlyUtil;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,6 +16,11 @@ import java.util.Map;
  * scripts).
  */
 public final class PropsExt {
+
+    /**
+     * A cache of project-path/scope to resolved environment properties.
+     */
+    private static final Map<String, Map<String, String>> RESOLVED_ENV_CACHE = new HashMap<String, Map<String, String>>();
 
     /**
      * If the scope is not the default and the property is not found the default-scope will be consulted
@@ -47,20 +53,34 @@ public final class PropsExt {
     }
 
     /**
+     * @param scope of the properties to include in the environment properties mapping
+     * @return a mapping of env-property-name to property value (using {@code scope}) for the current project
+     * @see {@link #getPropsForEnv(java.io.File, java.io.File, String)}
+     * @see {@link PlyUtil#LOCAL_PROJECT_DIR} and {@link PlyUtil#LOCAL_CONFIG_DIR}
+     */
+    public static Map<String, String> getPropsForEnv(String scope) {
+        return getPropsForEnv(PlyUtil.LOCAL_PROJECT_DIR, PlyUtil.LOCAL_CONFIG_DIR, scope);
+    }
+
+    /**
      * From the resolved properties, creates a mapping appropriate for exporting to a process's system environment
      * variables.  The mapping returned by this method will only include the contexts' {@code scope} (and the default scope's
      * if the given {@code scope} didn't override the default scope's property).
      * The key is composed of 'ply$' (to distinguish ply variables from other system environment variables) concatenated with
      * the context concatenated with '.' and the property name (note, the scope has been discarded).
+     * @param projectDir of the project for which to resolve environment properties.
+     * @param projectConfigDir configuration directory associated with {@code projectDir} (typically based at {@code projectDir}
+     *                         and named {@literal .ply/config}).
      * @param scope of the properties to include in the environment properties mapping
      * @return a mapping of env-property-name to property value (using {@code scope})
      */
     @SuppressWarnings("unchecked")
-    public static Map<String, String> getPropsForEnv(String scope) {
-        if (Props.Cache.contains(Props.Cache.Type.Env, scope)) {
-            return Props.Cache.get(Props.Cache.Type.Env, scope, Map.class);
+    public static Map<String, String> getPropsForEnv(File projectDir, File projectConfigDir, String scope) {
+        String cacheKey = projectConfigDir.getPath() + File.separator + scope;
+        if (RESOLVED_ENV_CACHE.containsKey(cacheKey)) {
+            return RESOLVED_ENV_CACHE.get(cacheKey);
         }
-        Map<String, Map<String, Prop>> scopedProps = getPropsForScope(scope);
+        Map<String, Map<String, Prop>> scopedProps = Loader.loadProjectProps(projectConfigDir, scope);
         Map<String, String> envProps = new HashMap<String, String>(scopedProps.size() * 5); // assume avg of 5 props per context?
         for (String context : scopedProps.keySet()) {
             Map<String, Prop> contextProps = scopedProps.get(context);
@@ -72,29 +92,16 @@ public final class PropsExt {
             }
         }
         // now add some synthetic properties like the local ply directory location.
-        envProps.put("ply$ply.project.dir", PlyUtil.LOCAL_PROJECT_DIR.getPath());
+        envProps.put("ply$ply.project.dir", projectDir.getPath());
         envProps.put("ply$ply.java", System.getProperty("ply.java"));
         // scripts are always executed from the '../.ply/' directory, allow them to know where the 'ply' invocation
         // actually occurred.
         envProps.put("ply$ply.original.user.dir", System.getProperty("user.dir"));
         // allow scripts access to which scope in which they are being invoked.
         envProps.put("ply$ply.scope", (scope == null ? "" : scope));
-        
-        Props.Cache.put(Props.Cache.Type.Env, scope, envProps);
-        return envProps;
-    }
 
-    private static Map<String, Map<String, Prop>> getPropsForScope(String scope) {
-        Map<String, Map<String, Prop>> rawContexts = new HashMap<String, Map<String, Prop>>();
-        Map<String, Map<String, Prop>> all = Props.getProps();
-        for (String context : all.keySet()) {
-            // remove the scope; can't just skip as there may not be a default scope present (e.g., project has no deps but one 'test' dep).
-            if (context.contains(".")) {
-                context = context.substring(0, context.indexOf("."));
-            }
-            rawContexts.put(context, getPropsForScope(context, scope));
-        }
-        return rawContexts;
+        RESOLVED_ENV_CACHE.put(cacheKey, envProps);
+        return envProps;
     }
 
     /**
