@@ -55,7 +55,8 @@ public class Loader {
         // first add the properties from the system directory (everyone gets these).
         resolvePropertiesFromDirectory(PlyUtil.SYSTEM_CONFIG_DIR, false, properties);
         // now look for parental properties
-        
+        // TODO - how to do this? force parent to be local (then fairly easy) or can it be by dep-atom ref., if so
+        // TODO - a bit harder as we'll need to export properties to the jar and pull from there
         // finally, override with the project's config directory.
         resolvePropertiesFromDirectory(projectConfigDir, true, properties);
 
