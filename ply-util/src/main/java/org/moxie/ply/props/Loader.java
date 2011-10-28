@@ -52,9 +52,11 @@ public class Loader {
         }
 
         Map<String, Map<String, Prop>> properties = new HashMap<String, Map<String, Prop>>();
-        // first add the properties from the install directory.
+        // first add the properties from the system directory (everyone gets these).
         resolvePropertiesFromDirectory(PlyUtil.SYSTEM_CONFIG_DIR, false, properties);
-        // now override with the project's config directory.
+        // now look for parental properties
+        
+        // finally, override with the project's config directory.
         resolvePropertiesFromDirectory(projectConfigDir, true, properties);
 
         cache.put(getCanonicalPath(projectConfigDir), properties);

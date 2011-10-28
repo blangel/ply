@@ -61,7 +61,7 @@ public final class FileUtil {
     public static boolean copy(URL from, File to) {
         InputStream inputStream = null;
         try {
-            URLConnection urlConnection = from.openConnection(); // TODO - proxy info
+            URLConnection urlConnection = from.openConnection(); // TODO - proxy info (see http://download.oracle.com/javase/6/docs/technotes/guides/net/proxies.html)
             // keep this small, this is not a server, if there's an issue the user can retry.  typically, running
             // user programs, the user wants this to fail fast so that they can retry.
             urlConnection.setConnectTimeout(1000);

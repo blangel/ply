@@ -18,6 +18,11 @@ public class Prop {
 
     public final String scope;
 
+    /**
+     * Either local, system or a parent name.  This indicates who actually defined this property.
+     */
+    public final String originator;
+
     public final Boolean localOverride;
 
     public Prop(String context, String scope, String name, String value, Boolean localOverride) {
@@ -26,9 +31,15 @@ public class Prop {
         this.name = name;
         this.value = value;
         this.localOverride = localOverride;
+        if (this.localOverride) {
+            this.originator = "local";
+        } else {
+            this.originator = "system";
+        }
     }
 
     public String getContextScope() {
         return (context + (scope.isEmpty() ? "" : "." + scope));
     }
+    
 }

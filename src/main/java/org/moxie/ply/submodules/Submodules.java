@@ -70,12 +70,12 @@ public final class Submodules {
                     ".ply", "config");
             String submoduleResolvedDepName = getSubmoduleResolvedDepName(submoduleConfigDir, scope);
             orderedSubmodules.add(new Submodule(submodule.name, submoduleResolvedDepName));
-            Map<String, Prop> deps = PropsExt.getPropsForScope(submoduleConfigDir, "dependencies", scope);
+            Map<String, Prop> deps = PropsExt.getPropsForScope(submoduleConfigDir, "dependencies", scope); // TODO - filter?
             List<DependencyAtom> dependencyAtoms = convertDeps((deps == null ? null : deps.values()));
             if (dependencyAtoms.isEmpty()) {
                 continue;
             }
-            Map<String, Prop> repos = PropsExt.getPropsForScope(submoduleConfigDir, "repositories", scope);
+            Map<String, Prop> repos = PropsExt.getPropsForScope(submoduleConfigDir, "repositories", scope); // TODO - filter?
             List<RepositoryAtom> repositoryAtoms = convertRepos((repos == null ? null : repos.values()));
             Prop localRepoProp = PropsExt.get(submoduleConfigDir, "depmngr", scope, "localRepo");
             String filteredLocalRepo = PropsExt.filterForPly(submoduleConfigDir, localRepoProp, scope);
