@@ -3,7 +3,6 @@ package org.moxie.ply.script;
 import org.junit.runner.Description;
 import org.junit.runner.manipulation.Filter;
 import org.moxie.ply.AntStyleWildcardUtil;
-import org.moxie.ply.Output;
 
 import java.util.regex.Pattern;
 

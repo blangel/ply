@@ -4,7 +4,6 @@ import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
 import org.moxie.ply.PropertiesFileUtil;
 import org.moxie.ply.mvn.MavenPomParser;
-import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
 
 import java.io.*;
@@ -84,7 +83,7 @@ public class Deps {
         // not in the local-repo, check each other repo.
         for (RepositoryAtom remoteRepo : nonLocalRepos) {
             String remotePathDir = getDependencyDirectoryPathForRepo(dependencyAtom, remoteRepo);
-            String remotePath = remotePathDir + File.separator + dependencyAtom.getArtifactName();
+            String remotePath = FileUtil.pathFromParts(remotePathDir, dependencyAtom.getArtifactName());
             URL remoteUrl = getUrl(remotePath);
             if (remoteUrl == null) {
                 continue;
@@ -105,7 +104,7 @@ public class Deps {
 
     private static String getDependencyPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
         String dependencyDirectoryPath = getDependencyDirectoryPathForRepo(dependencyAtom, repositoryAtom);
-        return dependencyDirectoryPath + File.separator + dependencyAtom.getArtifactName();
+        return FileUtil.pathFromParts(dependencyDirectoryPath, dependencyAtom.getArtifactName());
     }
 
     private static String getDependencyDirectoryPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
@@ -114,20 +113,14 @@ public class Deps {
             // a file path without prefix, make absolute
             startPath = "file://" + startPath;
         }
-        // hygiene the end separator
-        if (!startPath.endsWith("/") && !startPath.endsWith("\\")) {
-            startPath = startPath + File.separator;
-        }
         RepositoryAtom.Type type = repositoryAtom.getResolvedType();
-        String endPath = (type == RepositoryAtom.Type.ply ? dependencyAtom.namespace :
-                dependencyAtom.namespace.replaceAll("\\.", File.separator))
-                + File.separator + dependencyAtom.name + File.separator +
-                dependencyAtom.version;
+        String namespace = (type == RepositoryAtom.Type.ply ? dependencyAtom.namespace : dependencyAtom.namespace.replaceAll("\\.", File.separator));
+        String endPath = FileUtil.pathFromParts(namespace, dependencyAtom.name, dependencyAtom.version);
         // hygiene the start separator
         if (endPath.startsWith("/") || endPath.startsWith("\\")) {
             endPath = endPath.substring(1, endPath.length());
         }
-        return startPath + endPath;
+        return FileUtil.pathFromParts(startPath, endPath);
     }
 
     private static URL getUrl(String path) {
@@ -178,10 +171,10 @@ public class Deps {
             if ((url == null) || !new File(url.getFile()).exists()) {
                 return null;
             }
-            return getTransitiveDependenciesFromPlyRepo(repoDepDir + File.separator + "dependencies.properties");
+            return getTransitiveDependenciesFromPlyRepo(FileUtil.pathFromParts(repoDepDir, "dependencies.properties"));
         } else {
             String pomName = dependencyAtom.getArtifactName().replace(".jar", ".pom");
-            return getTransitiveDependenciesFromMavenRepo(repoDepDir + File.separator + pomName, repositoryAtom);
+            return getTransitiveDependenciesFromMavenRepo(FileUtil.pathFromParts(repoDepDir, pomName), repositoryAtom);
         }
     }
 
@@ -217,9 +210,7 @@ public class Deps {
     }
 
     private static void storeTransitiveDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {
-        PropertiesFileUtil.store(transitiveDependencies,
-                localRepoDepDirPath + (localRepoDepDirPath.endsWith(File.separator) ? "" : File.separator)
-                        + "dependencies.properties", true);
+        PropertiesFileUtil.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, "dependencies.properties"), true);
     }
 
 }

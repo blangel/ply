@@ -1,6 +1,14 @@
 package org.moxie.ply;
 
+import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
+import org.moxie.ply.submodules.Submodule;
+import org.moxie.ply.submodules.Submodules;
+
+import java.io.File;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * User: blangel
@@ -30,21 +38,105 @@ public class Ply {
         } else if ("init".equals(args[0])) {
             Init.invoke(args);
         } else {
-            long start = System.currentTimeMillis();
-            Output.print("^ply^ building ^b^" + Props.getValue("project", "name") + "^r^, " +
-                    Props.getValue("project", "version"));
+            exec(args);
+        }
+        System.exit(0);
+    }
+
+    private static void exec(String[] args) {
+        long start = System.currentTimeMillis();
+        String projectName = Props.getValue("project", "name");
+        Output.printNoLine("^ply^ building ^b^%s^r^, %s", projectName, Props.getValue("project", "version"));
+
+        String scope = Props.getValue("project", "submodules.scope");
+        Map<String, Prop> submodules = Submodules.getSubmodules(PlyUtil.LOCAL_CONFIG_DIR, scope);
+
+        if ((submodules != null) && !submodules.isEmpty()) {
+            Output.print(" and its submodules:");
+            List<Submodule> orderedSubmodules = Submodules.sortByDependencies(submodules.values(), scope);
+            int maxSubmoduleName = projectName.length();
+            float maxSubmoduleTime = 0.0f;
+            for (Submodule submodule : orderedSubmodules) {
+                Output.print("^ply^\t^b^%s^r^", submodule.name);
+            }
+
+            Map<String, Float> submodulesTimeMap = new LinkedHashMap<String, Float>();
+
+            // first run the args against the current project
+            Output.print("^ply^");
+            Output.print("^ply^ building ^b^%s^r^ itself before its submodules", projectName);
+            long projectStart = System.currentTimeMillis();
             for (String script : args) {
-                if (!Exec.invoke(script)) {
+                if (!Exec.invoke(PlyUtil.LOCAL_PROJECT_DIR, script)) {
                     System.exit(1);
                 }
             }
-            long end = System.currentTimeMillis();
-            float seconds = ((end - start) / 1000.0f);
-            long totalMem = Runtime.getRuntime().totalMemory() / 1024 / 1024;
-            long freeMem = Runtime.getRuntime().freeMemory() / 1024 / 1024;
-            Output.print("^ply^ Finished in ^b^%.3f seconds^r^ using ^b^%d/%d MB^r^.", seconds, (totalMem - freeMem), totalMem);
+            float seconds = printTime(projectStart, String.format("^b^%s^r^ ", projectName));
+            maxSubmoduleTime = seconds;
+            submodulesTimeMap.put(projectName, seconds);
+            Output.print("^ply^");
+
+            for (Submodule submodule : orderedSubmodules) {
+                Output.print("^ply^ building ^b^%s^r^", submodule);
+                if (submodule.name.length() > maxSubmoduleName) {
+                    maxSubmoduleName = submodule.name.length();
+                }
+                long submoduleStart = System.currentTimeMillis();
+                File submodulePlyDir = FileUtil.fromParts(PlyUtil.LOCAL_PROJECT_DIR.getPath(), "..", submodule.name, ".ply");
+                if (!submodulePlyDir.exists()) {
+                    File submoduleDir = FileUtil.fromParts(PlyUtil.LOCAL_PROJECT_DIR.getPath(), "..", submodule.name);
+                    if (!submoduleDir.exists()) {
+                        Output.print("^warn^ directory ^b^%s^r^ doesn't exist.", submodule.name);
+                    } else {
+                        Output.print("^warn^ submodule ^b^%s^r^ is not a ply project, skipping.", submodule.name);
+                    }
+                    Output.print("^ply^");
+                    continue;
+                }
+                for (String script : args) {
+                    if (!Exec.invoke(submodulePlyDir, script)) {
+                        System.exit(1);
+                    }
+                }
+                seconds = printTime(submoduleStart, String.format("^b^%s^r^ ", submodule.name));
+                if (seconds > maxSubmoduleTime) {
+                    maxSubmoduleTime = seconds;
+                }
+                submodulesTimeMap.put(submodule.name, seconds);
+                Output.print("^ply^");
+
+            }
+
+            Output.print("^ply^ Build Summary");
+            maxSubmoduleName = Math.min(maxSubmoduleName, 80); // don't be ridiculous
+            int maxTimeLength = String.valueOf(Float.valueOf(maxSubmoduleTime).intValue()).length();
+            for (String module : submodulesTimeMap.keySet()) {
+                int pad = Math.max(1, ((maxSubmoduleName + 1) - module.length()));
+                float time = submodulesTimeMap.get(module);
+                int timePad = Math.max(0, (maxTimeLength - String.valueOf(Float.valueOf(time).intValue()).length()));
+                String timePadString = (timePad == 0 ? "" : String.valueOf(timePad));
+                Output.print("^ply^ ^b^%s^r^%" + pad + "s%" + timePadString + "s^b^%.3f^r^ seconds", module, "", "", time);
+            }
+
+        } else {
+            Output.print("");
+            for (String script : args) {
+                if (!Exec.invoke(PlyUtil.LOCAL_PROJECT_DIR, script)) {
+                    System.exit(1);
+                }
+            }
         }
-        System.exit(0);
+
+        printTime(start, "");
+    }
+
+    private static float printTime(long start, String suppliment) {
+        long end = System.currentTimeMillis();
+        float seconds = ((end - start) / 1000.0f);
+        long totalMem = Runtime.getRuntime().totalMemory() / 1024 / 1024;
+        long freeMem = Runtime.getRuntime().freeMemory() / 1024 / 1024;
+        Output.print("^ply^ Finished %sin ^b^%.3f seconds^r^ using ^b^%d/%d MB^r^.", suppliment, seconds, (totalMem - freeMem), totalMem);
+        return seconds;
     }
 
     /**

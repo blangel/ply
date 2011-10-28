@@ -1,9 +1,9 @@
 package org.moxie.ply.props;
 
-import org.moxie.ply.Output;
-import org.moxie.ply.PlyUtil;
+import org.moxie.ply.FileUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,42 +24,34 @@ public final class PropsExt {
 
     /**
      * If the scope is not the default and the property is not found the default-scope will be consulted
+     * @param projectConfigDir the project configuration directory from which to resolve the property
      * @param context to find {@code propertyName}
      * @param scope to find {@code propertyName}
      * @param propertyName of the property to retrieve
      * @return the property for {@code context} and {@code scope} named {@code propertyName} or null if
      *         no such property exists
      */
-    public static Prop get(String context, String scope, String propertyName) {
-        String contextScope = context + ((scope == null) || scope.isEmpty() ? "" : "." + scope);
-        Prop prop = Props.get(contextScope, propertyName);
-        if (prop == null) {
-            prop = Props.get(context, propertyName);
+    public static Prop get(File projectConfigDir, String context, String scope, String propertyName) {
+        Map<String, Map<String, Prop>> props = Loader.loadProjectProps(projectConfigDir, scope);
+        Map<String, Prop> contextProps = (props == null ? null : props.get(context));
+        if (contextProps == null) {
+            return null;
         }
-        return prop;
+        return contextProps.get(propertyName);
     }
 
     /**
      * If the scope is not the default and the property is not found the default-scope will be consulted
+     * @param projectConfigDir the project configuration directory from which to resolve the property
      * @param context to find {@code propertyName}
      * @param scope to find {@code propertyName}
      * @param propertyName of the property to retrieve
      * @return the property value for {@code context} and {@code scope} named {@code propertyName} or empty string if
      *         no such property exists
      */
-    public static String getValue(String context, String scope, String propertyName) {
-        Prop prop = get(context, scope, propertyName);
+    public static String getValue(File projectConfigDir, String context, String scope, String propertyName) {
+        Prop prop = get(projectConfigDir, context, scope, propertyName);
         return (prop == null ? "" : prop.value);
-    }
-
-    /**
-     * @param scope of the properties to include in the environment properties mapping
-     * @return a mapping of env-property-name to property value (using {@code scope}) for the current project
-     * @see {@link #getPropsForEnv(java.io.File, java.io.File, String)}
-     * @see {@link PlyUtil#LOCAL_PROJECT_DIR} and {@link PlyUtil#LOCAL_CONFIG_DIR}
-     */
-    public static Map<String, String> getPropsForEnv(String scope) {
-        return getPropsForEnv(PlyUtil.LOCAL_PROJECT_DIR, PlyUtil.LOCAL_CONFIG_DIR, scope);
     }
 
     /**
@@ -68,15 +60,22 @@ public final class PropsExt {
      * if the given {@code scope} didn't override the default scope's property).
      * The key is composed of 'ply$' (to distinguish ply variables from other system environment variables) concatenated with
      * the context concatenated with '.' and the property name (note, the scope has been discarded).
-     * @param projectDir of the project for which to resolve environment properties.
+     * @param projectPlyDir of the project for which to resolve environment properties.
      * @param projectConfigDir configuration directory associated with {@code projectDir} (typically based at {@code projectDir}
      *                         and named {@literal .ply/config}).
      * @param scope of the properties to include in the environment properties mapping
      * @return a mapping of env-property-name to property value (using {@code scope})
      */
     @SuppressWarnings("unchecked")
-    public static Map<String, String> getPropsForEnv(File projectDir, File projectConfigDir, String scope) {
-        String cacheKey = projectConfigDir.getPath() + File.separator + scope;
+    public static Map<String, String> getPropsForEnv(File projectPlyDir, File projectConfigDir, String scope) {
+        String projectPlyDirCanonicalPath, projectConfigCanonicalDirPath;
+        try {
+            projectConfigCanonicalDirPath = projectConfigDir.getCanonicalPath();
+            projectPlyDirCanonicalPath = projectPlyDir.getCanonicalPath();
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+        String cacheKey = FileUtil.pathFromParts(projectConfigCanonicalDirPath, scope);
         if (RESOLVED_ENV_CACHE.containsKey(cacheKey)) {
             return RESOLVED_ENV_CACHE.get(cacheKey);
         }
@@ -88,11 +87,11 @@ public final class PropsExt {
                 String envKey = "ply$" + context + "." + propertyName;
                 Prop prop = contextProps.get(propertyName);
                 Prop userScopedProp = new Prop(context, scope, propertyName, prop.value, false);
-                envProps.put(envKey, Props.filterForPly(userScopedProp, scopedProps));
+                envProps.put(envKey, Props.filterForPly(projectConfigCanonicalDirPath, userScopedProp, scopedProps));
             }
         }
         // now add some synthetic properties like the local ply directory location.
-        envProps.put("ply$ply.project.dir", projectDir.getPath());
+        envProps.put("ply$ply.project.dir", projectPlyDirCanonicalPath);
         envProps.put("ply$ply.java", System.getProperty("ply.java"));
         // scripts are always executed from the '../.ply/' directory, allow them to know where the 'ply' invocation
         // actually occurred.
@@ -107,33 +106,29 @@ public final class PropsExt {
     /**
      * If the scope is the default returns {@link Props#getProps(String)} for the supplied {@code context}, otherwise
      * the default scope is augmented with the properties particular to {@code scope}.
+     * @param projectConfigDir the project configuration directory from which to resolve the property
      * @param context for which to get properties
      * @param scope for which to get properties
      * @return the property for {@code context} and {@code scope} or null if
      *         no such properties exists
      */
-    public static Map<String, Prop> getPropsForScope(String context, String scope) {
-        Map<String, Prop> props = new HashMap<String, Prop>();
-        Map<String, Prop> defaultScopedProps = Props.getProps(context);
-        if (defaultScopedProps != null) {
-            props.putAll(defaultScopedProps);
+    public static Map<String, Prop> getPropsForScope(File projectConfigDir, String context, String scope) {
+        Map<String, Map<String, Prop>> props = Loader.loadProjectProps(projectConfigDir, scope);
+        Map<String, Prop> contextProps = new HashMap<String, Prop>();
+        if ((props != null) && (props.get(context) != null)) {
+            contextProps.putAll(props.get(context));
         }
-        if ((scope != null) && !scope.isEmpty()) {
-            String contextScope = context + "." + scope;
-            Map<String, Prop> scopedProps = Props.getProps(contextScope);
-            if (scopedProps != null) {
-                // must strip the scope
-                for (String scopedPropsKey : scopedProps.keySet()) {
-                    Prop prop = scopedProps.get(scopedPropsKey);
-                    props.put(scopedPropsKey, new Prop(context, "", prop.name, prop.value, prop.localOverride));
-                }
-            }
-        }
-        return props;
+        return contextProps;
     }
 
-    public static String filterForPly(Prop prop, String scope) {
-        return Props.filterForPly(prop, scope);
+    /**
+     * @param projectConfigDir the project configuration directory from which to resolve the properties to use for filtering
+     * @param prop whose value will be filtered
+     * @param scope from which to look for property resolution while filtering
+     * @return the filtered value of {@code prop}
+     */
+    public static String filterForPly(File projectConfigDir, Prop prop, String scope) {
+        return Props.filterForPly(projectConfigDir, prop, scope);
     }
 
     private PropsExt() { }

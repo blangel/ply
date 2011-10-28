@@ -2,14 +2,12 @@ package org.moxie.ply.props;
 
 import org.moxie.ply.Output;
 import org.moxie.ply.PlyUtil;
-import org.moxie.ply.PropertiesFileUtil;
 
 import java.io.File;
-import java.io.FilenameFilter;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.regex.Pattern;
 
 /**
@@ -39,15 +37,6 @@ public class Props {
          * A cache of unfiltered values to filtered values.
          */
         private static final Map<String, String> FILTER_CACHE = new HashMap<String, String>();
-
-        /**
-         * A {@link java.io.FilenameFilter} for {@link java.util.Properties} files.
-         */
-        static final FilenameFilter PROPERTIES_FILENAME_FILTER = new FilenameFilter() {
-            @Override public boolean accept(File dir, String name) {
-                return name.endsWith(".properties");
-            }
-        };
 
         static {
             // determine if resolution needs to be done via file-system or has been passed via env-properties.
@@ -198,28 +187,35 @@ public class Props {
          * @return the filtered value
          */
         static String filter(Prop value) {
-            return filter(value, getProps());
+            String localDir = "";
+            try {
+                localDir = PlyUtil.LOCAL_PROJECT_DIR.getCanonicalPath();
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+            return filter(localDir, value, getProps());
         }
-        static String filter(Prop value, Map<String, Map<String, Prop>> props) {
+        static String filter(String localDir, Prop value, Map<String, Map<String, Prop>> props) {
             if ((value == null) || (!value.value.contains("${"))) {
                 return (value == null ? null : value.value);
             }
             // the cache key must contain the scope as the same value name may be used in each different scope with
             // different filtered values (i.e., ${project.src.dir} may be the same key in both the default and 'test'
             // scopes but its resolution may be different).
-            if (FILTER_CACHE.containsKey(value.scope + "#" + value.value)) {
-                return FILTER_CACHE.get(value.scope + "#" + value.value);
+            String cacheKey = localDir + "#" + value.scope + "#" + value.value;
+            if (FILTER_CACHE.containsKey(cacheKey)) {
+                return FILTER_CACHE.get(cacheKey);
             }
             String filtered = value.value;
             // first attempt to resolve via the value's own context.
             filtering: {
-                filtered = filterBy(filtered, "", props.get(value.context), props);
+                filtered = filterBy(localDir, filtered, "", props.get(value.context), props);
                 if (!value.value.contains("${")) {
                     break filtering;
                 }
                 // also attempt to filter context-prefixed values
                 for (String context : props.keySet()) {
-                    filtered = filterBy(filtered, context + ".", props.get(context), props);
+                    filtered = filterBy(localDir, filtered, context + ".", props.get(context), props);
                     if (!value.value.contains("${")) {
                         break filtering;
                     }
@@ -235,11 +231,12 @@ public class Props {
                 }
             }
             Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", value.value, filtered, value.context);
-            FILTER_CACHE.put(value.scope + "#" + value.value, filtered);
+            FILTER_CACHE.put(cacheKey, filtered);
             return filtered;
         }
 
-        private static String filterBy(String value, String prefix, Map<String, Prop> props, Map<String, Map<String, Prop>> all) {
+        private static String filterBy(String localDir, String value, String prefix, Map<String, Prop> props,
+                                       Map<String, Map<String, Prop>> all) {
             if (props == null) {
                 return value;
             }
@@ -247,7 +244,7 @@ public class Props {
                 String toFind = prefix + name;
                 if (value.contains("${" + toFind + "}")) {
                     value = value.replaceAll(Pattern.quote("${" + toFind + "}"),
-                            filter(props.get(name), all));
+                            filter(localDir, props.get(name), all));
                 }
             }
             return value;
@@ -334,12 +331,18 @@ public class Props {
         return Singleton.filter(prop);
     }
 
-    static String filterForPly(Prop prop, String scope) {
-        return Singleton.filter(prop, Loader.loadProjectProps(scope));
+    static String filterForPly(File projectConfigDir, Prop prop, String scope) {
+        String projectConfigCanonicalDir;
+        try {
+            projectConfigCanonicalDir = projectConfigDir.getCanonicalPath();
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+        return Singleton.filter(projectConfigCanonicalDir, prop, Loader.loadProjectProps(projectConfigDir, scope));
     }
 
-    static String filterForPly(Prop prop, Map<String, Map<String, Prop>> props) {
-        return Singleton.filter(prop, props);
+    static String filterForPly(String localDir, Prop prop, Map<String, Map<String, Prop>> props) {
+        return Singleton.filter(localDir, prop, props);
     }
 
     private Props() { }

@@ -26,15 +26,13 @@ public class RepositoryInstaller {
     public static void main(String[] args) {
         String buildDirPath = Props.getValue("project", "build.dir");
         String artifactName = Props.getValue("project", "artifact.name");
-        File artifact = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) +
-                                    artifactName);
+        File artifact = FileUtil.fromParts(buildDirPath, artifactName);
         if (!artifact.exists()) {
             return;
         }
 
         String plyProjectDirPath = Props.getValue("project.dir");
-        File dependenciesFile = new File(plyProjectDirPath + (plyProjectDirPath.endsWith(File.separator) ? "" : File.separator)
-                                            + "config/dependencies.properties");
+        File dependenciesFile = FileUtil.fromParts(plyProjectDirPath, "config", "dependencies.properties");
 
         String localRepoProp = Props.getValue("depmngr", "localRepo");
         // determine repo type.
@@ -53,16 +51,13 @@ public class RepositoryInstaller {
             Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoBase.getPath());
             System.exit(1);
         }
-        String localRepoPath = localRepoBase.getPath() + (localRepoBase.getPath().endsWith(File.separator) ? "" : File.separator) +
-                               (localRepoIsPly ? namespace : namespace.replaceAll("\\.", File.separator)) +
-                                    (namespace.endsWith(File.separator) ? "" : File.separator) +
-                               name + (name.endsWith(File.separator) ? "" : File.separator) +
-                               version + (version.endsWith(File.separator) ? "" : File.separator);
-        File localRepoArtifact = new File(localRepoPath + artifactName);
+        String convertedNamespace = (localRepoIsPly ? namespace : namespace.replaceAll("\\.", File.separator));
+        String localRepoPath = FileUtil.pathFromParts(localRepoBase.getPath(), convertedNamespace, name, version);
+        File localRepoArtifact = FileUtil.fromParts(localRepoPath, artifactName);
         FileUtil.copy(artifact, localRepoArtifact);
 
         if (dependenciesFile.exists()) {
-            File localRepoDependenciesFile = new File(localRepoPath + "dependencies.properties");
+            File localRepoDependenciesFile = FileUtil.fromParts(localRepoPath, "dependencies.properties");
             FileUtil.copy(dependenciesFile, localRepoDependenciesFile);
         }
     }

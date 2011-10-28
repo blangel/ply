@@ -1,12 +1,12 @@
 package org.moxie.ply;
 
 import org.moxie.ply.props.Prop;
-import org.moxie.ply.props.Props;
 import org.moxie.ply.props.PropsExt;
 
-import javax.print.DocFlavor;
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * User: blangel
@@ -105,16 +105,16 @@ public final class Exec {
     /**
      * Invokes all scripts associated with {@code unresolved} by resolving it to a list of {@code Execution} objects
      * and then invoking them.
+     * @param projectPlyDir the {@literal .ply} directory of the project to invoke
      * @param unresolved to resolve any aliases or script location
      * @return false if any of the invocations of the resolved {@link Execution} objects failed for any reason
      */
-    public static boolean invoke(String unresolved) {
-        List<Execution> executions = resolveExecutions(unresolved);
+    public static boolean invoke(File projectPlyDir, String unresolved) {
+        List<Execution> executions = resolveExecutions(unresolved, FileUtil.fromParts(projectPlyDir.getPath(), "config"));
         // all invoked scripts will be started from the parent of the '.ply' directory.
         // this provides a consistent view of execution for all scripts.  if a script wants to actually know
         // which directory from which the 'ply' command was invoked, look at 'original.user.dir' environment property.
-        String plyDirPath = PlyUtil.LOCAL_PROJECT_DIR.getPath();
-        File projectRoot = new File(plyDirPath + (plyDirPath.endsWith(File.separator) ? "" : File.separator) + ".." + File.separator);
+        File projectRoot = FileUtil.fromParts(projectPlyDir.getPath(), "..");
         for (Execution execution : executions) {
             if (!invoke(execution, projectRoot)) {
                 return false;
@@ -125,25 +125,27 @@ public final class Exec {
 
     /**
      * @param unresolved the alias/script to resolve into {@link Execution} objects.
+     * @param projectConfigDir the ply configuration directory of the project for which to resolve properties
      * @return the list of {@link Execution} objects resolved by {@code unresolved}
      */
-    private static List<Execution> resolveExecutions(String unresolved) {
-        return resolveExecutions(unresolved, null, "", new ArrayList<Execution>(), new ArrayList<String>());
+    private static List<Execution> resolveExecutions(String unresolved, File projectConfigDir) {
+        return resolveExecutions(unresolved, null, "", new ArrayList<Execution>(), new ArrayList<String>(), projectConfigDir);
     }
 
     /**
-     * The recursive variant of {@link #resolveExecutions(String)}
+     * The recursive variant of {@link #resolveExecutions(String, File)}
      * @param unresolved the alias/script to resolve into {@link Execution} objects.
      * @param propagatedOriginalScript the original script name before resolution from a previous recursive invocation
      * @param propagatedScope the scope from a previous recursive invocation
      * @param executions the list to add into for all {@link Execution} objects found from {@code unresolved}
      * @param encountered the list of scripts already encountered while resolving {@code unresolved} (used to detect
      *                    circular definitions of aliases).
+     * @param projectConfigDir the ply configuration directory of the project for which to resolve properties
      * @return {@code executions} augmented with any resolved from {@code unresolved}
      */
     private static List<Execution> resolveExecutions(String unresolved, String propagatedOriginalScript,
                                                      String propagatedScope, List<Execution> executions,
-                                                     List<String> encountered) {
+                                                     List<String> encountered, File projectConfigDir) {
         String[] cmdArgs = splitScript(unresolved);
         String script = cmdArgs[0];
         String scope = propagatedScope;
@@ -164,7 +166,7 @@ public final class Exec {
             System.exit(1);
         }
         encountered.add(script);
-        resolveAlias(propagatedOriginalScript, script, cmdArgs, scope, executions, encountered);
+        resolveAlias(propagatedOriginalScript, script, cmdArgs, scope, executions, encountered, projectConfigDir);
         return executions;
     }
 
@@ -181,14 +183,16 @@ public final class Exec {
      * @param scope to resolve the alias against
      * @param executions the list of resolved {@link Execution} objects.
      * @param encountered list of scripts already encountered while resolving {@code cmdArgs[0]}.
+     * @param projectConfigDir the ply configuration directory of the project for which to resolve properties for resolving
+     *                         aliases
      */
-    private static void resolveAlias(String propagatedScript, String originalScript, String[] cmdArgs, String scope, List<Execution> executions,
-                                     List<String> encountered) {
+    private static void resolveAlias(String propagatedScript, String originalScript, String[] cmdArgs, String scope,
+                                     List<Execution> executions, List<String> encountered, File projectConfigDir) {
         String script = cmdArgs[0];
         String namedScript = (propagatedScript == null ? originalScript : propagatedScript);
-        Prop resolved = PropsExt.get("aliases", scope, script);
+        Prop resolved = PropsExt.get(projectConfigDir, "aliases", scope, script);
         if (resolved == null) { // not an alias
-            filter(cmdArgs, scope);
+            filter(cmdArgs, scope, projectConfigDir);
             executions.add(new Execution(namedScript, scope, cmdArgs[0], cmdArgs));
             return;
         }
@@ -199,7 +203,7 @@ public final class Exec {
             int index = encountered.size() - 1; // mark position to pop after recursive call to resolveExecutions
             cmdArgs[0] = split;
             String unresolved = buildScriptName(cmdArgs); // TODO - how to propagate arguments? passed to each? passed to last?
-            resolveExecutions(unresolved, originalScript, scope, executions, encountered);
+            resolveExecutions(unresolved, originalScript, scope, executions, encountered, projectConfigDir);
             encountered = encountered.subList(0, index + 1); // treat like a stack, pop off
         }
     }
@@ -211,13 +215,16 @@ public final class Exec {
      * @return false if the invocation of {@code execution} failed for any reason.
      */
     private static boolean invoke(Execution execution, File projectRoot) {
-        execution = resolveExecutable(execution);
-        execution = handleNonNativeExecutable(execution);
+        File projectConfigDir = FileUtil.fromParts(projectRoot.getPath(), ".ply", "config");
+        execution = resolveExecutable(execution, projectConfigDir);
+        execution = handleNonNativeExecutable(execution, projectConfigDir);
         String script = buildScriptName(execution.scriptArgs); // TODO - only if need be; augment Output to have way of computing values only if the log level is valid
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(execution.scriptArgs).redirectErrorStream(true).directory(projectRoot);
             Map<String, String> environment = processBuilder.environment();
-            environment.putAll(PropsExt.getPropsForEnv(execution.scope));
+            environment.putAll(PropsExt.getPropsForEnv(FileUtil.fromParts(projectRoot.getPath(), ".ply"),
+                                                       projectConfigDir,
+                                                       execution.scope));
             Output.print("^dbug^ invoking %s", script);
             // the Process thread reaps the child if the parent (this) is terminated
             Process process = processBuilder.start();
@@ -242,13 +249,15 @@ public final class Exec {
     }
 
     /**
-     * Runs {@link org.moxie.ply.props.Props#filter(Prop)} on each value within {@code array}, the context will be scripts.
+     * Runs {@link PropsExt#filterForPly(java.io.File, org.moxie.ply.props.Prop, String)} on each value
+     * within {@code array}, the context will be scripts.
      * @param array to filter
      * @param scope of the {@code array} object's execution.
+     * @param projectConfigDir the ply configuration directory of the project for which to resolve properties for filtering
      */
-    private static void filter(String[] array, String scope) {
+    private static void filter(String[] array, String scope, File projectConfigDir) {
         for (int i = 0; i < array.length; i++) {
-            array[i] = PropsExt.filterForPly(new Prop("aliases", "", "", array[i], true), scope);
+            array[i] = PropsExt.filterForPly(projectConfigDir, new Prop("aliases", "", "", array[i], true), scope);
         }
     }
 
@@ -302,10 +311,11 @@ public final class Exec {
         return buffer.toString();
     }
 
-    private static Execution resolveExecutable(Execution execution) {
+    private static Execution resolveExecutable(Execution execution, File projectConfigDir) {
         String passedInScript = execution.script;
         String script = execution.script;
-        String localScriptsDir = PropsExt.getValue("project", execution.scope, "scripts.dir");
+        String localScriptsDir = PropsExt.filterForPly(projectConfigDir,
+                PropsExt.get(projectConfigDir, "project", execution.scope, "scripts.dir"), execution.scope);
         script = (localScriptsDir.endsWith(File.separator) ? localScriptsDir :
                 localScriptsDir + File.separator) + script;
         File scriptFile = new File(script);
@@ -333,12 +343,13 @@ public final class Exec {
      * The whole command array needs to be processed as parameters to the VM may need to be inserted
      * into the command array.
      * @param execution to invoke
+     * @param projectConfigDir the ply configuration directory from which to resolve properties
      * @return the translated execution.
      */
-    private static Execution handleNonNativeExecutable(Execution execution) {
+    private static Execution handleNonNativeExecutable(Execution execution, File projectConfigDir) {
         String script = execution.script;
         if (script.endsWith(".jar")) {
-            return JarExec.createJarExecutable(execution);
+            return JarExec.createJarExecutable(execution, projectConfigDir);
         }
         return execution;
     }

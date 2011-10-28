@@ -1,7 +1,5 @@
 package org.moxie.ply.dep;
 
-import org.moxie.ply.Output;
-
 import java.net.URI;
 
 /**

@@ -4,13 +4,15 @@ import org.moxie.ply.dep.DependencyAtom;
 import org.moxie.ply.dep.Deps;
 import org.moxie.ply.dep.RepositoryAtom;
 import org.moxie.ply.props.Prop;
-import org.moxie.ply.props.Props;
 import org.moxie.ply.props.PropsExt;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.jar.JarEntry;
@@ -29,16 +31,17 @@ public class JarExec {
      * The whole command array needs to be processed as parameters to the JVM need to be inserted
      * into the command array.
      * @param execution to invoke
+     * @param projectConfigDir the ply configuration directory from which to resolve properties
      * @return the translated execution
      */
-    public static Exec.Execution createJarExecutable(Exec.Execution execution) {
+    public static Exec.Execution createJarExecutable(Exec.Execution execution, File projectConfigDir) {
         String script = execution.script;
         String classpath = null;
         AtomicReference<String> mainClass = new AtomicReference<String>();
         AtomicBoolean staticClasspath = new AtomicBoolean(false);
-        String[] options = getJarScriptOptions(execution.script, execution.scope, staticClasspath);
+        String[] options = getJarScriptOptions(projectConfigDir, execution.script, execution.scope, staticClasspath);
         if (!staticClasspath.get()) {
-            classpath = getClasspathEntries(script, execution.scope, mainClass);
+            classpath = getClasspathEntries(script, execution.scope, mainClass, projectConfigDir);
         }
         int classpathLength = (staticClasspath.get() ? 0 : classpath == null ? 2 : 3);
         // add the appropriate java command
@@ -69,9 +72,11 @@ public class JarExec {
      * @param jarPath of the jar to get classpath entries
      * @param scope of the execution
      * @param mainClass will be set with the 'Main-Class' value within the jar, if it is present
+     * @param projectConfigDir the ply configuration directory from which to resolve properties
      * @return the classpath (including the given {@code jarPath}).
      */
-    private static String getClasspathEntries(String jarPath, String scope, AtomicReference<String> mainClass) {
+    private static String getClasspathEntries(String jarPath, String scope, AtomicReference<String> mainClass,
+                                              File projectConfigDir) {
         JarFile jarFile = null;
         try {
             jarFile = new JarFile(jarPath, false);
@@ -102,7 +107,7 @@ public class JarExec {
                 }
             }
             Properties resolvedDependencies = Deps
-                    .resolveDependencies(dependencyAtoms, createRepositoryList(scope));
+                    .resolveDependencies(dependencyAtoms, createRepositoryList(projectConfigDir, scope));
             StringBuilder classpath = new StringBuilder();
             for (String resolvedDependency : resolvedDependencies.stringPropertyNames()) {
                 classpath.append(resolvedDependencies.getProperty(resolvedDependency));
@@ -125,9 +130,9 @@ public class JarExec {
         return null;
     }
 
-    private static List<RepositoryAtom> createRepositoryList(String scope) {
-        Prop prop = PropsExt.get("depmngr", scope, "localRepo");
-        String filteredLocalRepo = PropsExt.filterForPly(new Prop("depmngr", "", "localRepo", prop.value, prop.localOverride), scope);
+    private static List<RepositoryAtom> createRepositoryList(File projectConfigDir, String scope) {
+        Prop prop = PropsExt.get(projectConfigDir, "depmngr", scope, "localRepo");
+        String filteredLocalRepo = PropsExt.filterForPly(projectConfigDir, prop, scope);
         RepositoryAtom localRepo = RepositoryAtom.parse(filteredLocalRepo);
         if (localRepo == null) {
             Output.print("^error^ Local repository not defined.  Set 'localRepo' property in context 'depmngr'");
@@ -135,7 +140,7 @@ public class JarExec {
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
         repositoryAtoms.add(localRepo);
-        Map<String, Prop> repositoryProps = PropsExt.getPropsForScope("repositories", scope);
+        Map<String, Prop> repositoryProps = PropsExt.getPropsForScope(projectConfigDir, "repositories", scope); // TODO - filter the props?
         if (repositoryProps != null) {
             for (String repoUri : repositoryProps.keySet()) {
                 if (localRepo.getPropertyName().equals(repoUri)) {
@@ -156,18 +161,19 @@ public class JarExec {
 
     /**
      * Retrieves the jvm options for {@code script} or the default options if none have been specified.
+     * @param projectConfigDir the ply configuration directory from which to resolve properties
      * @param script for which to find options
      * @param scope for the {@code script}
      * @param staticClasspath will be set by this method to true iff the resolved options contains a
      *        {@literal -classpath} or {@literal -cp} value.
      * @return the split jvm options for {@code script}
      */
-    private static String[] getJarScriptOptions(String script, String scope, AtomicBoolean staticClasspath) {
-        String options = PropsExt.getValue("scripts-jar", scope, "options." + script);
+    private static String[] getJarScriptOptions(File projectConfigDir, String script, String scope, AtomicBoolean staticClasspath) {
+        String options = PropsExt.getValue(projectConfigDir, "scripts-jar", scope, "options." + script);
         if (options.isEmpty()) {
-            options = PropsExt.getValue("scripts-jar", scope, "options.default");
+            options = PropsExt.getValue(projectConfigDir, "scripts-jar", scope, "options.default");
         }
-        options = PropsExt.filterForPly(new Prop("scripts-jar", "", "", options, true), scope);
+        options = PropsExt.filterForPly(projectConfigDir, new Prop("scripts-jar", "", "", options, true), scope);
         if (options.contains("-cp") || options.contains("-classpath")) {
             staticClasspath.set(true);
         }

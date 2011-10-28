@@ -5,10 +5,11 @@ import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
 import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
-import org.moxie.ply.props.Scope;
 
-import javax.print.DocFlavor;
-import java.io.*;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;

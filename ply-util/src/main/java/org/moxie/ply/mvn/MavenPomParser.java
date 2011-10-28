@@ -118,7 +118,7 @@ public interface MavenPomParser {
             private static boolean shouldSkip(String scope, String optional, Boolean systemPath) {
                 if ((systemPath != null) && systemPath) {
                     return true;
-                } else if (!"compile".equals(scope)) {
+                } else if ((scope != null) && !scope.isEmpty() && !"compile".equals(scope)) {
                     // TODO - revisit ... only include compile scoped deps as rest are not for compilation
                     // TODO - and are not transitive; see http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html.
                     return true;

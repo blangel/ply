@@ -5,6 +5,7 @@ import org.moxie.ply.PropertiesFileUtil;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -46,8 +47,8 @@ public class Loader {
      * @return the resolved property map for the project located at {@code projectDir}
      */
     static Map<String, Map<String, Prop>> loadProjectProps(File projectConfigDir) {
-        if (cache.containsKey(projectConfigDir.getPath())) {
-            return cache.get(projectConfigDir.getPath());
+        if (cache.containsKey(getCanonicalPath(projectConfigDir))) {
+            return cache.get(getCanonicalPath(projectConfigDir));
         }
 
         Map<String, Map<String, Prop>> properties = new HashMap<String, Map<String, Prop>>();
@@ -56,7 +57,7 @@ public class Loader {
         // now override with the project's config directory.
         resolvePropertiesFromDirectory(projectConfigDir, true, properties);
 
-        cache.put(projectConfigDir.getPath(), properties);
+        cache.put(getCanonicalPath(projectConfigDir), properties);
 
         return properties;
     }
@@ -86,7 +87,13 @@ public class Loader {
         scope = ((scope == null) || scope.isEmpty() ? "" : scope);
         // ensure the cache-key is different than that made by {@link #loadProjectProps(File)} as on default scope
         // this method returns only the default scoped properties, no other scope.
-        String cacheKey = projectConfigDir.getPath() + File.separator + "#" + scope;
+        String projectConfigCanonicalDirPath = "";
+        try {
+            projectConfigCanonicalDirPath = projectConfigDir.getCanonicalPath();
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+        String cacheKey = projectConfigCanonicalDirPath + File.separator + "#" + scope;
         if (cache.containsKey(cacheKey)) {
             return cache.get(cacheKey);
         }
@@ -178,6 +185,14 @@ public class Loader {
             }
             String propertyValue = properties.getProperty(propertyName);
             contextProps.put(propertyName, new Prop(context, "", propertyName, propertyValue, local));
+        }
+    }
+
+    private static String getCanonicalPath(File dir) {
+        try {
+            return dir.getCanonicalPath();
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
         }
     }
 
