@@ -9,6 +9,7 @@ import java.util.Properties;
  * Time: 1:55 PM
  *
  * Sets up a local build point within the current working directory.
+ *
  */
 public class Init {
 
@@ -43,7 +44,7 @@ public class Init {
             outputStream = new BufferedOutputStream(new FileOutputStream(propFile));
             localProperties.store(outputStream, null);
         } catch (IOException ioe) {
-            Output.print("^error^ could not create the local ply.properties file.");
+            Output.print("^error^ could not create the local project.properties file.");
             Output.print(ioe);
         } finally {
             try {

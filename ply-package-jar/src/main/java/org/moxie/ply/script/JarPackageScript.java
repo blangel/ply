@@ -1,5 +1,6 @@
 package org.moxie.ply.script;
 
+import org.moxie.ply.FileUtil;
 import org.moxie.ply.Output;
 import org.moxie.ply.PropertiesFileUtil;
 import org.moxie.ply.props.Prop;
@@ -51,6 +52,12 @@ public class JarPackageScript {
     }
 
     private void invoke() throws IOException, InterruptedException {
+        String inputFiles = Props.getValue("compiler", "buildPath");
+        File inputFilesDir = new File(inputFiles);
+        if (!inputFilesDir.exists()) {
+            Output.print("Nothing to package, skipping.");
+            System.exit(0);
+        }
         createManifestFile();
         String[] cmdArgs = createArgs();
         ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true);
@@ -108,6 +115,7 @@ public class JarPackageScript {
         File manifestFile = new File(getManifestFilePath());
         PrintWriter writer = null;
         try {
+            manifestFile.getParentFile().mkdirs();
             manifestFile.createNewFile();
             writer = new PrintWriter(manifestFile);
             // important, manifest files must end in a new line
@@ -115,6 +123,7 @@ public class JarPackageScript {
             writer.flush();
         } catch (IOException ioe) {
             Output.print(ioe);
+            ioe.printStackTrace();
             System.exit(1);
         } finally {
             if (writer != null) {
@@ -182,14 +191,14 @@ public class JarPackageScript {
 
     private static String getManifestFilePath() {
         String buildDirPath = Props.getValue("project", "build.dir");
-        File metaInfDir = new File(buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) + "META-INF");
-        metaInfDir.mkdir();
-        return (metaInfDir.getPath() + (metaInfDir.getPath().endsWith(File.separator) ? "" : File.separator) + "Manifest.mf");
+        File metaInfDir = FileUtil.fromParts(buildDirPath, "META-INF");
+        metaInfDir.mkdirs();
+        return FileUtil.pathFromParts(metaInfDir.getPath(), "Manifest.mf");
     }
 
     private static String getJarFilePath(String jarName) {
         String buildDirPath = Props.getValue("project", "build.dir");
-        return buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator) + jarName;
+        return FileUtil.pathFromParts(buildDirPath, jarName);
     }
 
     /**
@@ -209,7 +218,7 @@ public class JarPackageScript {
         for (String propertyName : resolvedDeps.stringPropertyNames()) {
             dependencies.put(propertyName, "");
         }
-        File metaInfPlyDepFile = new File(buildDirPath + "META-INF/ply/dependencies.properties");
+        File metaInfPlyDepFile = FileUtil.fromParts(buildDirPath, "META-INF", "ply", "dependencies.properties");
         PropertiesFileUtil.store(dependencies, metaInfPlyDepFile.getPath(), true);
         return metaInfPlyDepFile;
     }

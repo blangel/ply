@@ -64,6 +64,7 @@ public class JunitTester {
         }
         List<URL> urls = getClasspathEntries(artifact, resolvedDepProps);
 
+        // TODO - fails on using own @runners as those don't have classloader access
         // create a loader with the given test artifact and its dependencies
         ClassLoader loader = URLClassLoader.newInstance(
                 urls.toArray(new URL[urls.size()]),
