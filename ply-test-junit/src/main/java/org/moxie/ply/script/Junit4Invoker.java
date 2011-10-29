@@ -16,7 +16,7 @@ import java.util.Set;
  *
  * Executes {@literal junit}-4 unit tests.
  */
-public class Junit4Invoker {
+public class Junit4Invoker implements Runnable {
 
     private final Set<Class> classes;
 
@@ -25,10 +25,6 @@ public class Junit4Invoker {
     private final AllFilterCollectPad padding;
 
     private final String originalMatchers;
-
-    public Junit4Invoker(Set<Class> classes) {
-        this(classes, null, null);
-    }
 
     public Junit4Invoker(Set<Class> classes, String[] matchers, String unsplitMatchers) {
         this.classes = classes;
@@ -46,7 +42,7 @@ public class Junit4Invoker {
         this.originalMatchers = unsplitMatchers;
     }
 
-    public void runTests() {
+    @Override public void run() {
         if (classes.size() == 0) {
             Output.print("No tests found, nothing to test.");
             return;

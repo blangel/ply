@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -38,6 +39,7 @@ import java.util.jar.JarInputStream;
  */
 public class JunitTester {
 
+    @SuppressWarnings("unchecked") /* ignore unchecked in constructor call */
     public static void main(String[] args) {
 
         Prop buildDirProp = Props.get("project", "build.dir");
@@ -64,7 +66,6 @@ public class JunitTester {
         }
         List<URL> urls = getClasspathEntries(artifact, resolvedDepProps);
 
-        // TODO - fails on using own @runners as those don't have classloader access
         // create a loader with the given test artifact and its dependencies
         ClassLoader loader = URLClassLoader.newInstance(
                 urls.toArray(new URL[urls.size()]),
@@ -77,6 +78,7 @@ public class JunitTester {
             }
         };
         Set<String> classNames = getClasses(artifact, filter);
+
         Set<Class> classes = loadClasses(classNames, loader);
 
         String[] matchers = null;
@@ -86,8 +88,33 @@ public class JunitTester {
             matchers = args[0].split(",");
         }
 
-        Junit4Invoker junit4Runner = new Junit4Invoker(classes, matchers, unsplitMatchers);
-        junit4Runner.runTests();
+        // invoke the Junit4Runner in a thread to force usage of the {@code loader} which has reference to the
+        // resolved dependencies
+        try {
+            Class junit4RunnerClass = loader.loadClass("org.moxie.ply.script.Junit4Invoker");
+            Runnable instance = (Runnable) junit4RunnerClass.getConstructor(Set.class, String[].class,  String.class)
+                                                 .newInstance(classes, matchers, unsplitMatchers);
+            Thread runner = new Thread(instance);
+            runner.setContextClassLoader(loader);
+            runner.start();
+            runner.join();
+        } catch (ClassNotFoundException cfne) {
+            Output.print(cfne);
+            System.exit(1);
+        } catch (NoSuchMethodException nsme) {
+            throw new AssertionError(nsme);
+        } catch (InstantiationException ie) {
+            Output.print(ie.getCause());
+            System.exit(1);
+        } catch (IllegalAccessException iae) {
+            throw new AssertionError(iae);
+        } catch (InvocationTargetException ite) {
+            Output.print(ite.getCause());
+            System.exit(1);
+        } catch (InterruptedException ie) {
+            Output.print(ie);
+            System.exit(1);
+        }
 
     }
 
