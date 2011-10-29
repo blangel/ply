@@ -125,7 +125,6 @@ public class Deps {
 
     private static URL getUrl(String path) {
         try {
-            Output.print("^dbug^ resolving %s", path);
             return new URI(path).toURL();
         } catch (URISyntaxException urise) {
             Output.print(urise);

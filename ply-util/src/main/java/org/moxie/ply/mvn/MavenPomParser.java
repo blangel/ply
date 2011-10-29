@@ -91,7 +91,9 @@ public interface MavenPomParser {
 
             private void addDep(String groupId, String artifactId, String version, String classifier, String type,
                                 String scope, String optional, Boolean systemPath, boolean overrideExisting, boolean resolutionOnly) {
-                String key = groupId + ":" + artifactId;
+                // @see Note here http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Management
+                // for description of key
+                String key = groupId + ":" + artifactId + ":" + (type == null ? "" : type) + ":" + (classifier == null ? "" : classifier);
                 if (mavenIncompleteDeps.containsKey(key)) {
                     Incomplete incomplete = mavenIncompleteDeps.get(key);
                     incomplete.version = (overrideExisting

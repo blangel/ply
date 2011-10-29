@@ -230,7 +230,13 @@ public class Props {
                     }
                 }
             }
-            Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", value.value, filtered, value.context);
+            // don't output large values in their entirety
+            if (filtered.length() < 100) {
+                Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", value.value, filtered, value.context);
+            } else {
+                Output.print("^dbug^ filtered \"^b^%s^r^\" [truncated] to \"^b^%s^r^\" [truncated] [ in %s ].",
+                        value.value.substring(0, 99), filtered.substring(0, 99), value.context);
+            }
             FILTER_CACHE.put(cacheKey, filtered);
             return filtered;
         }

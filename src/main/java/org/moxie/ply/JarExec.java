@@ -27,7 +27,7 @@ import java.util.jar.Manifest;
 public class JarExec {
 
     /**
-     * Translates {@code cmdArray[0]} into an executable statement for a JVM invoker.
+     * Translates {@code execution#scriptArgs[0]} into an executable statement for a JVM invoker.
      * The whole command array needs to be processed as parameters to the JVM need to be inserted
      * into the command array.
      * @param execution to invoke
@@ -61,7 +61,7 @@ public class JarExec {
             newCmdArray[options.length + 2] = execution.script;
         }
         System.arraycopy(execution.scriptArgs, 1, newCmdArray, options.length + classpathLength + 1,
-                                                               execution.scriptArgs.length - 1);
+                execution.scriptArgs.length - 1);
         return execution.with(newCmdArray);
     }
 
@@ -169,11 +169,16 @@ public class JarExec {
      * @return the split jvm options for {@code script}
      */
     private static String[] getJarScriptOptions(File projectConfigDir, String script, String scope, AtomicBoolean staticClasspath) {
+        // strip the resolved path (just use the jar name)
+        int index = script.lastIndexOf(File.separator);
+        if (index != -1) {
+            script = script.substring(index + 1);
+        }
         String options = PropsExt.getValue(projectConfigDir, "scripts-jar", scope, "options." + script);
         if (options.isEmpty()) {
             options = PropsExt.getValue(projectConfigDir, "scripts-jar", scope, "options.default");
         }
-        options = PropsExt.filterForPly(projectConfigDir, new Prop("scripts-jar", "", "", options, true), scope);
+        options = PropsExt.filterForPly(projectConfigDir, new Prop("scripts-jar", scope, "", options, true), scope);
         if (options.contains("-cp") || options.contains("-classpath")) {
             staticClasspath.set(true);
         }
