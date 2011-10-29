@@ -131,6 +131,50 @@ public final class PropsExt {
         return Props.filterForPly(projectConfigDir, prop, scope);
     }
 
+    /**
+     * Parses {@code propAtom} according to the format {@literal context[#scope].propertyName=propertyValue}
+     * @param propAtom to parse
+     * @return the parsed {@link Prop} or null of {@code propAtom} is not of the format.
+     */
+    public static Prop parse(String propAtom) {
+        if (propAtom == null) {
+            return null;
+        }
+        String context = "", scope = "", propertyName = "", propertyValue = "";
+        if (propAtom.contains("#")) {
+            int scopeIndex = propAtom.indexOf("#");
+            context = propAtom.substring(0, scopeIndex);
+            propAtom = propAtom.substring(scopeIndex + 1);
+            int propIndex = propAtom.indexOf(".");
+            if (propIndex == -1) {
+                return null;
+            }
+            scope = propAtom.substring(0, propIndex);
+            propAtom = propAtom.substring(propIndex + 1);
+        } else if (propAtom.contains(".")) {
+            int propIndex = propAtom.indexOf(".");
+            context = propAtom.substring(0, propIndex);
+            propAtom = propAtom.substring(propIndex + 1);
+        } else {
+            return null;
+        }
+        // at this point, context, scope (if containing) have been extracted.
+        int propValueIndex = propAtom.indexOf("=");
+        if (propValueIndex == -1) {
+            return null;
+        }
+        propertyName = propAtom.substring(0, propValueIndex);
+        propertyValue = propAtom.substring(propValueIndex + 1);
+        return new Prop(context, scope, propertyName, propertyValue, true);
+    }
+
+    /**
+     * @param adHocProps to set to {@link Loader#setAdHocProps(java.util.Map)}
+     */
+    public static void setAdHocProps(Map<String, Map<String, Prop>> adHocProps) {
+        Loader.setAdHocProps(adHocProps);
+    }
+
     private PropsExt() { }
 
 }

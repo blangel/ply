@@ -2,13 +2,12 @@ package org.moxie.ply;
 
 import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
+import org.moxie.ply.props.PropsExt;
 import org.moxie.ply.submodules.Submodule;
 import org.moxie.ply.submodules.Submodules;
 
 import java.io.File;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * User: blangel
@@ -38,11 +37,22 @@ public class Ply {
         } else if ("init".equals(args[0])) {
             Init.invoke(args);
         } else {
-            exec(args);
+            args = handleCommandLineProps(args);
+            if (args.length > 0) {
+                exec(args);
+            } else {
+                Output.print("^dbug^ Nothing to do, only -P arguments given.");
+            }
         }
         System.exit(0);
     }
 
+    /**
+     * For every argument in {@code args} runs {@link Exec#invoke(java.io.File, String)} against the local project.  If
+     * the local project has submodules then each submodule also has {@link Exec#invoke(java.io.File, String)} invoked
+     * for every argument in {@code args}.
+     * @param args are an array of unresolved aliases/scripts to be invoked for the project and all of its submodules
+     */
     private static void exec(String[] args) {
         long start = System.currentTimeMillis();
         String projectName = Props.getValue("project", "name");
@@ -130,6 +140,12 @@ public class Ply {
         printTime(start, "");
     }
 
+    /**
+     * Prints the amount of time used since {@code start} along with the memory usage.
+     * @param start time of some task/execution/build
+     * @param suppliment to indicate what has completed (should end with a blank space)
+     * @return the amount of time in seconds since {@code start}
+     */
     private static float printTime(long start, String suppliment) {
         long end = System.currentTimeMillis();
         float seconds = ((end - start) / 1000.0f);
@@ -137,6 +153,43 @@ public class Ply {
         long freeMem = Runtime.getRuntime().freeMemory() / 1024 / 1024;
         Output.print("^ply^ Finished %sin ^b^%.3f seconds^r^ using ^b^%d/%d MB^r^.", suppliment, seconds, (totalMem - freeMem), totalMem);
         return seconds;
+    }
+
+    /**
+     * Extract all arguments from {@code args} starting with {@literal -P}, parsing them in the format of
+     * {@literal context[#scope].propertyName=propertyValue} into {@link Prop} objects, mapping then by context and
+     * property name and gives them to the {@link PropsExt#setAdHocProps(Map)} for use in loading properties.
+     * @param args to parse
+     * @return {@code args} stripped of any {@literal -P} argument
+     */
+    private static String[] handleCommandLineProps(String[] args) {
+        List<String> purged = new ArrayList<String>(args.length);
+        Map<String, Map<String, Prop>> adHocProps = new HashMap<String, Map<String, Prop>>(2);
+        for (String arg : args) {
+            if (arg.startsWith("-P")) {
+                parse(arg.substring(2), adHocProps);
+            } else {
+                purged.add(arg);
+            }
+        }
+        if (!adHocProps.isEmpty()) {
+            PropsExt.setAdHocProps(adHocProps);
+        }
+        return purged.toArray(new String[purged.size()]);
+    }
+
+    private static void parse(String propAtom, Map<String, Map<String, Prop>> props) {
+        Prop prop = PropsExt.parse(propAtom);
+        if (prop == null) {
+            Output.print("^warn^ Ad hoc property ^b^%s^r^ not of correct format ^b^context[#scope].propName=propValue^r^.", propAtom);
+            return;
+        }
+        Map<String, Prop> contextProps = props.get(prop.getContextScope());
+        if (contextProps == null) {
+            contextProps = new HashMap<String, Prop>(2);
+            props.put(prop.getContextScope(), contextProps);
+        }
+        contextProps.put(prop.name, prop);
     }
 
     /**
@@ -155,10 +208,11 @@ public class Ply {
     }
 
     private static void usage() {
-        Output.print("ply [--usage] <^b^command^r^>");
+        Output.print("ply [--usage] <^b^command^r^> [-PadHocProp]...");
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^config^r^ <options>\t: see ^b^ply config --usage^r^");
         Output.print("    ^b^init^r^");
         Output.print("    <^b^build-scripts^r^>\t: a space delimited list of build scripts; i.e., ^b^ply clean \"myscript opt1\" compile test^r^");
+        Output.print("  and ^b^-PadHocProp^r^ is zero to many ad-hoc properties prefixed with ^b^-P^r^ in the format ^b^context[#scope].propName=propValue^r^");
     }
 }

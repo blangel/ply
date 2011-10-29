@@ -31,7 +31,7 @@ public class Prop {
         this.name = name;
         this.value = value;
         this.localOverride = localOverride;
-        if (this.localOverride) {
+        if ((this.localOverride != null) && this.localOverride) {
             this.originator = "local";
         } else {
             this.originator = "system";

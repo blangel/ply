@@ -35,6 +35,11 @@ public class Loader {
     private static final Map<String, Map<String, Map<String, Prop>>> cache = new HashMap<String, Map<String, Map<String, Prop>>>();
 
     /**
+     * Ad hoc properties set on the command line to override any resolved property from any directory.
+     */
+    private static Map<String, Map<String, Prop>> adHocProps = null;
+
+    /**
      * @return the resolved property map for the local project.
      * @see {@link PlyUtil#LOCAL_PROJECT_DIR}
      */
@@ -57,8 +62,12 @@ public class Loader {
         // now look for parental properties
         // TODO - how to do this? force parent to be local (then fairly easy) or can it be by dep-atom ref., if so
         // TODO - a bit harder as we'll need to export properties to the jar and pull from there
-        // finally, override with the project's config directory.
+        // next, override with the project's config directory.
         resolvePropertiesFromDirectory(projectConfigDir, true, properties);
+        // finally, override all with the ad-hoc properties (from the command-line), if any.
+        if (adHocProps != null) {
+            overrideMerge(properties, adHocProps);
+        }
 
         cache.put(getCanonicalPath(projectConfigDir), properties);
 
@@ -146,6 +155,13 @@ public class Loader {
     }
 
     /**
+     * @param adHocProps to set to {@link Loader#adHocProps}
+     */
+    static void setAdHocProps(Map<String, Map<String, Prop>> adHocProps) {
+        Loader.adHocProps = adHocProps;
+    }
+
+    /**
      * Iterates over the property files within {@code fromDirectory} and calls
      * {@link #resolvePropertiesFromFile(String, java.util.Properties, boolean, Map)} on each (provided the file is
      * not a directory).
@@ -196,6 +212,20 @@ public class Loader {
             return dir.getCanonicalPath();
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
+        }
+    }
+
+    private static void overrideMerge(Map<String, Map<String, Prop>> toOverride, Map<String, Map<String, Prop>> overrider) {
+        for (String context : overrider.keySet()) {
+            if (!toOverride.containsKey(context)) {
+                toOverride.put(context, overrider.get(context));
+            } else {
+                Map<String, Prop> contextPropsToOverride = toOverride.get(context);
+                Map<String, Prop> contextPropsOverrider = overrider.get(context);
+                for (String propName : contextPropsOverrider.keySet()) {
+                    contextPropsToOverride.put(propName, contextPropsOverrider.get(propName));
+                }
+            }
         }
     }
 
