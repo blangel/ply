@@ -91,7 +91,7 @@ public class JunitTester {
         PrintStream oldOut = System.out;
         PrintStream oldErr = System.err;
         redirect:try {
-            // save the reports.
+            // create the redirected out/err files.
             Prop reportDirProp = Props.get("project", "reports.dir");
             if (reportDirProp == null) {
                 Output.print("^warn^ Could not find property project.reports.dir, skipping out/err redirection.");
