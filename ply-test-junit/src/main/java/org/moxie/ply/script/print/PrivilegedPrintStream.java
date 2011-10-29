@@ -9,8 +9,8 @@ import java.io.PrintStream;
  * Date: 10/29/11
  * Time: 2:35 PM
  *
- * Calls to {@link #print(String)} and {@link #println(String)} go to a file unless the String starts with
- * {@link #PRIVILEGED_PREFIX} in which case the call is delegated to {@link #delegate}.
+ * All calls go to a file.  Calls to {@link #print(String)} and {@link #println(String)} go to a file unless the String
+ * starts with {@link #PRIVILEGED_PREFIX} in which case the call is delegated to {@link #delegate}.
  */
 public class PrivilegedPrintStream extends PrintStream {
 
