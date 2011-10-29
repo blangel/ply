@@ -4,6 +4,8 @@ import org.junit.runner.Description;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
 import org.moxie.ply.Output;
+import org.moxie.ply.script.print.PrivilegedOutput;
+import org.moxie.ply.script.print.PrivilegedPrintStream;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,7 +35,7 @@ public class Junit4RunListener extends RunListener {
         if (isSyntheticDescription(description)) {
             // ignore...means no-tests or something, process during failure
         } else {
-            Output.print("\nRunning tests from ^b^%d^r^ classes\n", description.getChildren().size());
+            PrivilegedOutput.print("\nRunning tests from ^b^%d^r^ classes\n", description.getChildren().size());
         }
     }
 
@@ -43,7 +45,7 @@ public class Junit4RunListener extends RunListener {
         }
         handleNewDescription(description);
         // need to go directly to stdout to avoid Output parsing prior to Exec handling
-        System.out.println(String.format("^no_line^\t^b^%s^r^ ", description.getMethodName()));
+        System.out.println(String.format("%s^no_line^\t^b^%s^r^ ", PrivilegedPrintStream.PRIVILEGED_PREFIX, description.getMethodName()));
     }
 
     @Override public void testFinished(Description description) throws Exception {
@@ -54,9 +56,9 @@ public class Junit4RunListener extends RunListener {
         if (failures.containsKey(description)) {
             Failure failure = failures.get(description);
             String message = createEasilyIdentifiableDiffMessage(failure, failure.getMessage());
-            System.out.println(String.format("^no_prefix^%s^red^^i^ \u2620 FAILURE \u2620 ^r^ %s", getPad(description), message));
+            System.out.println(String.format("%s^no_prefix^%s^red^^i^ \u2620 FAILURE \u2620 ^r^ %s", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description), message));
         } else {
-            System.out.println(String.format("^no_prefix^%s^green^^i^ \u2713 SUCCESS \u2713 ^r^", getPad(description)));
+            System.out.println(String.format("%s^no_prefix^%s^green^^i^ \u2713 SUCCESS \u2713 ^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description)));
         }
     }
 
@@ -72,8 +74,8 @@ public class Junit4RunListener extends RunListener {
             return;
         }
         handleNewDescription(description);
-        System.out.println(String.format("^no_line^\t^b^%s^r^ ", description.getMethodName()));
-        System.out.println(String.format("^no_prefix^%s^yellow^^i^ \u26A0 IGNORED \u26A0 ^r^", getPad(description)));
+        System.out.println(String.format("%s^no_line^\t^b^%s^r^ ", PrivilegedPrintStream.PRIVILEGED_PREFIX, description.getMethodName()));
+        System.out.println(String.format("%s^no_prefix^%s^yellow^^i^ \u26A0 IGNORED \u26A0 ^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description)));
     }
 
     public static boolean isSyntheticDescription(Description description) {
@@ -85,7 +87,7 @@ public class Junit4RunListener extends RunListener {
     private void handleNewDescription(Description description) {
         if (!methodNameOffsets.containsKey(description.getClassName())) {
             methodNameOffsets.put(description.getClassName(), 0);
-            Output.print("^b^%s^r^", description.getClassName());
+            PrivilegedOutput.print("^b^%s^r^", description.getClassName());
         }
     }
 

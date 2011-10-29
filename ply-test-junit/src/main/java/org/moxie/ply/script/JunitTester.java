@@ -6,11 +6,10 @@ import org.moxie.ply.PropertiesFileUtil;
 import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
 import org.moxie.ply.props.Scope;
+import org.moxie.ply.script.print.PrivilegedOutput;
+import org.moxie.ply.script.print.PrivilegedPrintStream;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FilenameFilter;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -88,6 +87,28 @@ public class JunitTester {
             matchers = args[0].split(",");
         }
 
+        // redirect out/err to a log file (except privileged code from this package)
+        PrintStream oldOut = System.out;
+        PrintStream oldErr = System.err;
+        redirect:try {
+            // save the reports.
+            Prop reportDirProp = Props.get("project", "reports.dir");
+            if (reportDirProp == null) {
+                Output.print("^warn^ Could not find property project.reports.dir, skipping out/err redirection.");
+                break redirect;
+            }
+            File outFile = FileUtil.fromParts(reportDirProp.value, "tests-out.txt");
+            outFile.getParentFile().mkdirs();
+            outFile.createNewFile();
+            File errFile = FileUtil.fromParts(reportDirProp.value, "tests-err.txt");
+            errFile.createNewFile();
+            System.setOut(new PrivilegedPrintStream(oldOut, outFile));
+            System.setErr(new PrivilegedPrintStream(oldErr, errFile));
+        } catch (IOException ioe) {
+            PrivilegedOutput.print(ioe);
+            System.exit(1);
+        }
+
         // invoke the Junit4Runner in a thread to force usage of the {@code loader} which has reference to the
         // resolved dependencies
         try {
@@ -99,20 +120,20 @@ public class JunitTester {
             runner.start();
             runner.join();
         } catch (ClassNotFoundException cfne) {
-            Output.print(cfne);
+            PrivilegedOutput.print(cfne);
             System.exit(1);
         } catch (NoSuchMethodException nsme) {
             throw new AssertionError(nsme);
         } catch (InstantiationException ie) {
-            Output.print(ie.getCause());
+            PrivilegedOutput.print(ie.getCause());
             System.exit(1);
         } catch (IllegalAccessException iae) {
             throw new AssertionError(iae);
         } catch (InvocationTargetException ite) {
-            Output.print(ite.getCause());
+            PrivilegedOutput.print(ite.getCause());
             System.exit(1);
         } catch (InterruptedException ie) {
-            Output.print(ie);
+            PrivilegedOutput.print(ie);
             System.exit(1);
         }
 

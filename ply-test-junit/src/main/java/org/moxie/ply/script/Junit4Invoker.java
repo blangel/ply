@@ -6,6 +6,7 @@ import org.junit.runner.Result;
 import org.junit.runner.manipulation.Filter;
 import org.junit.runner.notification.Failure;
 import org.moxie.ply.Output;
+import org.moxie.ply.script.print.PrivilegedOutput;
 
 import java.util.Set;
 
@@ -44,7 +45,7 @@ public class Junit4Invoker implements Runnable {
 
     @Override public void run() {
         if (classes.size() == 0) {
-            Output.print("No tests found, nothing to test.");
+            PrivilegedOutput.print("No tests found, nothing to test.");
             return;
         }
 
@@ -61,18 +62,19 @@ public class Junit4Invoker implements Runnable {
 
         if (allSynthetic(result)) {
             if (originalMatchers != null) {
-                Output.print("^warn^ No tests matched ^b^%s^r^", originalMatchers);
+                PrivilegedOutput.print("^warn^ No tests matched ^b^%s^r^", originalMatchers);
             } else {
-                Output.print("No tests found, nothing to test.");
+                PrivilegedOutput.print("No tests found, nothing to test.");
             }
             return;
         }
 
-        Output.print("\nRan ^b^%d^r^ test%s in ^b^%.3f seconds^r^ with %s%d^r^ failure%s and %s%d^r^ ignored.\n",
-                result.getRunCount(), (result.getRunCount() == 1 ? "" : "s"),
-                (result.getRunTime() / 1000.0f), (result.getFailureCount() > 0 ? "^red^^i^" : "^green^"),
-                result.getFailureCount(), (result.getFailureCount() == 1 ? "" : "s"),
-                (result.getIgnoreCount() > 0 ? "^yellow^^i^" : "^b^"), result.getIgnoreCount());
+        PrivilegedOutput
+                .print("\nRan ^b^%d^r^ test%s in ^b^%.3f seconds^r^ with %s%d^r^ failure%s and %s%d^r^ ignored.\n",
+                        result.getRunCount(), (result.getRunCount() == 1 ? "" : "s"),
+                        (result.getRunTime() / 1000.0f), (result.getFailureCount() > 0 ? "^red^^i^" : "^green^"),
+                        result.getFailureCount(), (result.getFailureCount() == 1 ? "" : "s"),
+                        (result.getIgnoreCount() > 0 ? "^yellow^^i^" : "^b^"), result.getIgnoreCount());
 
         if (!result.wasSuccessful()) {
             System.exit(1);

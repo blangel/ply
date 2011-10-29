@@ -8,6 +8,7 @@ import org.junit.runner.notification.RunListener;
 import org.moxie.ply.Output;
 import org.moxie.ply.props.Prop;
 import org.moxie.ply.props.Props;
+import org.moxie.ply.script.print.PrivilegedOutput;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -237,7 +238,7 @@ public class MavenReporter extends RunListener {
         // save the reports.
         Prop reportDirProp = Props.get("project", "reports.dir");
         if (reportDirProp == null) {
-            Output.print("^warn^ Could not find property project.reports.dir, skipping report save.");
+            PrivilegedOutput.print("^warn^ Could not find property project.reports.dir, skipping report save.");
             return;
         }
         File reportDir = new File(reportDirProp.value);
@@ -252,7 +253,7 @@ public class MavenReporter extends RunListener {
                 writer = new FileWriter(file);
                 writer.write(xmlFileContent);
             } catch (IOException ioe) {
-                Output.print(ioe);
+                PrivilegedOutput.print(ioe);
             } finally {
                 if (writer != null) {
                     try {
