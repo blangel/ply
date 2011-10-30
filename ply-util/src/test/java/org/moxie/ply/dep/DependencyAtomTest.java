@@ -54,7 +54,7 @@ public class DependencyAtomTest {
         assertEquals("name", atom.name);
         assertEquals("version", atom.version);
         assertNull(atom.artifactName);
-        assertEquals("version:name-version.jar", atom.getResolvedPropertyValue());
+        assertEquals("version:name-version." + DependencyAtom.DEFAULT_PACKAGING, atom.getResolvedPropertyValue());
 
         error.set(null);
         atom = DependencyAtom.parse("namespace:name:version:artifact-name.zip", error);

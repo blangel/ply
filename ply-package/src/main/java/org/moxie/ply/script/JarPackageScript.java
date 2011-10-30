@@ -40,18 +40,7 @@ import java.util.Properties;
  */
 public class JarPackageScript {
 
-    public static void main(String[] args) {
-        JarPackageScript jarPackageScript = new JarPackageScript();
-        try {
-            jarPackageScript.invoke();
-        } catch (IOException ioe) {
-            Output.print(ioe);
-        } catch (InterruptedException ie) {
-            Output.print(ie);
-        }
-    }
-
-    private void invoke() throws IOException, InterruptedException {
+    void invoke() throws IOException, InterruptedException {
         String inputFiles = Props.getValue("compiler", "buildPath");
         File inputFilesDir = new File(inputFiles);
         if (!inputFilesDir.exists()) {

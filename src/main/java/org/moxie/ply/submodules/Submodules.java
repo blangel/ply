@@ -120,7 +120,7 @@ public final class Submodules {
         String name = PropsExt.filterForPly(submoduleConfigDir, PropsExt.get(submoduleConfigDir, "project", scope, "name"), scope);
         String version = PropsExt.filterForPly(submoduleConfigDir, PropsExt.get(submoduleConfigDir, "project", scope, "version"), scope);
         String artifactName = PropsExt.filterForPly(submoduleConfigDir, PropsExt.get(submoduleConfigDir, "project", scope, "artifact.name"), scope);
-        String defaultArtifactName = name + "-" + version + ".jar";
+        String defaultArtifactName = name + "-" + version + "." + DependencyAtom.DEFAULT_PACKAGING;
         // don't pollute by placing artifactName explicitly even though it's the default
         if (artifactName.equals(defaultArtifactName)) {
             return namespace + ":" + name + ":" + version;

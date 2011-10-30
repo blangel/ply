@@ -8,9 +8,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * Time: 1:31 PM
  *
  * Represents a dependency atom made up of namespace:name:version[:artifactName]
- * If artifactName is null then (name-version.jar) will be used when necessary.
+ * If {@literal artifactName} is null then (name-version.jar) will be used when necessary.
+ *
+ * To force a different packaging type, explicitly set {@literal artifactName}.
  */
 public class DependencyAtom {
+
+    public static final String DEFAULT_PACKAGING = "jar";
 
     public final String namespace;
 
@@ -44,7 +48,24 @@ public class DependencyAtom {
     }
 
     public String getArtifactName() {
-        return (artifactName == null ? name + "-" + version + ".jar" : artifactName);
+        return (artifactName == null ? name + "-" + version + "." + DEFAULT_PACKAGING : artifactName);
+    }
+
+    /**
+     * @return the packaging of the dependency (either {@link #DEFAULT_PACKAGING} or the extension of {@link #artifactName}
+     *         if {@link #artifactName} is not null).
+     */
+    public String getSyntheticPackaging() {
+        if (artifactName == null) {
+            return DEFAULT_PACKAGING;
+        } else {
+            int index = artifactName.lastIndexOf(".");
+            if (index == -1) {
+                return DEFAULT_PACKAGING;
+            } else {
+                return artifactName.substring(index + 1);
+            }
+        }
     }
 
     @Override public String toString() {

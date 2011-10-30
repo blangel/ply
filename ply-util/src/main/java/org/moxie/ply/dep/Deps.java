@@ -30,7 +30,7 @@ public class Deps {
         String name = Props.getValue("project", "name");
         String version = Props.getValue("project", "version");
         String artifactName = Props.getValue("project", "artifact.name");
-        String defaultArtifactName = name + "-" + version + ".jar";
+        String defaultArtifactName = name + "-" + version + "." + DependencyAtom.DEFAULT_PACKAGING;
         // don't pollute by placing artifactName explicitly even though it's the default
         if (artifactName.equals(defaultArtifactName)) {
             return new DependencyAtom(namespace, name, version);
@@ -172,7 +172,7 @@ public class Deps {
             }
             return getTransitiveDependenciesFromPlyRepo(FileUtil.pathFromParts(repoDepDir, "dependencies.properties"));
         } else {
-            String pomName = dependencyAtom.getArtifactName().replace(".jar", ".pom");
+            String pomName = dependencyAtom.getArtifactName().replace("." + dependencyAtom.getSyntheticPackaging(), ".pom");
             return getTransitiveDependenciesFromMavenRepo(FileUtil.pathFromParts(repoDepDir, pomName), repositoryAtom);
         }
     }
