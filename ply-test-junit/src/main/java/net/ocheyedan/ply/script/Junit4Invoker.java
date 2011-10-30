@@ -59,7 +59,8 @@ public class Junit4Invoker implements Runnable {
         }
         Result result = jUnitCore.run(request);
 
-        if (allSynthetic(result)) {
+        int syntheticCount = 0;
+        if ((syntheticCount = countSynthetic(result)) == result.getRunCount()) {
             if (originalMatchers != null) {
                 PrivilegedOutput.print("^warn^ No tests matched ^b^%s^r^", originalMatchers);
             } else {
@@ -67,17 +68,28 @@ public class Junit4Invoker implements Runnable {
             }
             return;
         }
+        int runCount = result.getRunCount() - syntheticCount;
+        int failCount = result.getFailureCount() - syntheticCount;
 
         PrivilegedOutput
                 .print("\nRan ^b^%d^r^ test%s in ^b^%.3f seconds^r^ with %s%d^r^ failure%s and %s%d^r^ ignored.\n",
-                        result.getRunCount(), (result.getRunCount() == 1 ? "" : "s"),
-                        (result.getRunTime() / 1000.0f), (result.getFailureCount() > 0 ? "^red^^i^" : "^green^"),
-                        result.getFailureCount(), (result.getFailureCount() == 1 ? "" : "s"),
+                        runCount, (runCount == 1 ? "" : "s"), (result.getRunTime() / 1000.0f),
+                        (failCount > 0 ? "^red^^i^" : "^green^"), failCount, (failCount == 1 ? "" : "s"),
                         (result.getIgnoreCount() > 0 ? "^yellow^^i^" : "^b^"), result.getIgnoreCount());
 
-        if (!result.wasSuccessful()) {
+        if (failCount != 0) {
             System.exit(1);
         }
+    }
+
+    private int countSynthetic(Result result) {
+        int synthetic = 0;
+        for (Failure failure : result.getFailures()) {
+            if (Junit4RunListener.isSyntheticDescription(failure.getDescription())) {
+                synthetic++;
+            }
+        }
+        return synthetic;
     }
 
     private boolean allSynthetic(Result result) {

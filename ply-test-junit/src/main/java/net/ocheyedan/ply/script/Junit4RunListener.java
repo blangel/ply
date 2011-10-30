@@ -80,7 +80,8 @@ public class Junit4RunListener extends RunListener {
     public static boolean isSyntheticDescription(Description description) {
          // junit reports 'no-tests'/etc as a "test"...filter out.
         return description.getClassName().startsWith("org.junit")
-                || description.getClassName().startsWith("junit");
+                || description.getClassName().startsWith("junit")
+                || "initializationError".equals(description.getMethodName());
     }
 
     private void handleNewDescription(Description description) {
