@@ -28,14 +28,17 @@ Scripts are anything executable; a bash script, perl script, ruby script, groovy
 jar file with a main method specified in its manifest.
 Ply resolves scripts through the following sequence:
 
--1- Check for an executable script of the same name within the 'project[.scope].scripts.dir' (see __Properties__ for a
+-1- First check to see if it is an alias, if so expand it (see __Aliases__ below for more information).  For each expanded
+value go back to -1-.  If there is nothing to expand go to -2-.
+
+-2- Then check for an executable script of the same name within the 'project[.scope].scripts.dir' (see __Properties__ for a
 general description or properties, this particular property defaults to 'scripts' which is relative to the project directory).  If
-found, invoke it, otherwise try -2-.
+found, invoke it, otherwise try -3-.
 
--2- Check for an executable script of the same name within the ply scripts' directory ($PLY_HOME/scripts). If found,
-invoke it, otherwise, try -3-
+-3- Check for an executable script of the same name within the ply scripts' directory ($PLY_HOME/scripts). If found,
+invoke it, otherwise, try -4-
 
--3- Invoke directly (must be accessible via the system $PATH).
+-4- Invoke directly (must be accessible via the system $PATH).
 
 Each script invocation will be passed, via environmental variables, a set of resolved properties particular to the
 invocation.  See the __Properties__ section below for a description of how properties are resolved and then passed to
@@ -48,7 +51,7 @@ at the _$PLY_HOME/config_ and represents the system defaults.  The second is loc
 of the project directory (this directory is created for you when initializing the project; i.e., 'ply init').
 
 The files within these directories are simply unix style property files.  The name of the property file
-is considered the context (and if there is a '.' in the file name that after the period is the scope, see __Scopes__ for
+is considered to be the context (and if there is a '.' in the file name that after the period is the scope, see __Scopes__ for
 a general description of scopes).
 
 Any property defined within the system configuration directory can be overridden within the project's local config
@@ -91,9 +94,24 @@ To set a property named _url_ in a context called _environ_ to _http://mydomain.
 
 > ply config --environ set url http://mydomain.com
 
-To delete the property _url_ from the context _environ_ (note, if _url_ is the only property the whole _environ.properties_ file will be deleted)
+To delete the property _url_ from the context _environ_ (note, if _url_ is the only property left after removal the whole _environ.properties_ file will be deleted)
 
 > ply config --environ remove url
+
+Any script can directly read these property files during execution, however, ply does the heavy lifting by resolving the
+properties and passing them as environmental variables to each invoked script.  The resolution of properties files
+involves collecting all properties for all contexts (within the given scope; again see __Scopes__ for a general description
+of what scopes are) and overriding properties appropriately.
+Ply passes the properties in the following format: _ply$context.propName=propValue_.  That is the environment variable name
+is _ply$context.propName_ and the value is _propValue_.  The first four characters 'ply$' are simply to disambiguate ply
+properties from other environment variables.  The next part is the context.  The context is the property file name (without
+the scope), so in the example above the context is _project_.  The _propName_ and _propValue_ are self-explanatory.
+If a property within a context is defined in the system defaults but overridden by the local project, only the local
+project's overridden property is passed.
+For example; the _$PLY_HOME/config/compiler.properties_ file contains a property named _warnings_ whose value is _true_.
+If the local project overrides this to false (i.e., _ply config --compiler set warnings false_) then only the local
+override is passed to scripts (i.e., scripts will see one environment variable named _ply$compiler.warnings_ with
+value _false_).
 
 Aliases
 -------
