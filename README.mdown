@@ -9,21 +9,50 @@ The series is space delimited so the previous example ran two scripts:
 1) "echo ply says:"
 2) "echo hello".
 
-Scripts can be extended (see [Scripts]) and aliased (see [Aliases]).
-Ply ships with property (see [Properties]) defaults and packaged scripts which should allow most java projects to
-build with no-to-minimal configuration.  For a list of all scripts which ply ships with see [Included Scripts].
+Scripts can be extended (see _Scripts_) and aliased (see _Aliases_).
+Ply ships with property defaults (see _Properties_) and packaged scripts which allow most java projects to
+build with no-to-minimal configuration.  For a list of all scripts which ply ships with see _Included Scripts_.
+
+To enable a directory/project to use ply, simply run init from within the directory:
+
+> ply init
+
+For help on ply:
+
+> ply --usage
+
 
 Scripts
 -------
+Scripts are anything executable; a bash script, perl script, ruby script, groovy script, etc. A script can even be a java
+jar file with a main method specified in its manifest.
+Ply resolves scripts by the following sequence:
+-1- Check for an executable script of the same name within the 'project[.scope].scripts.dir' (see _Properties_ for a
+general description or properties, this particular property defaults to 'scripts' relative to the project directory).  If
+found, invoke it, otherwise try -2-.
+-2- Check for an executable script of the same name within the ply scripts' directory ($PLY_HOME/scripts). If found,
+invoke it, otherwise, try -3-
+-3- Invoke directly (must be accessible via the system $PATH).
+
+Each script invocation will be passed, via environmental variables, a set of resolved properties particular to the
+invocation.  See the _Properties_ section below for a description of how properties are resolved and then passed to
+scripts.
 
 Properties
 ----------
+Ply is configured via property files.  There are two directories which ply looks for property files.  The first is located
+at the $PLY_HOME/config and represents the system defaults.  The second is located within the .ply/config directory
+of the project directory (this directory is created for you when initializing the project; i.e., 'ply init').
+
 
 Aliases
 -------
 
 Scopes
 ------
+
+Submodules
+----------
 
 Included Scripts
 ----------------
