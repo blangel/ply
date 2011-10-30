@@ -310,11 +310,12 @@ public final class Config {
     private static void usage() {
         Output.print("ply config [--usage] [--context[.scope]] <^b^command^r^>");
         Output.print("  where ^b^command^r^ is either:");
-        Output.print("    ^b^get [name]^r^\t: prints the value of the property (if not specified all properties are printed)");
-        Output.print("    ^b^set <name> <value>^r^\t: sets the value of property within the context[.scope].");
-        Output.print("    ^b^append <name> <value>^r^\t: appends the value to property within the context[.scope].");
-        Output.print("    ^b^prepend <name> <value>^r^\t: prepends the value to property within the context[.scope].");
-        Output.print("    ^b^remove <name>^r^\t: removes the property from the context[.scope].");
+        Output.print("    ^b^get [name]^r^             : prints the value of the property (if not specified all properties are printed)");
+        Output.print("    ^b^get-all [name]^r^         : like ^b^get^r^ but prints system properties as well.");
+        Output.print("    ^b^set <name> <value>^r^     : sets the value of property within the context[.scope].");
+        Output.print("    ^b^append <name> <value>^r^  : appends the value to property within the context[.scope].");
+        Output.print("    ^b^prepend <name> <value>^r^ : prepends the value to property within the context[.scope].");
+        Output.print("    ^b^remove <name>^r^          : removes the property from the context[.scope].");
         Output.print("  the default context is ^b^ply^r^ and the default scope is null.");
     }
 

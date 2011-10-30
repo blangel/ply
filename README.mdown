@@ -9,9 +9,9 @@ The series is space delimited so the previous example ran two scripts:
 1) "echo ply says:"
 2) "echo hello".
 
-Scripts can be extended (see _Scripts_) and aliased (see _Aliases_).
-Ply ships with property defaults (see _Properties_) and packaged scripts which allow most java projects to
-build with no-to-minimal configuration.  For a list of all scripts which ply ships with see _Included Scripts_.
+Scripts can be extended (see __Scripts__) and aliased (see __Aliases__).
+Ply ships with property defaults (see __Properties__) and packaged scripts which allow most java projects to
+build with no-to-minimal configuration.  For a list of all scripts which ply ships with see __Included Scripts__.
 
 To enable a directory/project to use ply, simply run init from within the directory:
 
@@ -28,8 +28,8 @@ Scripts are anything executable; a bash script, perl script, ruby script, groovy
 jar file with a main method specified in its manifest.
 Ply resolves scripts through the following sequence:
 
--1- Check for an executable script of the same name within the 'project[.scope].scripts.dir' (see _Properties_ for a
-general description or properties, this particular property defaults to 'scripts' relative to the project directory).  If
+-1- Check for an executable script of the same name within the 'project[.scope].scripts.dir' (see __Properties__ for a
+general description or properties, this particular property defaults to 'scripts' which is relative to the project directory).  If
 found, invoke it, otherwise try -2-.
 
 -2- Check for an executable script of the same name within the ply scripts' directory ($PLY_HOME/scripts). If found,
@@ -38,15 +38,62 @@ invoke it, otherwise, try -3-
 -3- Invoke directly (must be accessible via the system $PATH).
 
 Each script invocation will be passed, via environmental variables, a set of resolved properties particular to the
-invocation.  See the _Properties_ section below for a description of how properties are resolved and then passed to
+invocation.  See the __Properties__ section below for a description of how properties are resolved and then passed to
 scripts.
 
 Properties
 ----------
 Ply is configured via property files.  There are two directories which ply looks for property files.  The first is located
-at the $PLY_HOME/config and represents the system defaults.  The second is located within the .ply/config directory
+at the _$PLY_HOME/config_ and represents the system defaults.  The second is located within the _.ply/config_ directory
 of the project directory (this directory is created for you when initializing the project; i.e., 'ply init').
 
+The files within these directories are simply unix style property files.  The name of the property file
+is considered the context (and if there is a '.' in the file name that after the period is the scope, see __Scopes__ for
+a general description of scopes).
+
+Any property defined within the system configuration directory can be overridden within the project's local config
+directory.  To override a property locally, create a property file within the _.ply/config_ directory with the same name
+and assign your overridden value to the same property name.  For instance, the source directory used during compilation
+is a property file defined within the _$PLY_HOME/config/project.properties_ file named _src.dir_.  To override this for
+a project, you would add a property named _src.dir_ within the _.ply/config/project.properties_ file.
+
+Because setting property values is a common task, ply provides a utility to assist.
+
+> ply config --usage
+
+Some examples:
+
+To get all locally defined properties (across all contexts):
+
+> ply config get
+
+To get all properties (including system properties):
+
+> ply config get-all
+
+To get all local properties with context _project_ (i.e., those defined within the _project.properties_ file)
+
+> ply config --project get
+
+To get all properties starting with _name_
+
+> ply config get-all name*
+
+To get all properties within the _compiler_ context starting with _warn_
+
+> ply config --compiler get-all warn*
+
+To set _version_ within the _project_ context to be _2.0_
+
+> ply config --project set version 2.0
+
+To set a property named _url_ in a context called _environ_ to _http://mydomain.com_ (note, the property file will be created if it doesn't exist).
+
+> ply config --environ set url http://mydomain.com
+
+To delete the property _url_ from the context _environ_ (note, if _url_ is the only property the whole _environ.properties_ file will be deleted)
+
+> ply config --environ remove url
 
 Aliases
 -------
