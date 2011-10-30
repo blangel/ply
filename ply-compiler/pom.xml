@@ -14,8 +14,14 @@
     <dependencies>
         <dependency>
             <groupId>org.moxie.ply</groupId>
-	    <artifactId>ply-util</artifactId>
-	    <version>1.0</version>
+            <artifactId>ply-util</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.10</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
