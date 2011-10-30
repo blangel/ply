@@ -32,7 +32,7 @@ Ply resolves scripts through the following sequence:
 value go back to -1-.  If there is nothing to expand go to -2-.
 
 -2- Then check for an executable script of the same name within the 'project[.scope].scripts.dir' (see __Properties__ for a
-general description or properties, this particular property defaults to 'scripts' which is relative to the project directory).  If
+general description of properties, this particular property defaults to 'scripts' which is relative to the project directory).  If
 found, invoke it, otherwise try -3-.
 
 -3- Check for an executable script of the same name within the ply scripts' directory ($PLY_HOME/scripts). If found,
@@ -57,7 +57,7 @@ a general description of scopes).
 Any property defined within the system configuration directory can be overridden within the project's local config
 directory.  To override a property locally, create a property file within the _.ply/config_ directory with the same name
 and assign your overridden value to the same property name.  For instance, the source directory used during compilation
-is a property file defined within the _$PLY_HOME/config/project.properties_ file named _src.dir_.  To override this for
+is a property defined within the _$PLY_HOME/config/project.properties_ file named _src.dir_.  To override this for
 a project, you would add a property named _src.dir_ within the _.ply/config/project.properties_ file.
 
 Because setting property values is a common task, ply provides a utility to assist.
@@ -102,15 +102,19 @@ Any script can directly read these property files during execution, however, ply
 properties and passing them as environmental variables to each invoked script.  The resolution of properties files
 involves collecting all properties for all contexts (within the given scope; again see __Scopes__ for a general description
 of what scopes are) and overriding properties appropriately.
+
 Ply passes the properties in the following format: _ply$context.propName=propValue_.  That is the environment variable name
 is _ply$context.propName_ and the value is _propValue_.  The first four characters 'ply$' are simply to disambiguate ply
 properties from other environment variables.  The next part is the context.  The context is the property file name (without
-the scope), so in the example above the context is _project_.  The _propName_ and _propValue_ are self-explanatory.
+the scope), so in the last 'ply config' example above the context is _environ_.  The _propName_ and _propValue_ are self-explanatory.
 If a property within a context is defined in the system defaults but overridden by the local project, only the local
 project's overridden property is passed.
 For example; the _$PLY_HOME/config/compiler.properties_ file contains a property named _warnings_ whose value is _true_.
-If the local project overrides this to false (i.e., _ply config --compiler set warnings false_) then only the local
-override is passed to scripts (i.e., scripts will see one environment variable named _ply$compiler.warnings_ with
+If the local project overrides this to false
+
+> ply config --compiler set warnings false
+
+then only the local override is passed to scripts (i.e., scripts will see one environment variable named _ply$compiler.warnings_ with
 value _false_).
 
 Aliases
