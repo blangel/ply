@@ -1,0 +1,24 @@
+Overview
+--------
+Ply is a build tool made to be simple and easily extended.  At its simplest it just invokes a series of scripts. The following
+is a valid series of scripts for ply:
+> ply "echo ply says:" "echo hello"
+The series is space delimited so the previous example ran two scripts 1) "echo ply says:" and 2) "echo hello".
+Scripts can be extended (see [Scripts]) and aliased (see [Aliases]).
+Ply ships with property (see [Properties]) defaults and packaged scripts which should allow most java projects to
+build with no-to-minimal configuration.  For a list of all scripts which ply ships with see [Included Scripts].
+
+Scripts
+-------
+
+Properties
+----------
+
+Aliases
+-------
+
+Scopes
+------
+
+Included Scripts
+----------------
