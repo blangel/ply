@@ -27,7 +27,13 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
     }
 
     @Override public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
-        String kind = "", pad = " ", color = "blue";
+	// odd - mac-osx's compiler appears to report a Diagnostic on ignored warnings (ignored via compiler options)
+	// but the source is null, skip these.
+	if ((diagnostic == null) || (diagnostic.getSource() == null)) {
+	    return;
+	}
+
+	String kind = "", pad = " ", color = "blue";
         Type type = Type.Note;
         switch (diagnostic.getKind()) {
             case ERROR:
@@ -45,7 +51,7 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
             default:
                 kind = "message";
         }
-        String className = diagnostic.getSource().toUri().toString();
+	String className = diagnostic.getSource().toUri().toString();
         className = className.replace(srcPath, "").replace(".java", "").replaceAll(File.separator, ".").replace("$", ".");
 
         String lineNumber = String.valueOf(diagnostic.getLineNumber());
