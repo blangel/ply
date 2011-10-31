@@ -29,14 +29,15 @@ public class Ply {
             usage();
             System.exit(0);
         }
-        checkAssumptions("init".equals(args[0]));
         if ("--usage".equals(args[0])) {
             usage();
-        } else if ("config".equals(args[0])) {
-            Config.invoke(args);
         } else if ("init".equals(args[0])) {
             Init.invoke(args);
+        } else if ("config".equals(args[0])) {
+	    checkAssumptions();
+            Config.invoke(args);
         } else {
+	    checkAssumptions();
             args = handleCommandLineProps(args);
             if (args.length > 0) {
                 exec(args);
@@ -194,14 +195,13 @@ public class Ply {
 
     /**
      * Performs sanity checks on what ply assumes to exist.
-     * @param init true if current invocation is running 'init' (meaning don't fail because the project hasn't been init-ed).
-     */
-    private static void checkAssumptions(boolean init) {
+      */
+    private static void checkAssumptions() {
         if (!PlyUtil.SYSTEM_CONFIG_DIR.exists()) {
             Output.print("^error^ the ply install directory is corrupt, please re-install.");
             System.exit(1);
         }
-        if (!init && !PlyUtil.LOCAL_CONFIG_DIR.exists()) {
+        if (!PlyUtil.LOCAL_CONFIG_DIR.exists()) {
             Output.print("^warn^ not a ply project (or any of the parent directories), please initialize first: ^b^ply init^r^.");
             System.exit(1);
         }
