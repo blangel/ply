@@ -231,12 +231,14 @@ public class Props {
                 }
             }
             // don't output large values in their entirety
-            if (filtered.length() < 100) {
-                Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", value.value, filtered, value.context);
-            } else {
-                Output.print("^dbug^ filtered \"^b^%s^r^\" [truncated] to \"^b^%s^r^\" [truncated] [ in %s ].",
-                        value.value.substring(0, 99), filtered.substring(0, 99), value.context);
-            }
+	    String outputFiltered = filtered, outputValue = value.value;
+	    if (filtered.length() > 99) { 
+		outputFiltered = filtered.substring(0, 99) + " [truncated]";
+	    } 
+	    if (value.value.length() > 99) {
+		outputValue = value.value.substring(0, 99) + " [truncated]";
+	    }
+	    Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", outputValue, outputFiltered, value.context);
             FILTER_CACHE.put(cacheKey, filtered);
             return filtered;
         }
