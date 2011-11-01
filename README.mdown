@@ -3,11 +3,11 @@ Overview
 Ply is a build tool made to be simple and easily extended.  At its simplest it just invokes a series of scripts. The following
 is a valid series of scripts for ply:
 
-> ply "echo ply says:" "echo hello"
+   $ ply "echo ply says:" "echo hello"
 
 The series is space delimited so the previous example ran two scripts:
-1) "echo ply says:"
-2) "echo hello".
+1) `echo ply says:`
+2) `echo hello`.
 
 Scripts can be extended (see __Scripts__) and aliased (see __Aliases__).
 Ply ships with property defaults (see __Properties__) and packaged scripts which allow most java projects to
@@ -15,15 +15,15 @@ build with no-to-minimal configuration.  For a list of all scripts which ply shi
 
 To enable a directory/project to use ply, simply run init from within the directory:
 
-> ply init
+   $ ply init
 
 Now the project is ready to be built:
 
-> ply install
+    $ ply install
 
 For help on ply:
 
-> ply --usage
+    $ ply --usage
 
 
 Scripts
@@ -35,11 +35,11 @@ Ply resolves scripts through the following sequence:
 -1- First check to see if it is an alias, if so expand it (see __Aliases__ below for more information).  For each expanded
 value go back to -1-.  If there is nothing to expand go to -2-.
 
--2- Then check for an executable script of the same name within the project's scripts directory (defined to be the value of a property named 'scripts.dir' 
-within context 'project'; see __Properties__ for a general description of properties)  This particular property defaults to 'scripts' relative to the project directory (so if
-your project is located at _~/projects/myproject_ its scripts directory would default to be _~/projects/myproject/scripts_).  If such a script is found, invoke it, otherwise try -3-.
+-2- Then check for an executable script of the same name within the project's scripts directory (defined to be the value of a property named `scripts.dir` 
+within context `project`; see __Properties__ for a general description of properties)  This particular property defaults to _scripts_ relative to the project directory (so if
+your project is located at `~/projects/myproject` its scripts directory would default to be `~/projects/myproject/scripts`).  If such a script is found, invoke it, otherwise try -3-.
 
--3- Check for an executable script of the same name within the ply scripts' directory ($PLY_HOME/scripts). If found,
+-3- Check for an executable script of the same name within the ply scripts' directory `$PLY_HOME/scripts`. If found,
 invoke it, otherwise, try -4-
 
 -4- Invoke directly (must be accessible via the system $PATH).
@@ -51,199 +51,199 @@ scripts.
 Properties
 ----------
 Ply is configured via property files.  There are two directories where ply looks for property files.  The first is located
-at _$PLY_HOME/config_ and represents the system defaults.  The second is located at directory _.ply/config_ relative to the project directory.  
-This directory is created for you when initializing a project; i.e., _ply init_.
+at `$PLY_HOME/config` and represents the system defaults.  The second is located at directory `.ply/config` relative to the project directory.  
+This directory is created for you when initializing a project; i.e., `ply init`.
 
 The files within these directories are simply unix style property files.  The name of the property file
 is considered to be the context (and if there is a '.' in the file name that after the period is the scope, see __Scopes__ for
 a general description of scopes).
 
 Any property defined within the system configuration directory can be overridden within the project's local config
-directory.  To override a property locally, create a property file within the _.ply/config_ directory with the same name
+directory.  To override a property locally, create a property file within the `.ply/config` directory with the same name
 and assign your overridden value to the same property name.  For instance, the source directory used during compilation
-is a property defined within the _$PLY_HOME/config/project.properties_ file named _src.dir_.  To override this for
-a project, you would add a property named _src.dir_ within the _.ply/config/project.properties_ file.
+is a property defined within the `$PLY_HOME/config/project.properties` file named `src.dir`.  To override this for
+a project, you would add a property named `src.dir` within the `.ply/config/project.properties` file.
 
 Because setting property values is a common task, ply provides a utility to assist.
 
-> ply config --usage
+	$ ply config --usage
 
 Some examples:
 
 To get all locally defined properties (across all contexts):
 
-> ply config get
+   $ ply config get
 
 To get all properties (including system properties):
 
-> ply config get-all
+   $ ply config get-all
 
-To get all local properties with context _project_ (i.e., those defined within the _project.properties_ file)
+To get all local properties with context `project` (i.e., those defined within the `project.properties` file)
 
-> ply config --project get
+   $ ply config --project get
 
 To get all properties starting with _name_
 
-> ply config get-all name*
+   $ ply config get-all name*
 
-To get all properties within the _compiler_ context starting with _warn_
+To get all properties within the `compiler` context starting with _warn_
 
-> ply config --compiler get-all warn*
+   $ ply config --compiler get-all warn*
 
-To set _version_ within the _project_ context to be _2.0_
+To set _version_ within the `project` context to be _2.0_
 
-> ply config --project set version 2.0
+   $ ply config --project set version 2.0
 
-To set a property named _url_ in a context called _environ_ to _http://mydomain.com_ (note, the property file will be created if it doesn't exist).
+To set a property named _url_ in a context called `environ` to _http://mydomain.com_ (note, the property file will be created if it doesn't exist).
 
-> ply config --environ set url http://mydomain.com
+   $ ply config --environ set url http://mydomain.com
 
-To delete the property _url_ from the context _environ_ (note, if after removal of _url_ there are no properties left the whole _environ.properties_ file will be deleted)
+To delete the property _url_ from the context `environ` (note, if after removal of _url_ there are no properties left the whole `environ.properties` file will be deleted)
 
-> ply config --environ remove url
+   $ ply config --environ remove url
 
 Any script can directly read these property files during execution, however, ply does the heavy lifting by resolving the
 properties and passing them as environmental variables to each invoked script.  The resolution of properties files
 involves collecting all properties for all contexts (for the given scope; again see __Scopes__ for a general description
 of what scopes are) and overriding properties appropriately.
 
-Ply passes the properties in the following format: _ply$context.propName=propValue_.  That is the environment variable name
-is _ply$context.propName_ and the value is _propValue_.  The first four characters 'ply$' are just to disambiguate ply
+Ply passes the properties in the following format: `ply$context.propName=propValue`.  That is the environment variable name
+is `ply$context.propName` and the value is `propValue`.  The first four characters `ply$` are just to disambiguate ply
 properties from other environment variables.  The next part is the context.  The context is the property file name (without
-the scope), so in the last example above the context is _environ_.  The _propName_ and _propValue_ are self-explanatory.
+the scope), so in the last example above the context is `environ`.  The `propName` and `propValue` are self-explanatory.
 If a property within a context is defined in the system defaults but overridden by the local project, only the local
 project's overridden property is passed.
-For example; the _$PLY_HOME/config/compiler.properties_ file contains a property named _warnings_ whose value is _true_.
+For example; the `$PLY_HOME/config/compiler.properties` file contains a property named _warnings_ whose value is _true_.
 If the local project overrides this to false
 
-> ply config --compiler set warnings false
+   $ ply config --compiler set warnings false
 
-then only the local override is passed to scripts (i.e., scripts will see one environment variable named _ply$compiler.warnings_ with
-value _false_).
+then only the local override is passed to scripts (i.e., scripts will see one environment variable named `ply$compiler.warnings` with
+value `false`).
 
 Aliases
 -------
 
-Aliases in ply are analogous to aliases within bash (see ALIASES section of _man bash_).  A word substitutes for a series of other aliases and/or scripts.  For instance, by default in ply, _compile_ is
-an alias which expands to be _file-changed dep ply-compiler-1.0.jar_.  The _file-changed_ is itself another alias which expands to be the script _ply-file-changed-1.0.jar_ and _dep_ is also
-another alias which expands to be the script _ply-dependency-manager-1.0.jar_.  The _ply-compiler-1.0.jar_ is simply a script.  So, typing 
+Aliases in ply are analogous to aliases within bash (see ALIASES section of _man bash_).  A word substitutes for a series of other aliases and/or scripts.  For instance, by default in ply, `compile` is
+an alias which expands to be `file-changed dep ply-compiler-1.0.jar`.  The `file-changed` is itself another alias which expands to be the script `ply-file-changed-1.0.jar` and `dep` is also
+another alias which expands to be the script `ply-dependency-manager-1.0.jar`.  The `ply-compiler-1.0.jar` is simply a script.  So, typing 
 
-> ply compile
+	$ ply compile
 
 is simply shorthand for typing
 
-> ply ply-file-changed-1.0.jar ply-dependency-manager-1.0.jar ply-compiler-1.0.jar
+   $ ply ply-file-changed-1.0.jar ply-dependency-manager-1.0.jar ply-compiler-1.0.jar
 
-Aliases are defined to be properties from within context _aliases_.  In other words, to define an alias simply add the alias as a property name and value pair within the _aliases.properties_ file.  Of course
-you can use the _ply config_ utility to do the same thing.  For instance, to add an alias named _example_ to be _echo you_:
+Aliases are defined to be properties from within context `aliases`.  In other words, to define an alias simply add the alias as a property name and value pair within the `aliases.properties` file.  Of course
+you can use the `ply config` utility to do the same thing.  For instance, to add an alias named `example` to be `echo you`:
 
-> ply config --aliases set example "\"echo you\""
+    $ ply config --aliases set example "\"echo you\""
 
 Note the use of two double-quotation marks.  The first is for the shell so that it considers the value as one argument and the second is for ply so that it considers the value as one script (a script _echo_ with
-argument _you_).  Without the second double-quotation mark ply would think that _example_ is aliased to be two scripts one named _echo_ and another named _you_.
+argument _you_).  Without the second double-quotation mark ply would think that `example` is aliased to be two scripts one named _echo_ and another named _you_.
 
-Like any other properties, aliases can be overridden.  For example, one could augment the _compile_ alias by appending other aliases/scripts to its definition:
+Like any other properties, aliases can be overridden.  For example, one could augment the `compile` alias by appending other aliases/scripts to its definition:
 
-> ply config --aliases append compile example
+     $ ply config --aliases append compile example
 
-Which would append the script _example_ (which is actually an another alias in this case) to the already defined value of _compile_.  This makes the expanded value of _compile_ to be:
+Which would append the script `example` (which is actually an another alias in this case) to the already defined value of `compile`.  This makes the expanded value of `compile` to be:
 
-> ply ply-file-changed-1.0.jar ply-dependency-manager-1.0.jar ply-compiler-1.0.jar "echo you"
+      $ ply ply-file-changed-1.0.jar ply-dependency-manager-1.0.jar ply-compiler-1.0.jar "echo you"
 
-Alternatively, one could indirectly change _compile_ by changing one of the aliases defined within it.  For instance, now that _compile_ is defined to include the _example_ alias, one could
-change the _example_ alias and indirectly affect the expanded _compile_ alias:
+Alternatively, one could indirectly change `compile` by changing one of the aliases defined within it.  For instance, now that `compile` is defined to include the `example` alias, one could
+change the `example` alias and indirectly affect the expanded `compile` alias:
 
-> ply config --aliases prepend example "\"echo hello\""
+       $ ply config --aliases prepend example "\"echo hello\""
 
-Which means that when _compile_ is fully resolved it becomes:
+Which means that when `compile` is fully resolved it becomes:
 
-> ply ply-file-changed-1.0.jar ply-dependency-manager-1.0.jar ply-compiler-1.0.jar "echo hello" "echo you"
+      $ ply ply-file-changed-1.0.jar ply-dependency-manager-1.0.jar ply-compiler-1.0.jar "echo hello" "echo you"
 
-Changing an alias need not just be appending or prepending.  One can completely override its value too.  For instance to make _compile_ simply an alias for _echo hello_ one could:
+Changing an alias need not just be appending or prepending.  One can completely override its value too.  For instance to make `compile` simply an alias for `echo hello` one could:
 
-> ply config --aliases set compile "\"echo hello\""
+	 $ ply config --aliases set compile "\"echo hello\""
 
 Setting and modifying aliases is in fact a powerful tool in allowing projects to customize their build lifecycles in any way they like.  To see all the default aliases provided by ply:
 
-> ply config --aliases get-all
+	$ ply config --aliases get-all
 
 or
 
-> less $PLY_HOME/config/aliases.properties
+	$ less $PLY_HOME/config/aliases.properties
 
 Scopes
 ------
 
-Sometimes property values are only relevant or should be changed to a different value depending upon the particular invocation.  Scopes provide a way of facilitating this in ply.  Those familiar with the build tool __maven__ can think of scopes as a more powerful form of profiles.  More powerful as, in maven the profile is applied to all phases in a lifecycle but in ply, using maven parlance, scopes allow for each phase to be tied to a different profile during a single execution.  For example, _mvn clean install -PX_ means run phases _clean_ and _install_ both within profile X but in ply one could say _ply X:clean install_ which means run clean in scope X but install in the default scope.  To illustrate the usefulness of this, first consider, in a simplified form, what happens during compilation. 
+Sometimes property values are only relevant or should be changed to a different value depending upon the particular invocation.  Scopes provide a way of facilitating this in ply.  Those familiar with the build tool __maven__ can think of scopes as a more powerful form of profiles.  More powerful as, in maven the profile is applied to all phases in a lifecycle but in ply, using maven parlance, scopes allow for each phase to be tied to a different profile during a single execution.  For example, `mvn clean install -PX` means run phases _clean_ and _install_ both within profile X but in ply one could say `ply X:clean install` which means run clean in scope X but install in the default scope.  To illustrate the usefulness of this, first consider, in a simplified form, what happens during compilation. 
 
-> ply compile
+	  $ ply compile
 
-1) Ply resolves _compile_ to be an alias mapped to the _ply-compiler-1.0.jar_ script (for simplicity let's ignore the file-changed and dep aliases).  
+1) Ply resolves `compile` to be an alias mapped to the `ply-compiler-1.0.jar` script (for simplicity let's ignore the _file-changed_ and _dep_ aliases).  
 
-2) This compiler script then determines where to look for source files by looking for the value of a property named _src.dir_ from the _project_ context.  
+2) This compiler script then determines where to look for source files by looking for the value of a property named `src.dir` from the `project` context.  
 
-3) It then compiles the code and places the resulting files into the value of a property named _buildPath_ from the _compiler_ context.  
+3) It then compiles the code and places the resulting files into the value of a property named `buildPath` from the `compiler` context.  
 
-By default the value of _project.src.dir_ is _src/main/java_ and the value of _compiler.buildPath_ is _${project.build.dir}/classes_ (where _project.build.dir_ by default is _target_). 
+By default the value of `project.src.dir` is `src/main/java` and the value of `compiler.buildPath` is `${project.build.dir}/classes` (where `project.build.dir` by default is `target`). 
 
-Now what happens during test compilation?  The script should essentially do the exact same thing it's just that the _project.src.dir_ and _compiler.buildPath_ property values should change.  Ply solves this by its notion of scopes.  A scope is simply a property value with a '.' in the name.  Everything before the period is the context name (like usual) and everything after the period is the scope name.  For example the file _compiler.properties_ has context _compiler_ and no scope (i.e., the default scope).  File _compiler.test.properties_ has context _compiler_ and scope _test_.  Ply then leverages this when resolving properties and passing them to scripts.  If the script is being run in the default scope then any scoped property files (those with a period in the name) are ignored.  If, however, a script is being run in scope (that is the script is prefixed with the scope name and then a ':') then all property files matching the provided scope are also resolved.  So to run compilation using the _test_ scope one would:
+Now what happens during test compilation?  The script should essentially do the exact same thing it's just that the `project.src.dir` and `compiler.buildPath` property values should change.  Ply solves this by its notion of scopes.  A scope is simply a property value with a '.' in the name.  Everything before the period is the context name (like usual) and everything after the period is the scope name.  For example the file `compiler.properties` has context `compiler` and no scope (i.e., the default scope).  File `compiler.test.properties` has context `compiler` and scope `test`.  Ply then leverages this when resolving properties and passing them to scripts.  If the script is being run in the default scope then any scoped property files (those with a period in the name) are ignored.  If, however, a script is being run in scope (that is the script is prefixed with the scope name and then a ':') then all property files matching the provided scope are also resolved.  So to run compilation using the _test_ scope one would:
 
-> ply test:compile 
+    $ ply test:compile 
 
-Which tells ply, run alias/script _compile_ but resolve properties using the scope _test_.  Scoped properties inherit from their non-scoped counterparts.  That is, all properties defined within _compiler.properties_ are used when running scope _test_, it's just that if there exists a file named _compiler.test.properties_ its values are used in addition and will override any same-named property from the non-scoped file. 
+Which tells ply, run alias/script `compile` but resolve properties using the scope `test`.  Scoped properties inherit from their non-scoped counterparts.  That is, all properties defined within `compiler.properties` are used when running scope `test`, it's just that if there exists a file named `compiler.test.properties` its values are used in addition and will override any same-named property from the non-scoped file. 
 
-This same notion of scopes (which is used for test execution as well as scoping dependencies) can be useful when choosing which property values to use while filtering.  For example, suppose your project placed all URLs in context _urls_; i.e.,
+This same notion of scopes (which is used for test execution as well as scoping dependencies) can be useful when choosing which property values to use while filtering.  For example, suppose your project placed all URLs in context `urls`; i.e.,
 
-> ply config --urls set domain localhost
+     $ ply config --urls set domain localhost
 
-One could scope the urls and then run _install_ with the proper scope depending upon the environment.  For instance;
+One could scope the urls and then run `install` with the proper scope depending upon the environment.  For instance;
 
-> ply config --urls set domain localhost; ply config --urls.dev set domain dev.com; ply config --urls.beta set domain beta.com
+    $ ply config --urls set domain localhost; ply config --urls.dev set domain dev.com; ply config --urls.beta set domain beta.com
 
 Now to run a build for the dev environment:
 
-> ply dev:install
+    $ ply dev:install
 
-Because of the _dev_ scope, ply will automatically run filtering against the _dev_ urls.  
+Because of the `dev` scope, ply will automatically run filtering against the `dev` urls.  
 
 Something useful to note, one can include scopes within aliases and in fact that is how the alias _test_ is defined:
 
-> ply config --aliases set test "install test:install ply-test-junit-1.0.jar"
+	  $ ply config --aliases set test "install test:install ply-test-junit-1.0.jar"
 
 Submodules
 ----------
-Ply has a concept of submodules which (like __maven__'s aggregators) is simply a convenient way to allow one sequence of script invocations to be progagated to other subprojects during the same execution.  Submodules are configured by placing the subproject name in a property file with context _submodules_.  For instance if you had a project named _mypoject_ which has a sub-directory named _mysubproject_ which was also a ply project one could add
+Ply has a concept of submodules which (like __maven__'s aggregators) is simply a convenient way to allow one sequence of script invocations to be progagated to other subprojects during the same execution.  Submodules are configured by placing the subproject directory name in a property file with context `submodules`.  For instance if you had a project named _mypoject_ which has a sub-directory named _mysubproject_ which was also a ply project one could add
 _mysubproject_ as a submodule to _myproject_ by invoking the following from within the _myproject_ directory:
 
-> ply config --submodules set mysubproject ""
+	       $ ply config --submodules set mysubproject ""
 
 Then all ply scripts run for _mypoject_ are also run for _mysubproject_; e.g.
 
-> ply clean install
+     $ ply clean install
 
-Run from _myproject_ will also run _clean install_ on _mysubproject_.   
+Run from _myproject_ will also run `clean install` on _mysubproject_.   
 
-One specifies a project as a submodule by using its directory name (which means that submodules need to be subdirectories of a project).  Also, when adding a submodule to the _submodules.properties_ file the property value is ignored and so can be anything; convention dictates that it is "".
+One specifies a project as a submodule by using its directory name (which means that submodules need to be subdirectories of a project).  Also, when adding a submodule to the `submodules.properties` file the property value is ignored and so can be anything; convention dictates that it is "".
 
 Included Scripts
 ----------------
 
 Ply ships with the following scripts (for detailed information about each, check the corresponding wiki page):
 
-__ply-clean-1.0.jar__ - deletes directory ${project.build.dir} and all its subdirectories
+__ply-clean-1.0.jar__ - deletes directory `project.build.dir` and all its subdirectories
 
-__ply-file-changed-1.0.jar__ - determines which files within ${project.src.dir} have changed since last invocation (using timestamp and SHA1 hash).
+__ply-file-changed-1.0.jar__ - determines which files within `project.src.dir` have changed since last invocation (using timestamp and SHA1 hash).
 
-__ply-compiler-1.0.jar__ - compiles files within ${project.src.dir} which have changed (determines change by using the ply-file-changed-1.0.jar output) and places the compiled output in ${compiler.buildPath} 
+__ply-compiler-1.0.jar__ - compiles files within `project.src.dir` which have changed (determines change by using the `ply-file-changed-1.0.jar` output) and places the compiled output in `compiler.buildPath` 
 
-__ply-dependency-manager-1.0.jar__ - resolves dependency-atoms from the _dependencies_ context property file.
+__ply-dependency-manager-1.0.jar__ - resolves dependency-atoms from the `dependencies` context property file.
 
-__ply-resources-1.0.jar__ - copies files from ${project.res.dir} to ${project.res.build.dir}
+__ply-resources-1.0.jar__ - copies files from `project.res.dir` to `project.res.build.dir`
 
-__ply-filter-file-1.0.jar__ - filters files from ${project.filter.dir} will all available properties
+__ply-filter-file-1.0.jar__ - filters files from `project.filter.dir` will all available properties
 
 __ply-package-1.0.jar__ - packages compiled code and resources into an archive (jar/zip/war/etc).
 
-__ply-repo-install-1.0.jar__ - copies the packaged code/resources into the ${depmng.localRepo}
+__ply-repo-install-1.0.jar__ - copies the packaged code/resources into the `depmng.localRepo`
 
 __ply-test-junit-1.0.jar__ - runs all junit tests
