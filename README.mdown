@@ -17,6 +17,10 @@ To enable a directory/project to use ply, simply run init from within the direct
 
 > ply init
 
+Now the project is ready to be built:
+
+> ply install
+
 For help on ply:
 
 > ply --usage
@@ -122,7 +126,7 @@ Aliases
 
 Aliases in ply are analogous to aliases within bash (see ALIASES section of _man bash_).  A word substitutes for a series of other aliases and/or scripts.  For instance, by default in ply, _compile_ is
 an alias which expands to be _file-changed dep ply-compiler-1.0.jar_.  The _file-changed_ is itself another alias which expands to be the script _ply-file-changed-1.0.jar_ and _dep_ is also
-another alias which expands to be the script _ply-dependency-manager-1.0.jar_.  The _ply-compiler-1.0.jar_ is simply a script.  In this way, typing 
+another alias which expands to be the script _ply-dependency-manager-1.0.jar_.  The _ply-compiler-1.0.jar_ is simply a script.  So, typing 
 
 > ply compile
 
@@ -159,13 +163,87 @@ Changing an alias need not just be appending or prepending.  One can completely 
 
 > ply config --aliases set compile "\"echo hello\""
 
-Setting and modifying aliases is in fact a powerful tool in allowing projects to customize their build lifecycles in any way they like.
+Setting and modifying aliases is in fact a powerful tool in allowing projects to customize their build lifecycles in any way they like.  To see all the default aliases provided by ply:
+
+> ply config --aliases get-all
+
+or
+
+> less $PLY_HOME/config/aliases.properties
 
 Scopes
 ------
 
+Sometimes property values are only relevant or should be changed to a different value depending upon the particular invocation.  Scopes provide a way of facilitating this in ply.  Those familiar with the build tool __maven__ can think of scopes as a more powerful form of profiles.  More powerful as, in maven the profile is applied to all phases in a lifecycle but in ply, using maven parlance, scopes allow for each phase to be tied to a different profile during a single execution.  For example, _mvn clean install -PX_ means run phases _clean_ and _install_ both within profile X but in ply one could say _ply X:clean install_ which means run clean in scope X but install in the default scope.  To illustrate the usefulness of this, first consider, in a simplified form, what happens during compilation. 
+
+> ply compile
+
+1) Ply resolves _compile_ to be an alias mapped to the _ply-compiler-1.0.jar_ script (for simplicity let's ignore the file-changed and dep aliases).  
+
+2) This compiler script then determines where to look for source files by looking for the value of a property named _src.dir_ from the _project_ context.  
+
+3) It then compiles the code and places the resulting files into the value of a property named _buildPath_ from the _compiler_ context.  
+
+By default the value of _project.src.dir_ is _src/main/java_ and the value of _compiler.buildPath_ is _${project.build.dir}/classes_ (where _project.build.dir_ by default is _target_). 
+
+Now what happens during test compilation?  The script should essentially do the exact same thing it's just that the _project.src.dir_ and _compiler.buildPath_ property values should change.  Ply solves this by its notion of scopes.  A scope is simply a property value with a '.' in the name.  Everything before the period is the context name (like usual) and everything after the period is the scope name.  For example the file _compiler.properties_ has context _compiler_ and no scope (i.e., the default scope).  File _compiler.test.properties_ has context _compiler_ and scope _test_.  Ply then leverages this when resolving properties and passing them to scripts.  If the script is being run in the default scope then any scoped property files (those with a period in the name) are ignored.  If, however, a script is being run in scope (that is the script is prefixed with the scope name and then a ':') then all property files matching the provided scope are also resolved.  So to run compilation using the _test_ scope one would:
+
+> ply test:compile 
+
+Which tells ply, run alias/script _compile_ but resolve properties using the scope _test_.  Scoped properties inherit from their non-scoped counterparts.  That is, all properties defined within _compiler.properties_ are used when running scope _test_, it's just that if there exists a file named _compiler.test.properties_ its values are used in addition and will override any same-named property from the non-scoped file. 
+
+This same notion of scopes (which is used for test execution as well as scoping dependencies) can be useful when choosing which property values to use while filtering.  For example, suppose your project placed all URLs in context _urls_; i.e.,
+
+> ply config --urls set domain localhost
+
+One could scope the urls and then run _install_ with the proper scope depending upon the environment.  For instance;
+
+> ply config --urls set domain localhost; ply config --urls.dev set domain dev.com; ply config --urls.beta set domain beta.com
+
+Now to run a build for the dev environment:
+
+> ply dev:install
+
+Because of the _dev_ scope, ply will automatically run filtering against the _dev_ urls.  
+
+Something useful to note, one can include scopes within aliases and in fact that is how the alias _test_ is defined:
+
+> ply config --aliases set test "install test:install ply-test-junit-1.0.jar"
+
 Submodules
 ----------
+Ply has a concept of submodules which (like __maven__'s aggregators) is simply a convenient way to allow one sequence of script invocations to be progagated to other subprojects during the same execution.  Submodules are configured by placing the subproject name in a property file with context _submodules_.  For instance if you had a project named _mypoject_ which has a sub-directory named _mysubproject_ which was also a ply project one could add
+_mysubproject_ as a submodule to _myproject_ by invoking the following from within the _myproject_ directory:
+
+> ply config --submodules set mysubproject ""
+
+Then all ply scripts run for _mypoject_ are also run for _mysubproject_; e.g.
+
+> ply clean install
+
+Run from _myproject_ will also run _clean install_ on _mysubproject_.   
+
+One specifies a project as a submodule by using its directory name (which means that submodules need to be subdirectories of a project).  Also, when adding a submodule to the _submodules.properties_ file the property value is ignored and so can be anything; convention dictates that it is "".
 
 Included Scripts
 ----------------
+
+Ply ships with the following scripts (for detailed information about each, check the corresponding wiki page):
+
+ply-clean-1.0.jar - deletes directory ${project.build.dir} and all its subdirectories
+
+ply-file-changed-1.0.jar - determines which files within ${project.src.dir} have changed since last invocation (using timestamp and SHA1 hash).
+
+ply-compiler-1.0.jar - compiles files within ${project.src.dir} which have changed (determines change by using the ply-file-changed-1.0.jar output) and places the compiled output in ${compiler.buildPath} 
+
+ply-dependency-manager-1.0.jar - resolves dependency-atoms from the _dependencies_ context property file.
+
+ply-resources-1.0.jar - copies files from ${project.res.dir} to ${project.res.build.dir}
+
+ply-filter-file-1.0.jar - filters files from ${project.filter.dir} will all available properties
+
+ply-package-1.0.jar - packages compiled code and resources into an archive (jar/zip/war/etc).
+
+ply-repo-install-1.0.jar - copies the packaged code/resources into the ${depmng.localRepo}
+
+ply-test-junit-1.0.jar - runs all junit tests
