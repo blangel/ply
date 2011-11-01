@@ -31,9 +31,9 @@ Ply resolves scripts through the following sequence:
 -1- First check to see if it is an alias, if so expand it (see __Aliases__ below for more information).  For each expanded
 value go back to -1-.  If there is nothing to expand go to -2-.
 
--2- Then check for an executable script of the same name within the 'project[.scope].scripts.dir' (see __Properties__ for a
-general description of properties, this particular property defaults to 'scripts' which is relative to the project directory).  If
-found, invoke it, otherwise try -3-.
+-2- Then check for an executable script of the same name within the project's scripts directory (defined to be the value of a property named 'scripts.dir' 
+within context 'project'; see __Properties__ for a general description of properties)  This particular property defaults to 'scripts' relative to the project directory (so if
+your project is located at _~/projects/myproject_ its scripts directory would default to be _~/projects/myproject/scripts_).  If such a script is found, invoke it, otherwise try -3-.
 
 -3- Check for an executable script of the same name within the ply scripts' directory ($PLY_HOME/scripts). If found,
 invoke it, otherwise, try -4-
@@ -46,9 +46,9 @@ scripts.
 
 Properties
 ----------
-Ply is configured via property files.  There are two directories which ply looks for property files.  The first is located
-at the _$PLY_HOME/config_ and represents the system defaults.  The second is located within the _.ply/config_ directory
-of the project directory (this directory is created for you when initializing the project; i.e., 'ply init').
+Ply is configured via property files.  There are two directories where ply looks for property files.  The first is located
+at _$PLY_HOME/config_ and represents the system defaults.  The second is located at directory _.ply/config_ relative to the project directory.  
+This directory is created for you when initializing a project; i.e., _ply init_.
 
 The files within these directories are simply unix style property files.  The name of the property file
 is considered to be the context (and if there is a '.' in the file name that after the period is the scope, see __Scopes__ for
@@ -94,19 +94,19 @@ To set a property named _url_ in a context called _environ_ to _http://mydomain.
 
 > ply config --environ set url http://mydomain.com
 
-To delete the property _url_ from the context _environ_ (note, if _url_ is the only property left after removal the whole _environ.properties_ file will be deleted)
+To delete the property _url_ from the context _environ_ (note, if after removal of _url_ there are no properties left the whole _environ.properties_ file will be deleted)
 
 > ply config --environ remove url
 
 Any script can directly read these property files during execution, however, ply does the heavy lifting by resolving the
 properties and passing them as environmental variables to each invoked script.  The resolution of properties files
-involves collecting all properties for all contexts (within the given scope; again see __Scopes__ for a general description
+involves collecting all properties for all contexts (for the given scope; again see __Scopes__ for a general description
 of what scopes are) and overriding properties appropriately.
 
 Ply passes the properties in the following format: _ply$context.propName=propValue_.  That is the environment variable name
-is _ply$context.propName_ and the value is _propValue_.  The first four characters 'ply$' are simply to disambiguate ply
+is _ply$context.propName_ and the value is _propValue_.  The first four characters 'ply$' are just to disambiguate ply
 properties from other environment variables.  The next part is the context.  The context is the property file name (without
-the scope), so in the last 'ply config' example above the context is _environ_.  The _propName_ and _propValue_ are self-explanatory.
+the scope), so in the last example above the context is _environ_.  The _propName_ and _propValue_ are self-explanatory.
 If a property within a context is defined in the system defaults but overridden by the local project, only the local
 project's overridden property is passed.
 For example; the _$PLY_HOME/config/compiler.properties_ file contains a property named _warnings_ whose value is _true_.
@@ -119,6 +119,47 @@ value _false_).
 
 Aliases
 -------
+
+Aliases in ply are analogous to aliases within bash (see ALIASES section of _man bash_).  A word substitutes for a series of other aliases and/or scripts.  For instance, by default in ply, _compile_ is
+an alias which expands to be _file-changed dep ply-compiler-1.0.jar_.  The _file-changed_ is itself another alias which expands to be the script _ply-file-changed-1.0.jar_ and _dep_ is also
+another alias which expands to be the script _ply-dependency-manager-1.0.jar_.  The _ply-compiler-1.0.jar_ is simply a script.  In this way, typing 
+
+> ply compile
+
+is simply shorthand for typing
+
+> ply ply-file-changed-1.0.jar ply-dependency-manager-1.0.jar ply-compiler-1.0.jar
+
+Aliases are defined to be properties from within context _aliases_.  In other words, to define an alias simply add the alias as a property name and value pair within the _aliases.properties_ file.  Of course
+you can use the _ply config_ utility to do the same thing.  For instance, to add an alias named _example_ to be _echo you_:
+
+> ply config --aliases set example "\"echo you\""
+
+Note the use of two double-quotation marks.  The first is for the shell so that it considers the value as one argument and the second is for ply so that it considers the value as one script (a script _echo_ with
+argument _you_).  Without the second double-quotation mark ply would think that _example_ is aliased to be two scripts one named _echo_ and another named _you_.
+
+Like any other properties, aliases can be overridden.  For example, one could augment the _compile_ alias by appending other aliases/scripts to its definition:
+
+> ply config --aliases append compile example
+
+Which would append the script _example_ (which is actually an another alias in this case) to the already defined value of _compile_.  This makes the expanded value of _compile_ to be:
+
+> ply ply-file-changed-1.0.jar ply-dependency-manager-1.0.jar ply-compiler-1.0.jar "echo you"
+
+Alternatively, one could indirectly change _compile_ by changing one of the aliases defined within it.  For instance, now that _compile_ is defined to include the _example_ alias, one could
+change the _example_ alias and indirectly affect the expanded _compile_ alias:
+
+> ply config --aliases prepend example "\"echo hello\""
+
+Which means that when _compile_ is fully resolved it becomes:
+
+> ply ply-file-changed-1.0.jar ply-dependency-manager-1.0.jar ply-compiler-1.0.jar "echo hello" "echo you"
+
+Changing an alias need not just be appending or prepending.  One can completely override its value too.  For instance to make _compile_ simply an alias for _echo hello_ one could:
+
+> ply config --aliases set compile "\"echo hello\""
+
+Setting and modifying aliases is in fact a powerful tool in allowing projects to customize their build lifecycles in any way they like.
 
 Scopes
 ------

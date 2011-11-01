@@ -1,6 +1,6 @@
-Install 'ply' like any other java project.  Untar the 'ply.tar' package to a directory of your choosing (say '/opt/ply') and then make sure the following properties are available on your PATH:
+Install 'ply' like any other java project.  Untar the 'ply.tar' package to a directory of your choosing (say '/opt/ply') and then make sure the following properties are set as environmental variables:
 * JAVA_HOME -> (likely already set by your distro) set to the home directory of the java installation
 * PLY_HOME -> set to the directory of where ever you untar-ed ply (i.e., '/opt/ply').
-* PLY -> ${PLY_HOME}/bin
-Source '~/.bashrc' or whatever to ensure the properties are available in your terminal session.
+Finally add ${PLY_HOME}/bin to your $PATH
+Remember to source '~/.bashrc' (or whichever file) to ensure the properties are available in your terminal session.
 Then run 'ply --usage' to start!
