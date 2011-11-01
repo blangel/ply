@@ -87,7 +87,7 @@ public final class FileUtil {
      * @param to which to copy
      * @return true if success; false otherwise
      */
-    private static boolean copy(InputStream from, File to) {
+    public static boolean copy(InputStream from, File to) {
         OutputStream outputStream = null;
         try {
             if (!to.exists()) {

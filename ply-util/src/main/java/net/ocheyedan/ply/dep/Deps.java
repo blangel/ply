@@ -7,10 +7,7 @@ import net.ocheyedan.ply.mvn.MavenPomParser;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
@@ -88,7 +85,18 @@ public class Deps {
             if (remoteUrl == null) {
                 continue;
             }
-            if (FileUtil.copy(remoteUrl, localDepFile)) {
+            InputStream stream;
+            try {
+                URLConnection urlConnection = remoteUrl.openConnection();
+                stream = urlConnection.getInputStream();
+            } catch(FileNotFoundException fnfe) {
+                // this is fine, check next repo
+                continue;
+            } catch (IOException ioe) {
+                Output.print(ioe);
+                continue;
+            }
+            if (FileUtil.copy(stream, localDepFile)) {
                 if (!dependencyFiles.contains(dependencyAtomKey)) {
                     dependencyFiles.put(dependencyAtomKey, localDepFile.getPath());
                     Properties transitiveDeps = processTransitiveDependencies(dependencyAtom, remoteRepo, repositories,
