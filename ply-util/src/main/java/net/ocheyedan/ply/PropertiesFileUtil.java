@@ -39,6 +39,9 @@ public final class PropertiesFileUtil {
      * @return the loaded {@link Properties} file (which may be empty if loading failed).
      */
     public static Properties load(String path, boolean create, boolean nullOnFNF) {
+        if (path == null) {
+            return null;
+        }
         File propertiesFile = new File(path);
         InputStream inputStream = null;
         Properties properties = new Properties();

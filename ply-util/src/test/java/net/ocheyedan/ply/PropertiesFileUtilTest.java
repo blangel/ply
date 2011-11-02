@@ -4,12 +4,11 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.*;
 
 /**
  * User: blangel
@@ -41,6 +40,26 @@ public class PropertiesFileUtilTest {
         loaded.load(new FileInputStream(tmp));
 
         assertEquals(now, (long) Long.valueOf(loaded.getProperty("test")));
+    }
+
+    @Test
+    public void load() throws IOException {
+
+        assertNull(PropertiesFileUtil.load(null));
+        assertNull(PropertiesFileUtil.load(null, false));
+        assertNull(PropertiesFileUtil.load(null, false, false));
+
+        File tmp = File.createTempFile("test", "store");
+        Properties props = new Properties();
+        long now = System.currentTimeMillis();
+        props.put("test", String.valueOf(now));
+        props.store(new FileOutputStream(tmp), null);
+
+        Properties loaded = PropertiesFileUtil.load(tmp.getPath(), false, false);
+        assertEquals(now, (long) Long.valueOf(loaded.getProperty("test")));
+
+        loaded = PropertiesFileUtil.load("not a file", false, true);
+        assertNull(loaded);
     }
 
 }
