@@ -101,6 +101,9 @@ public final class PropertiesFileUtil {
      * @return true on success; false otherwise
      */
     public static boolean store(Properties properties, String to, String comment, boolean create) {
+        if (properties == null) {
+            return false;
+        }
         File propertiesFile = new File(to);
         OutputStream outputStream = null;
         try {

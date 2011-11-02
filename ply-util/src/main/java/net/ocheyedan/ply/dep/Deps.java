@@ -148,7 +148,7 @@ public class Deps {
         if (transitiveDependencies == null) {
             Output.print("^dbug^ No dependencies file found for %s, ignoring.",
                     dependencyAtom.toString());
-            return null;
+            return new Properties();
         }
         AtomicReference<String> error = new AtomicReference<String>();
         for (String dependency : transitiveDependencies.stringPropertyNames()) {
