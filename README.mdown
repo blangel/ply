@@ -180,11 +180,11 @@ Sometimes property values are only relevant or should be changed to a different 
 
 2) This compiler script then determines where to look for source files by looking for the value of a property named `src.dir` from the `project` context.  
 
-3) It then compiles the code and places the resulting files into the value of a property named `buildPath` from the `compiler` context.  
+3) It then compiles the code and places the resulting files into the value of a property named `build.path` from the `compiler` context.
 
-By default the value of `project.src.dir` is `src/main/java` and the value of `compiler.buildPath` is `${project.build.dir}/classes` (where `project.build.dir` by default is `target`). 
+By default the value of `project.src.dir` is `src/main/java` and the value of `compiler.build.path` is `${project.build.dir}/classes` (where `project.build.dir` by default is `target`).
 
-Now what happens during test compilation?  The script should essentially do the exact same thing it's just that the `project.src.dir` and `compiler.buildPath` property values should change.  Ply solves this by its notion of scopes.  A scope is simply a property value with a '.' in the name.  Everything before the period is the context name (like usual) and everything after the period is the scope name.  For example the file `compiler.properties` has context `compiler` and no scope (i.e., the default scope).  File `compiler.test.properties` has context `compiler` and scope `test`.  Ply then leverages this when resolving properties and passing them to scripts.  If the script is being run in the default scope then any scoped property files (those with a period in the name) are ignored.  If, however, a script is being run in scope (that is the script is prefixed with the scope name and then a ':') then all property files matching the provided scope are also resolved.  So to run compilation using the _test_ scope one would:
+Now what happens during test compilation?  The script should essentially do the exact same thing it's just that the `project.src.dir` and `compiler.build.path` property values should change.  Ply solves this by its notion of scopes.  A scope is simply a property value with a '.' in the name.  Everything before the period is the context name (like usual) and everything after the period is the scope name.  For example the file `compiler.properties` has context `compiler` and no scope (i.e., the default scope).  File `compiler.test.properties` has context `compiler` and scope `test`.  Ply then leverages this when resolving properties and passing them to scripts.  If the script is being run in the default scope then any scoped property files (those with a period in the name) are ignored.  If, however, a script is being run in scope (that is the script is prefixed with the scope name and then a ':') then all property files matching the provided scope are also resolved.  So to run compilation using the _test_ scope one would:
 
     $ ply test:compile 
 
@@ -232,7 +232,7 @@ __ply-clean-1.0.jar__ - deletes directory `project.build.dir` and all its subdir
 
 __ply-file-changed-1.0.jar__ - determines which files within `project.src.dir` have changed since last invocation (using timestamp and SHA1 hash).
 
-__ply-compiler-1.0.jar__ - compiles files within `project.src.dir` which have changed (determines change by using the `ply-file-changed-1.0.jar` output) and places the compiled output in `compiler.buildPath` 
+__ply-compiler-1.0.jar__ - compiles files within `project.src.dir` which have changed (determines change by using the `ply-file-changed-1.0.jar` output) and places the compiled output in `compiler.build.path`
 
 __ply-dependency-manager-1.0.jar__ - resolves dependency-atoms from the `dependencies` context property file.
 

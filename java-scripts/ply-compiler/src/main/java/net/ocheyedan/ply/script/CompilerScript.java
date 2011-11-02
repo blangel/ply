@@ -26,7 +26,7 @@ import java.util.*;
  * files to recompile. The property file used to configure this script is {@literal compiler.properties} and so the
  * context is {@literal compiler}.
  * The following properties exist:
- * buildPath=string [[default=${project.build.dir}/classes]] (where to place the compiled files)
+ * build.path=string [[default=${project.build.dir}/classes]] (where to place the compiled files)
  * debug=boolean [[default=true]] (true to include debug information in the compiled file)
  * verbose=boolean [[default=false]] (true to print messages from the concrete compiler)
  * optimize=boolean [[default=true]] (true to optimize the compiled code using the concrete compiler's optimization mechanisms)
@@ -128,7 +128,7 @@ public class CompilerScript {
         this.srcDir = srcDir;
         this.sourceFilePaths = new HashSet<String>();
         // ensure the build directories are created
-        String buildClassesPath = Props.getValue("compiler", "buildPath");
+        String buildClassesPath = Props.getValue("compiler", "build.path");
         File buildClassesDir = new File(buildClassesPath);
         buildClassesDir.mkdirs();
         // load the changed[.scope].properties file from the build  directory.
@@ -193,7 +193,7 @@ public class CompilerScript {
         List<String> args = new ArrayList<String>();
 
         args.add("-d");
-        args.add(Props.getValue("compiler", "buildPath"));
+        args.add(Props.getValue("compiler", "build.path"));
 
         if (getBoolean(Props.getValue("compiler", "optimize"))) {
             args.add("-O");
@@ -243,7 +243,7 @@ public class CompilerScript {
         }
 
         args.add("-classpath");
-        args.add(createClasspath(Props.getValue("compiler", "buildPath"), addDependenciesToClasspathArgs()));
+        args.add(createClasspath(Props.getValue("compiler", "build.path"), addDependenciesToClasspathArgs()));
 
         args.add("-sourcepath");
         args.add(srcDir);
@@ -255,11 +255,11 @@ public class CompilerScript {
      * @return the contents of ${project.build.dir}/${resolved-deps.properties}
      */
     private static Properties addDependenciesToClasspathArgs() {
-        String buildPath = Props.getValue("project", "build.dir");
+        String buildDir = Props.getValue("project", "build.dir");
         // load the resolved-deps.properties file from the build directory.
         String scope = Props.getValue("ply", "scope");
         String suffix = (scope.isEmpty() ? "" : scope + ".");
-        File dependenciesFile = new File(buildPath + (buildPath.endsWith(File.separator) ? "" : File.separator)
+        File dependenciesFile = new File(buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator)
                 + "resolved-deps." + suffix + "properties");
         if (!dependenciesFile.exists()) {
             return new Properties();

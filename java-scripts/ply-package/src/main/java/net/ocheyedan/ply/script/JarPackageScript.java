@@ -16,7 +16,7 @@ import java.util.Properties;
  * Date: 9/24/11
  * Time: 1:13 PM
  *
- * Packages all files within {@literal compiler[.scope].buildPath} and {@literal project[.scope].res.build.dir} into a
+ * Packages all files within {@literal compiler[.scope].build.path} and {@literal project[.scope].res.build.dir} into a
  * jar file and stores within {@literal project[.scope].build.dir} as {@literal package-jar[.scope].jarName}.jar
  * The property file used to configure this script is {@literal package-jar[.scope].properties} and so the context is
  * {@literal package-jar}.
@@ -41,7 +41,7 @@ import java.util.Properties;
 public class JarPackageScript {
 
     void invoke() throws IOException, InterruptedException {
-        String inputFiles = Props.getValue("compiler", "buildPath");
+        String inputFiles = Props.getValue("compiler", "build.path");
         File inputFilesDir = new File(inputFiles);
         if (!inputFilesDir.exists()) {
             Output.print("Nothing to package, skipping.");
@@ -156,7 +156,7 @@ public class JarPackageScript {
         }
         jarName = getJarFilePath(jarName);
         String manifestFile = getManifestFilePath();
-        String inputFiles = Props.getValue("compiler", "buildPath");
+        String inputFiles = Props.getValue("compiler", "build.path");
 
         String buildDir = Props.getValue("project", "build.dir");
         buildDir = buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator);
