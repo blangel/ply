@@ -101,7 +101,7 @@ public final class PropertiesFileUtil {
      * @return true on success; false otherwise
      */
     public static boolean store(Properties properties, String to, String comment, boolean create) {
-        if (properties == null) {
+        if ((properties == null) || (to == null)) {
             return false;
         }
         File propertiesFile = new File(to);
@@ -110,6 +110,8 @@ public final class PropertiesFileUtil {
             if (create && !propertiesFile.exists()) {
                 propertiesFile.getParentFile().mkdirs();
                 propertiesFile.createNewFile();
+            } else if (!create && !propertiesFile.exists()) {
+                return false;
             }
             outputStream = new BufferedOutputStream(new FileOutputStream(propertiesFile));
             properties.store(outputStream, comment);
