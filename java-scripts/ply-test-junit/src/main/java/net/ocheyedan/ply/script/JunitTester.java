@@ -196,7 +196,7 @@ public class JunitTester {
                 try {
                     inputStream.close();
                 } catch (IOException ioe) {
-                    // ignore
+                    throw new AssertionError(ioe);
                 }
             }
         }

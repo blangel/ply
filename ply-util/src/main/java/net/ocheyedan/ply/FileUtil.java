@@ -74,7 +74,7 @@ public final class FileUtil {
                 try {
                     inputStream.close();
                 } catch (IOException ioe) {
-                    // ignore
+                    throw new AssertionError(ioe);
                 }
             }
         }
@@ -109,14 +109,14 @@ public final class FileUtil {
                     from.close();
                 }
             } catch (IOException ioe) {
-                // ignore
+                throw new AssertionError(ioe);
             }
             try {
                 if (outputStream != null) {
                     outputStream.close();
                 }
             } catch (IOException ioe) {
-                // ignore
+                throw new AssertionError(ioe);
             }
         }
         return false;

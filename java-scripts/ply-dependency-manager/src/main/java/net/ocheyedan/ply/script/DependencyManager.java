@@ -90,7 +90,7 @@ public class DependencyManager {
         } else if ((args.length > 1) && "remove".equals(args[0])) {
             removeDependency(args[1], scope);
         } else if ((args.length == 1) && "list".equals(args[0])) {
-            Map<String, String> dependencies = getResolvedDependencies(scope);
+            Map<String, String> dependencies = getDependencies(scope);
             int size = dependencies.size();
             if (size > 0) {
                 Output.print("Project ^b^%s^r^ has ^b^%d^r^ %sdependenc%s: ", Props.getValue("project", "name"), size,
@@ -106,7 +106,7 @@ public class DependencyManager {
         } else if ((args.length > 1) && "remove-repo".equals(args[0])) {
             removeRepository(args[1]);
         } else if (args.length == 0) {
-            Map<String, String> dependencies = getResolvedDependencies(scope);
+            Map<String, String> dependencies = getDependencies(scope);
             int size = dependencies.size();
             if (size > 0) {
                 Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^.", size, scope.forPrint, (size == 1 ? "y" : "ies"),
@@ -250,7 +250,7 @@ public class DependencyManager {
         return Deps.resolveDependency(dependencyAtom, createRepositoryList(), new Properties());
     }
 
-    private static Map<String, String> getResolvedDependencies(Scope scope) {
+    private static Map<String, String> getDependencies(Scope scope) {
         // note, for non-default scoped invocations this is redundant as we add a dependency to the
         // default scope itself (which via transitive deps will depend upon all the inherited deps anyway).
         // TODO - is this wrong? essentially saying transitive deps are first level deps for non-default scopes

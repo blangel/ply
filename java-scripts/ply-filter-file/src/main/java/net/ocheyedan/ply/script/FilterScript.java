@@ -163,7 +163,7 @@ public final class FilterScript {
                 try {
                     fc.close();
                 } catch (IOException ioe) {
-                    // ignore
+                    throw new AssertionError(ioe);
                 }
             }
         }

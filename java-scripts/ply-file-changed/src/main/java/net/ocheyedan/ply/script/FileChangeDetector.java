@@ -137,7 +137,7 @@ public class FileChangeDetector {
                     fileInputStream.close();
                 }
             } catch (IOException ioe) {
-                // ignore
+                throw new AssertionError(ioe);
             }
         }
         return ""; // error!

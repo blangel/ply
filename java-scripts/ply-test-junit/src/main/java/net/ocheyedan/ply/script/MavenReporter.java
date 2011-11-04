@@ -258,7 +258,7 @@ public class MavenReporter extends RunListener {
                     try {
                         writer.close();
                     } catch (IOException ioe) {
-                        // ignore
+                        throw new AssertionError(ioe);
                     }
                 }
             }

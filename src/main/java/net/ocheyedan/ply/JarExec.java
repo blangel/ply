@@ -123,7 +123,7 @@ public class JarExec {
                 try {
                     jarFile.close(); // note, closes entry's input-streams as well
                 } catch (IOException ioe) {
-                    // ignore
+                    throw new AssertionError(ioe);
                 }
             }
         }

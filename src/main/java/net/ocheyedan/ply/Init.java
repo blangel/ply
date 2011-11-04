@@ -52,7 +52,7 @@ public class Init {
                     outputStream.close();
                 }
             } catch (IOException ioe) {
-                // ignore
+                throw new AssertionError(ioe);
             }
         }
     }

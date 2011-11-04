@@ -70,6 +70,7 @@ public class Deps {
             if (!dependencyFiles.contains(dependencyAtomKey)) {
                 dependencyFiles.put(dependencyAtomKey, localDepFile.getPath());
                 // TODO - should this also resave the transitive deps file?
+                // TODO - YES, but only those which don't exist locally
                 processTransitiveDependencies(dependencyAtom, localRepo, repositories,
                                                 "file://" + localDepDirFile.getPath(), dependencyFiles);
 
@@ -87,15 +88,17 @@ public class Deps {
             }
             InputStream stream;
             try {
+                // TODO - proxy info (see http://download.oracle.com/javase/6/docs/technotes/guides/net/proxies.html)
                 URLConnection urlConnection = remoteUrl.openConnection();
                 stream = urlConnection.getInputStream();
-            } catch(FileNotFoundException fnfe) {
+            } catch (FileNotFoundException fnfe) {
                 // this is fine, check next repo
                 continue;
             } catch (IOException ioe) {
                 Output.print(ioe);
                 continue;
             }
+            Output.print("^info^ Downloading %s from %s...", dependencyAtom.toString(), remoteRepo.toString());
             if (FileUtil.copy(stream, localDepFile)) {
                 if (!dependencyFiles.contains(dependencyAtomKey)) {
                     dependencyFiles.put(dependencyAtomKey, localDepFile.getPath());
@@ -205,7 +208,7 @@ public class Deps {
                     inputStream.close();
                 }
             } catch (IOException ioe) {
-                // ignore
+                throw new AssertionError(ioe);
             }
         }
         return null;

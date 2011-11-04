@@ -66,7 +66,7 @@ public final class PropertiesFileUtil {
                 try {
                     inputStream.close();
                 } catch (IOException ioe) {
-                    // ignore
+                    throw new AssertionError(ioe);
                 }
             }
         }
@@ -129,7 +129,7 @@ public final class PropertiesFileUtil {
                 try {
                     outputStream.close();
                 } catch (IOException ioe) {
-                    // ignore
+                    throw new AssertionError(ioe);
                 }
             }
         }
