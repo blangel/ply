@@ -113,4 +113,23 @@ public class DirectedAcyclicGraphTest {
         assertFalse(graph.hasEdge(helloVertex, hello1Vertex));
     }
 
+    @Test @SuppressWarnings("unchecked")
+    public void isReachable() throws NoSuchMethodException, IllegalAccessException, InstantiationException,
+            InvocationTargetException {
+        DirectedAcyclicGraph<String> graph = new DirectedAcyclicGraph<String>();
+        Vertex<String> helloVertex = graph.addVertex("hello");
+        Vertex<String> hello1Vertex = graph.addVertex("hello1");
+        Vertex<String> hello2Vertex = graph.addVertex("hello2");
+        graph.addEdge(helloVertex, hello1Vertex);
+        assertTrue(graph.isReachable(hello2Vertex));
+        Constructor constructor = Vertex.class.getDeclaredConstructors()[0];
+        constructor.setAccessible(true);
+        Vertex<String> hello3Vertex = (Vertex<String>) constructor.newInstance("hello3");
+        assertFalse(graph.isReachable(hello3Vertex));
+        assertFalse(graph.isReachable("hello3"));
+        hello2Vertex.addEdgeTo(hello3Vertex);
+        assertTrue(graph.isReachable(hello3Vertex));
+        assertTrue(graph.isReachable("hello3"));
+    }
+
 }

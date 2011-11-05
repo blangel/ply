@@ -66,12 +66,12 @@ public class Ply {
             Output.print(" and its submodules:");
             List<Submodule> orderedSubmodules = Submodules.sortByDependencies(submodules.values(), scope);
             int maxSubmoduleName = projectName.length();
-            float maxSubmoduleTime = 0.0f;
+            float maxSubmoduleTime;
             for (Submodule submodule : orderedSubmodules) {
                 Output.print("^ply^\t^b^%s^r^", submodule.name);
             }
 
-            Map<String, Float> submodulesTimeMap = new LinkedHashMap<String, Float>();
+            Map<String, Float> submodulesTimeMap = new LinkedHashMap<String, Float>(submodules.size());
 
             // first run the args against the current project
             Output.print("^ply^");
