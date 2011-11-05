@@ -88,13 +88,17 @@ public class DependencyAtom {
         if (namespace != null ? !namespace.equals(that.namespace) : that.namespace != null) {
             return false;
         }
-        return (version == null ? that.version == null : version.equals(that.version));
+        if (version != null ? !version.equals(that.version) : that.version != null) {
+            return false;
+        }
+        return (artifactName == null ? that.artifactName == null : artifactName.equals(that.artifactName));
     }
 
     @Override public int hashCode() {
         int result = namespace != null ? namespace.hashCode() : 0;
         result = 31 * result + (name != null ? name.hashCode() : 0);
         result = 31 * result + (version != null ? version.hashCode() : 0);
+        result = 31 * result + (artifactName != null ? artifactName.hashCode() : 0);
         return result;
     }
 
