@@ -10,9 +10,15 @@ import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.mvn.MavenPomParser;
 import net.ocheyedan.ply.props.Props;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**

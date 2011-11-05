@@ -1,13 +1,13 @@
 package net.ocheyedan.ply.script;
 
+import net.ocheyedan.ply.props.Prop;
+import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.script.print.PrivilegedOutput;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.script.print.PrivilegedOutput;
 
 import java.io.File;
 import java.io.FileWriter;

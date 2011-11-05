@@ -1,11 +1,11 @@
 package net.ocheyedan.ply.script;
 
+import net.ocheyedan.ply.script.print.PrivilegedOutput;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
 import org.junit.runner.Result;
 import org.junit.runner.manipulation.Filter;
 import org.junit.runner.notification.Failure;
-import net.ocheyedan.ply.script.print.PrivilegedOutput;
 
 import java.util.Set;
 

@@ -34,10 +34,10 @@ public class Ply {
         } else if ("init".equals(args[0])) {
             Init.invoke(args);
         } else if ("config".equals(args[0])) {
-	    checkAssumptions();
+            checkAssumptions();
             Config.invoke(args);
         } else {
-	    checkAssumptions();
+            checkAssumptions();
             args = handleCommandLineProps(args);
             if (args.length > 0) {
                 exec(args);
@@ -195,7 +195,7 @@ public class Ply {
 
     /**
      * Performs sanity checks on what ply assumes to exist.
-      */
+     */
     private static void checkAssumptions() {
         if (!PlyUtil.SYSTEM_CONFIG_DIR.exists()) {
             Output.print("^error^ the ply install directory is corrupt, please re-install.");

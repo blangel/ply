@@ -1,10 +1,10 @@
 package net.ocheyedan.ply.script;
 
+import net.ocheyedan.ply.script.print.PrivilegedOutput;
+import net.ocheyedan.ply.script.print.PrivilegedPrintStream;
 import org.junit.runner.Description;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
-import net.ocheyedan.ply.script.print.PrivilegedOutput;
-import net.ocheyedan.ply.script.print.PrivilegedPrintStream;
 
 import java.util.HashMap;
 import java.util.Map;
