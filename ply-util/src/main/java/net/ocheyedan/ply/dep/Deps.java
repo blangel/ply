@@ -3,82 +3,108 @@ package net.ocheyedan.ply.dep;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
+import net.ocheyedan.ply.graph.Graph;
+import net.ocheyedan.ply.graph.Graphs;
+import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.mvn.MavenPomParser;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
 import java.net.*;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * User: blangel
  * Date: 10/2/11
  * Time: 1:41 PM
+ *
+ * Utility class to interact with {@link DependencyAtom} and {@link Dep} objects.
  */
-public class Deps {
+public final class Deps {
 
     /**
-     * @return a {@link DependencyAtom} representing this project
+     * @param dependencyAtoms the direct dependencies from which to create a dependency graph
+     * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
+     * @return a DAG {@link Graph<Dep>} implementation representing the resolved {@code dependencyAtoms} and its tree of
+     *         transitive dependencies.
      */
-    public static DependencyAtom getProjectDep() {
-        String namespace = Props.getValue("project", "namespace");
-        String name = Props.getValue("project", "name");
-        String version = Props.getValue("project", "version");
-        String artifactName = Props.getValue("project", "artifact.name");
-        String defaultArtifactName = name + "-" + version + "." + DependencyAtom.DEFAULT_PACKAGING;
-        // don't pollute by placing artifactName explicitly even though it's the default
-        if (artifactName.equals(defaultArtifactName)) {
-            return new DependencyAtom(namespace, name, version);
-        } else {
-            return new DependencyAtom(namespace, name, version, artifactName);
-        }
+    public static DirectedAcyclicGraph<Dep> getDependencyGraph(List<DependencyAtom> dependencyAtoms,
+                                                               RepositoryRegistry repositoryRegistry) {
+        DirectedAcyclicGraph<Dep> dependencyDAG = new DirectedAcyclicGraph<Dep>();
+        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG);
+        return dependencyDAG;
     }
 
-    public static Properties resolveDependencies(List<DependencyAtom> dependencyAtoms, List<RepositoryAtom> repositoryAtoms) {
-        Properties dependencyFiles = new Properties();
-
-        for (DependencyAtom dependencyAtom : dependencyAtoms) {
-            resolveDependency(dependencyAtom, repositoryAtoms, dependencyFiles);
-        }
-
-        return dependencyFiles;
-    }
-
-    public static boolean resolveDependency(DependencyAtom dependencyAtom, List<RepositoryAtom> repositories,
-                                             Properties dependencyFiles) {
-        if (repositories.size() < 1) {
+    /**
+     * For each resolved {@link Dep} object of {@code dependencyAtoms} a {@link Vertex<Dep>} will be created and added
+     * to {@code graph}.  If {@code parentVertex} is not null, an edge will be added from {@code parentVertex} and
+     * each resolved property.  If adding such an edge violates the acyclic nature of {@code graph} an error message
+     * will be printed and this program will halt.
+     * @param parentVertex the parent of {@code dependencyAtoms}
+     * @param dependencyAtoms the dependencies which to resolve and place into {@code graph}
+     * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
+     * @param graph to fill with the resolved {@link Dep} objects of {@code dependencyAtoms}.
+     */
+    private static void fillDependencyGraph(Vertex<Dep> parentVertex, List<DependencyAtom> dependencyAtoms,
+                                            RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph) {
+        if (repositoryRegistry.isEmpty()) {
             throw new IllegalArgumentException("Need at least one repository!");
         }
-        RepositoryAtom localRepo = repositories.get(0);
-        List<RepositoryAtom> nonLocalRepos = repositories.subList(1, repositories.size());
+        for (DependencyAtom dependencyAtom : dependencyAtoms) {
+            Dep resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry);
+            if (resolvedDep == null) {
+                System.exit(1);
+            }
+            Vertex<Dep> vertex = graph.addVertex(resolvedDep);
+            if (parentVertex != null) {
+                try {
+                    graph.addEdge(parentVertex, vertex);
+                } catch (Graph.CycleException gce) {
+                    Output.print("^error^ circular dependency [ %s ].", gce.cycleToString());
+                    System.exit(1);
+                }
+            }
+            fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph);
+        }
+    }
 
-        // build the url to the dependency for the local repo.
+    /**
+     * Resolves {@code dependencyAtom} by ensuring it's present in the local repository.  Resolution means iterating
+     * over {@code repositoryAtoms} and if {@code dependencyAtom} is found downloading or copying it into the first
+     * item within {@code repositoryAtoms} which must be the local repository (downloading/copying only if it is not
+     * already present in the first item in {@code repositoryAtoms}).
+     * @param dependencyAtom to resolve
+     * @param repositoryRegistry repositories to use when resolving {@code dependencyAtom}
+     * @return a {@link Dep} representation of {@code dependencyAtom} or null if {@code dependencyAtom} could
+     *         not be resolved.
+     */
+    private static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry) {
+        // determine the local-repository directory for dependencyAtom; as it is needed regardless of where the dependency
+        // if found.
+        RepositoryAtom localRepo = repositoryRegistry.localRepository;
         String localPath = getDependencyPathForRepo(dependencyAtom, localRepo);
         URL localUrl = getUrl(localPath);
         if (localUrl == null) {
-            return false;
+            throw new AssertionError(String.format("The local path is not valid [ %s ]", localPath));
         }
-        String localDirPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
-        File localDepDirFile = new File(localDirPath.substring(7));
+        String localDirUrlPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
+        String localDirPath = (localDirUrlPath.startsWith("file://") ? localDirUrlPath.substring(7) : localDirUrlPath);
+
+        // first consult the synthetic repository.
+        if (repositoryRegistry.syntheticRepository != null && repositoryRegistry.syntheticRepository.containsKey(dependencyAtom)) {
+            return new Dep(dependencyAtom, repositoryRegistry.syntheticRepository.get(dependencyAtom), localDirPath);
+        }
+
+        // not present within the synthetic, check the local
         File localDepFile = new File(localUrl.getFile());
-        String dependencyAtomKey = dependencyAtom.getPropertyName() + ":" + dependencyAtom.getPropertyValue();
         if (localDepFile.exists()) {
-            // use the unresolved property value as we don't want to pollute by specifying an artifactName when it
-            // is in fact just the default.
-            if (!dependencyFiles.contains(dependencyAtomKey)) {
-                dependencyFiles.put(dependencyAtomKey, localDepFile.getPath());
-                // TODO - should this also resave the transitive deps file?
-                // TODO - YES, but only those which don't exist locally
-                processTransitiveDependencies(dependencyAtom, localRepo, repositories,
-                                                "file://" + localDepDirFile.getPath(), dependencyFiles);
-
-            }
-            return true;
+            return resolveDependency(dependencyAtom, localRepo, localDirUrlPath, localDirPath);
         }
 
-        // not in the local-repo, check each other repo.
+        // not in the local repository, check each other repository.
+        List<RepositoryAtom> nonLocalRepos = repositoryRegistry.remoteRepositories;
         for (RepositoryAtom remoteRepo : nonLocalRepos) {
             String remotePathDir = getDependencyDirectoryPathForRepo(dependencyAtom, remoteRepo);
             String remotePath = FileUtil.pathFromParts(remotePathDir, dependencyAtom.getArtifactName());
@@ -100,17 +126,107 @@ public class Deps {
             }
             Output.print("^info^ Downloading %s from %s...", dependencyAtom.toString(), remoteRepo.toString());
             if (FileUtil.copy(stream, localDepFile)) {
-                if (!dependencyFiles.contains(dependencyAtomKey)) {
-                    dependencyFiles.put(dependencyAtomKey, localDepFile.getPath());
-                    Properties transitiveDeps = processTransitiveDependencies(dependencyAtom, remoteRepo, repositories,
-                                                    remotePathDir, dependencyFiles);
-                    storeTransitiveDependenciesFile(transitiveDeps, localDepDirFile.getPath());
-                }
-                return true;
+                return resolveDependency(dependencyAtom, remoteRepo, remotePathDir, localDirPath);
             }
         }
-        Output.print("^warn^ Dependency ^b^%s^r^ not found in any repository.", dependencyAtom.toString());
-        return false;
+        Output.print("^error^ Dependency ^b^%s^r^ not found in any repository; ensure repositories are accessible.", dependencyAtom.toString());
+        Output.print("^error^ Project's local repository is ^b^%s^r^.", localRepo.toString());
+        StringBuilder remoteRepoString = new StringBuilder();
+        for (RepositoryAtom remote : repositoryRegistry.remoteRepositories) {
+            if (remoteRepoString.length() != 0) {
+                remoteRepoString.append(", ");
+            }
+            remoteRepoString.append(remote.toString());
+        }
+        int remoteRepoSize = repositoryRegistry.remoteRepositories.size();
+        Output.print("^error^ Project has ^b^%d^r^ remote repositor%s%s", remoteRepoSize, (remoteRepoSize != 1 ? "ies" : "y"),
+                     (remoteRepoSize > 0 ? String.format(" [ %s ]", remoteRepoString.toString()) : ""));
+        return null;
+    }
+
+    /**
+     * Retrieves the direct dependencies of {@code dependencyAtom} (which is located within {@code repoDirPath}
+     * of {@code repositoryAtom}) and saves them to {@code saveToRepoDirPath} as a dependencies property file.
+     * @param dependencyAtom to retrieve the dependencies file
+     * @param repositoryAtom from which {@code dependencyAtom} was resolved.
+     * @param repoDirPath the directory location of {@code dependencyAtom} within the {@code repositoryAtom}.
+     * @param saveToRepoDirPath to save the found dependency property file (should be within the local repository).
+     * @return the property file associated with {@code dependencyAtom} (could be empty if {@code dependencyAtom}
+     *         has no dependencies).
+     */
+    private static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
+                                         String repoDirPath, String saveToRepoDirPath) {
+        Properties dependenciesFile = getDependenciesFile(dependencyAtom, repositoryAtom, repoDirPath);
+        if (dependenciesFile == null) {
+            Output.print("^dbug^ No dependencies file found for %s.", dependencyAtom.toString());
+            dependenciesFile = new Properties();
+        }
+        storeDependenciesFile(dependenciesFile, saveToRepoDirPath);
+        List<DependencyAtom> dependencyAtoms = parse(dependenciesFile);
+        return new Dep(dependencyAtom, dependencyAtoms, saveToRepoDirPath);
+    }
+
+    /**
+     * Converts {@code dependencies} into a list of {@link DependencyAtom} objects
+     * @param dependencies to convert
+     * @return the converted {@code dependencies}
+     */
+    public static List<DependencyAtom> parse(Map dependencies) {
+        List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>(dependencies.size());
+        AtomicReference<String> error = new AtomicReference<String>();
+        for (Object dependencyKey : dependencies.keySet()) {
+            error.set(null);
+            Object dependencyValue = dependencies.get(dependencyKey);
+            DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + ":" + dependencyValue, error);
+            if (dependencyAtom == null) {
+                Output.print("^warn^ Invalid dependency %s:%s; missing %s", dependencyKey, dependencyValue,
+                        error.get());
+                continue;
+            }
+            dependencyAtoms.add(dependencyAtom);
+        }
+        return dependencyAtoms;
+    }
+
+    /**
+     * @param graph to convert into a resolved properties file
+     * @return a {@link Properties} object mapping each {@link Vertex<Dep>} (reachable from {@code graph}) object's
+     *         {@link DependencyAtom} object's key (which is {@link Dep#dependencyAtom#getPropertyName()} + ":"
+     *         + {@link Dep#dependencyAtom#getPropertyName()}) to the local repository location (which is
+     *         {@link Dep#localRepositoryDirectory} + {@link File#separator}
+     *         + {@link Dep#dependencyAtom#getArtifactName()}).
+     *
+     */
+    public static Properties convertToResolvedPropertiesFile(DirectedAcyclicGraph<Dep> graph) {
+        final Properties props = new Properties();
+        Graphs.visit(graph, new Graphs.Visitor<Dep>() {
+            @Override public void visit(Vertex<Dep> vertex) {
+                Dep dep = vertex.getValue();
+                String dependencyAtomKey = dep.dependencyAtom.getPropertyName() + ":" + dep.dependencyAtom.getPropertyValue();
+                String location = FileUtil.pathFromParts(dep.localRepositoryDirectory, dep.dependencyAtom.getArtifactName());
+                if (!props.containsKey(dependencyAtomKey)) {
+                    props.put(dependencyAtomKey, location);
+                }
+            }
+        });
+        return props;
+    }
+
+    /**
+     * @return a {@link DependencyAtom} representing this project
+     */
+    public static DependencyAtom getProjectDep() {
+        String namespace = Props.getValue("project", "namespace");
+        String name = Props.getValue("project", "name");
+        String version = Props.getValue("project", "version");
+        String artifactName = Props.getValue("project", "artifact.name");
+        String defaultArtifactName = name + "-" + version + "." + DependencyAtom.DEFAULT_PACKAGING;
+        // don't pollute by placing artifactName explicitly even though it's the default
+        if (artifactName.equals(defaultArtifactName)) {
+            return new DependencyAtom(namespace, name, version);
+        } else {
+            return new DependencyAtom(namespace, name, version, artifactName);
+        }
     }
 
     private static String getDependencyPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
@@ -145,31 +261,8 @@ public class Deps {
         return null;
     }
 
-    private static Properties processTransitiveDependencies(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom, List<RepositoryAtom> repositories,
-                                                      String repoDepDir, Properties resolvedDependencies) {
-        Properties transitiveDependencies = getTransitiveDependenciesFile(dependencyAtom, repositoryAtom, repoDepDir);
-        if (transitiveDependencies == null) {
-            Output.print("^dbug^ No dependencies file found for %s, ignoring.",
-                    dependencyAtom.toString());
-            return new Properties();
-        }
-        AtomicReference<String> error = new AtomicReference<String>();
-        for (String dependency : transitiveDependencies.stringPropertyNames()) {
-            error.set(null);
-            String dependencyVersion = transitiveDependencies.getProperty(dependency);
-            DependencyAtom transitiveDependencyAtom = DependencyAtom.parse(dependency + ":" + dependencyVersion, error);
-            if (transitiveDependencyAtom == null) {
-                Output.print("^warn^ Dependency %s:%s invalid; missing %s, skipping.", dependency,
-                        dependencyVersion, error.get());
-                continue;
-            }
-            resolveDependency(transitiveDependencyAtom, repositories, resolvedDependencies);
-        }
-        return transitiveDependencies;
-    }
-
-    private static Properties getTransitiveDependenciesFile(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
-                                                            String repoDepDir) {
+    private static Properties getDependenciesFile(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
+                                                  String repoDepDir) {
         if (repositoryAtom.getResolvedType() == RepositoryAtom.Type.ply) {
             // no dependencies file just means no dependencies, skip.
             URL url = null;
@@ -181,46 +274,32 @@ public class Deps {
             if ((url == null) || !new File(url.getFile()).exists()) {
                 return null;
             }
-            return getTransitiveDependenciesFromPlyRepo(FileUtil.pathFromParts(repoDepDir, "dependencies.properties"));
+            return getDependenciesFromPlyRepo(FileUtil.pathFromParts(repoDepDir, "dependencies.properties"));
         } else {
             String pomName = dependencyAtom.getArtifactName().replace("." + dependencyAtom.getSyntheticPackaging(), ".pom");
-            return getTransitiveDependenciesFromMavenRepo(FileUtil.pathFromParts(repoDepDir, pomName), repositoryAtom);
+            return getDependenciesFromMavenRepo(FileUtil.pathFromParts(repoDepDir, pomName), repositoryAtom);
         }
     }
 
-    private static Properties getTransitiveDependenciesFromPlyRepo(String urlPath) {
-        InputStream inputStream = null;
+    private static Properties getDependenciesFromPlyRepo(String urlPath) {
         try {
             URL url = new URL(urlPath);
-            Properties properties = new Properties();
-            inputStream = new BufferedInputStream(url.openStream());
-            properties.load(inputStream);
-            return properties;
+            return PropertiesFileUtil.load(url.getFile(), false, true);
         } catch (MalformedURLException murle) {
             Output.print(murle);
-        } catch (FileNotFoundException fnfe) {
-            return null; // not a problem, just means there are no dependencies
-        } catch (IOException ioe) {
-            Output.print(ioe);
-        } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException ioe) {
-                throw new AssertionError(ioe);
-            }
-        }
+        }   
         return null;
     }
 
-    private static Properties getTransitiveDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
+    private static Properties getDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
         MavenPomParser mavenPomParser = new MavenPomParser.Default();
         return mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
     }
 
-    private static void storeTransitiveDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {
+    private static void storeDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {
         PropertiesFileUtil.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, "dependencies.properties"), true);
     }
+
+    private Deps() { }
 
 }

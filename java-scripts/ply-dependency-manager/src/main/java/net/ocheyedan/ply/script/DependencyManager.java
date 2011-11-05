@@ -2,9 +2,8 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
-import net.ocheyedan.ply.dep.DependencyAtom;
-import net.ocheyedan.ply.dep.Deps;
-import net.ocheyedan.ply.dep.RepositoryAtom;
+import net.ocheyedan.ply.dep.*;
+import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
@@ -70,7 +69,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * The {@literal add} command takes an atom and adds it as a dependency for the supplied scope, resolving it eagerly
  * from the known repos and failing if it cannot be resolved.
  * The {@literal remove} command takes an atom and removes it from the dependencies scope, if it exists.
- * The {@literal list} command lists all dependencies for the scope.
+ * The {@literal list} command lists all direct dependencies for the scope (transitive dependencies are not listed).
  * The {@literal add-repo} command takes a repository and adds it to the repositories.
  * The {@literal remove-repo} command removes the repository.
  *
@@ -101,6 +100,30 @@ public class DependencyManager {
             } else {
                 Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.getValue("project", "name"), scope.forPrint);
             }
+        } else if ((args.length == 1) && "tree".equals(args[0])) {
+//            Map<String, String> dependencies = getDependencies(scope);
+//            int size = dependencies.size();
+//            if (size > 0) {
+//                Output.print("Project ^b^%s^r^ has ^b^%d^r^ direct %sdependenc%s: ", Props.getValue("project", "name"), size,
+//                        scope.forPrint, (size == 1 ? "y" : "ies"));
+//                List<RepositoryAtom> repos = createRepositoryList();
+//                for (String key : dependencies.keySet()) {
+//                    String depAtom = String.format("%s:%s", key, dependencies.get(key));
+//                    Output.print("\u26AC %s:%s", key, dependencies.get(key));
+//                    // process transitive for particular dependency
+//                    Properties transitiveDeps = new Properties();
+//                    DependencyAtom dependencyAtom = DependencyAtom.parse(depAtom, null);
+//                    if (dependencyAtom == null) {
+//                        throw new AssertionError(String.format("Could not create DependencyAtom from %s", depAtom));
+//                    }
+//                    Deps.resolveDependency(dependencyAtom, repos, transitiveDeps);
+//                    for (String transitiveKey : transitiveDeps.stringPropertyNames()) {
+//                        Output.print("\t\u2937 \u26AC %s", transitiveKey);
+//                    }
+//                }
+//            } else {
+//                Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.getValue("project", "name"), scope.forPrint);
+//            }
         } else if ((args.length > 1) && "add-repo".equals(args[0])) {
             addRepository(args[1]);
         } else if ((args.length > 1) && "remove-repo".equals(args[0])) {
@@ -133,12 +156,10 @@ public class DependencyManager {
                     dependencies.getProperty(atom.getPropertyName()), atom.getPropertyValue());
         }
         dependencies.put(atom.getPropertyName(), atom.getPropertyValue());
-        if (resolveDependency(atom)) {
+        List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
+        RepositoryRegistry repositoryRegistry = createRepositoryList(Deps.getProjectDep(), dependencyAtoms);
+        if (Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry) != null) { // getDependencyGraph returns => ok
             storeDependenciesFile(dependencies, scope);
-        } else {
-            Output.print("^error^ unable to resolve %sdependency ^b^%s^r^. Ensure you are able to connect to the remote repositories.",
-                    scope.forPrint, atom.toString());
-            System.exit(1);
         }
     }
 
@@ -203,14 +224,13 @@ public class DependencyManager {
         }
     }
 
-    private static List<RepositoryAtom> createRepositoryList() {
+    private static RepositoryRegistry createRepositoryList(DependencyAtom dependencyAtom, List<DependencyAtom> dependencyAtoms) {
         RepositoryAtom localRepo = RepositoryAtom.parse(Props.getValue("depmngr", "localRepo"));
         if (localRepo == null) {
             Output.print("^error^ Local repository not defined.  Set 'localRepo' property in context 'depmngr'");
             System.exit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
-        repositoryAtoms.add(localRepo);
         Map<String, Prop> repositories = Props.getProps("repositories");
         for (String repoUri : repositories.keySet()) {
             if (localRepo.getPropertyName().equals(repoUri)) {
@@ -225,29 +245,17 @@ public class DependencyManager {
                 repositoryAtoms.add(repo);
             }
         }
-        return repositoryAtoms;
+        Map<DependencyAtom, List<DependencyAtom>> synthetic = new HashMap<DependencyAtom, List<DependencyAtom>>(1);
+        synthetic.put(dependencyAtom, dependencyAtoms);
+        return new RepositoryRegistry(localRepo, repositoryAtoms, synthetic);
     }
 
     private static Properties resolveDependencies(Map<String, String> dependencies) {
-        List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>(dependencies.size());
-        AtomicReference<String> error = new AtomicReference<String>();
-        for (String dependencyKey : dependencies.keySet()) {
-            error.set(null);
-            String dependencyValue = dependencies.get(dependencyKey);
-            DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + ":" + dependencyValue, error);
-            if (dependencyAtom == null) {
-                Output.print("^warn^ Invalid dependency %s:%s; missing %s", dependencyKey, dependencyValue,
-                        error.get());
-                continue;
-            }
-            dependencyAtoms.add(dependencyAtom);
-        }
-
-        return Deps.resolveDependencies(dependencyAtoms, createRepositoryList());
-    }
-
-    private static boolean resolveDependency(DependencyAtom dependencyAtom) {
-        return Deps.resolveDependency(dependencyAtom, createRepositoryList(), new Properties());
+        DependencyAtom self = Deps.getProjectDep();
+        List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
+        DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms,
+                                                                            createRepositoryList(self, dependencyAtoms));
+        return Deps.convertToResolvedPropertiesFile(dependencyGraph);
     }
 
     private static Map<String, String> getDependencies(Scope scope) {
@@ -313,24 +321,18 @@ public class DependencyManager {
         }
     }
 
-    private static String[] removeScope(String[] args) {
-        String[] newArgs = new String[args.length - 1];
-        System.arraycopy(args, 1, newArgs, 0, args.length - 1);
-        return newArgs;
-    }
-
     private static void usage() {
-        Output.print("dep [--usage] [--context] <^b^command^r^>");
+        Output.print("dep [--usage] <^b^command^r^>");
         Output.print("  where ^b^command^r^ is either:");
-        Output.print("    ^b^add <dep-atom>^r^\t: adds dep-atom to the list of dependencies (within context) (or replacing the version if it already exists).");
-        Output.print("    ^b^remove <dep-atom>^r^\t: removes dep-atom from the list of dependencies (within context).");
-        Output.print("    ^b^list^r^\t\t\t: list all dependencies (within context).");
+        Output.print("    ^b^add <dep-atom>^r^\t: adds dep-atom to the list of dependencies (within scope) (or replacing the version if it already exists).");
+        Output.print("    ^b^remove <dep-atom>^r^\t: removes dep-atom from the list of dependencies (within scope).");
+        Output.print("    ^b^list^r^\t\t\t: list all direct dependencies (within scope excluding transitive dependencies).");
         Output.print("    ^b^add-repo <rep-atom>^r^\t: adds rep-atom to the list of repositories.");
         Output.print("    ^b^remove-repo <rep-atom>^r^: removes rep-atom from the list of repositories.");
         Output.print("  ^b^dep-atom^r^ is namespace:name:version[:artifactName] (artifactName is optional and defaults to name-version.jar).");
         Output.print("  ^b^rep-atom^r^ is [type:]repoURI (type is optional and defaults to ply, must be either ply or maven).");
         Output.print("  if no command is passed then dependency resolution is done for all dependencies against the known repositories.");
-        Output.print("  Dependencies can be grouped by ^b^context^r^ (i.e. test).  The default context is null.");
+        Output.print("  Dependencies can be grouped by ^b^scope^r^ (i.e. test).  The default scope is null.");
     }
 
 }

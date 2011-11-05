@@ -1,10 +1,12 @@
 package net.ocheyedan.ply.submodules;
 
 import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
-import net.ocheyedan.ply.dep.DependencyAtom;
-import net.ocheyedan.ply.dep.Deps;
-import net.ocheyedan.ply.dep.RepositoryAtom;
+import net.ocheyedan.ply.dep.*;
+import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
+import net.ocheyedan.ply.graph.Graphs;
+import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.PropsExt;
 
@@ -61,7 +63,7 @@ public final class Submodules {
             return Collections.emptyList();
         }
         List<Submodule> orderedSubmodules = new ArrayList<Submodule>();
-        final Map<String, List<String>> depMap = new HashMap<String, List<String>>(submodules.size());
+        final Map<String, DirectedAcyclicGraph<Dep>> depGraphs = new HashMap<String, DirectedAcyclicGraph<Dep>>();
         for (Prop submodule : submodules) {
             if ("exclude".equalsIgnoreCase(submodule.value)) {
                 continue;
@@ -80,23 +82,23 @@ public final class Submodules {
             Prop localRepoProp = PropsExt.get(submoduleConfigDir, "depmngr", scope, "localRepo");
             String filteredLocalRepo = PropsExt.filterForPly(submoduleConfigDir, localRepoProp, scope);
             RepositoryAtom localRepo = RepositoryAtom.parse(filteredLocalRepo);
-            repositoryAtoms.add(0, localRepo);
+            RepositoryRegistry repositoryRegistry = new RepositoryRegistry(localRepo, repositoryAtoms, null);
             
-            Properties resolved = Deps.resolveDependencies(dependencyAtoms, repositoryAtoms);
-            List<String> submoduleResolvedDeps = new ArrayList<String>(resolved.size());
-            submoduleResolvedDeps.addAll(resolved.stringPropertyNames());
-            depMap.put(submoduleResolvedDepName, submoduleResolvedDeps);
+            DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry);
+            depGraphs.put(submoduleResolvedDepName, depGraph);
         }
         // if submoduleA depends upon submoduleB then submoduleB goes first
         // if submoduleA is child of submoduleB then submoduleB goes first
         // if submoduleA is a child but submoduleB isn't then submoduleB goes first
         Collections.sort(orderedSubmodules, new Comparator<Submodule>() {
-            @Override public int compare(Submodule submoduleA, Submodule submoduleB) {
-                List<String> submoduleADeps = depMap.get(submoduleA.dependencyName);
-                List<String> submoduleBDeps = depMap.get(submoduleB.dependencyName);
-                if ((submoduleADeps != null) && submoduleADeps.contains(submoduleB.dependencyName)) {
+            @Override public int compare(final Submodule submoduleA, Submodule submoduleB) {
+                Dep depA = new Dep(DependencyAtom.parse(submoduleA.dependencyName, null), null, null);
+                Dep depB = new Dep(DependencyAtom.parse(submoduleB.dependencyName, null), null, null);
+                DirectedAcyclicGraph<Dep> depAGraph = depGraphs.get(submoduleA.dependencyName);
+                DirectedAcyclicGraph<Dep> depBGraph = depGraphs.get(submoduleB.dependencyName);
+                if ((depAGraph != null) && depAGraph.isReachable(depB)) {
                     return 1;
-                } else if ((submoduleBDeps != null) && submoduleBDeps.contains(submoduleA.dependencyName)) {
+                } else if ((depBGraph != null) && depBGraph.isReachable(depA)) {
                     return -1;
                 }
                 if (submoduleA.name.contains(submoduleB.name)) {

@@ -2,10 +2,12 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
+import java.util.Properties;
 
 /**
  * User: blangel
@@ -56,9 +58,13 @@ public class RepositoryInstaller {
         File localRepoArtifact = FileUtil.fromParts(localRepoPath, artifactName);
         FileUtil.copy(artifact, localRepoArtifact);
 
+        File localRepoDependenciesFile = FileUtil.fromParts(localRepoPath, "dependencies.properties");
         if (dependenciesFile.exists()) {
-            File localRepoDependenciesFile = FileUtil.fromParts(localRepoPath, "dependencies.properties");
             FileUtil.copy(dependenciesFile, localRepoDependenciesFile);
+        } else {
+            // need to override (perhaps there were dependencies but now none.
+            Properties dependencies = new Properties();
+            PropertiesFileUtil.store(dependencies, localRepoDependenciesFile.getPath(), true);
         }
     }
 

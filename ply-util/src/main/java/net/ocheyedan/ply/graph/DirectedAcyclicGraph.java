@@ -1,9 +1,8 @@
 package net.ocheyedan.ply.graph;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import net.ocheyedan.ply.Output;
+
+import java.util.*;
 
 /**
  * User: blangel
@@ -18,7 +17,7 @@ public class DirectedAcyclicGraph<T> implements Graph<T> {
     private final Map<T, Vertex<T>> vertices;
 
     public DirectedAcyclicGraph() {
-        this.vertices = new HashMap<T, Vertex<T>>();
+        this.vertices = new LinkedHashMap<T, Vertex<T>>();
     }
 
     @Override public Vertex<T> addVertex(T of) {
@@ -69,6 +68,23 @@ public class DirectedAcyclicGraph<T> implements Graph<T> {
     @Override public boolean hasEdge(Vertex<T> from, Vertex<T> to) {
         return (from != null) && (to != null) && vertices.containsKey(from.getValue())
                 && vertices.containsKey(to.getValue()) && from.hasEdgeTo(to);
+    }
+
+    @Override public boolean isReachable(Vertex<T> vertex) {
+        return (vertex != null) && (vertices.containsKey(vertex.getValue()) || isReachableFromVertices(vertex));
+    }
+
+    @Override public boolean isReachable(T vertexValue) {
+        return (vertexValue != null) && (hasVertex(vertexValue) || isReachableFromVertices(new Vertex<T>(vertexValue)));
+    }
+
+    private boolean isReachableFromVertices(Vertex<T> vertex) {
+        for (Vertex<T> ver : vertices.values()) {
+            if (ver.isReachable(vertex)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override public boolean isCyclic() {

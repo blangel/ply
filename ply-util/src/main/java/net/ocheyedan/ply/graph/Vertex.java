@@ -46,6 +46,18 @@ public final class Vertex<T> {
         return children.contains(to);
     }
 
+    public boolean isReachable(Vertex<T> vertex) {
+        if (hasEdgeTo(vertex)) {
+            return true;
+        }
+        for (Vertex<T> child : children) {
+            if (child.isReachable(vertex)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean hasEdgeFrom(Vertex<T> from) {
         return parents.contains(from);
     }
@@ -66,8 +78,12 @@ public final class Vertex<T> {
         return (isLeaf() || isRoot());
     }
 
-    List<Vertex<T>> getChildren() {
+    public List<Vertex<T>> getChildren() {
         return Collections.unmodifiableList(children);
+    }
+
+    @Override public String toString() {
+        return (value == null ? "" : value.toString());
     }
 
     @Override public boolean equals(Object o) {

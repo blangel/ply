@@ -25,6 +25,16 @@ public interface Graph<T> {
         public List<Vertex<?>> getCycle() {
             return cycle;
         }
+        public String cycleToString() {
+            StringBuilder buffer = new StringBuilder();
+            for (Vertex vertex : cycle) {
+                if (buffer.length() > 0) {
+                    buffer.append(" -> ");
+                }
+                buffer.append(vertex.getValue().toString());
+            }
+            return buffer.toString();
+        }
     }
 
     /**
@@ -68,6 +78,18 @@ public interface Graph<T> {
      * @return true iff both vertices already exist within this graph and there is an edge from {@code from} to {@code to}
      */
     boolean hasEdge(Vertex<T> from, Vertex<T> to);
+
+    /**
+     * @param vertex to check if a path exists to it.
+     * @return true if {@code vertex} can be reached from this graph.
+     */
+    boolean isReachable(Vertex<T> vertex);
+
+    /**
+     * @param vertexValue to check if a path exists from its associated {@link Vertex}.
+     * @return true if {@code to}'s associated {@link Vertex} can be reached from this graph.
+     */
+    boolean isReachable(T vertexValue);
 
     /**
      * @return true if this implementation contains cyclic edges between vertices.

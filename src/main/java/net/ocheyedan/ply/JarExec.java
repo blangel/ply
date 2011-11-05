@@ -1,8 +1,7 @@
 package net.ocheyedan.ply;
 
-import net.ocheyedan.ply.dep.DependencyAtom;
-import net.ocheyedan.ply.dep.Deps;
-import net.ocheyedan.ply.dep.RepositoryAtom;
+import net.ocheyedan.ply.dep.*;
+import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.PropsExt;
 
@@ -95,19 +94,10 @@ public class JarExec {
             if (dependencies.isEmpty()) {
                 return null;
             }
-            List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>(dependencies.size());
-            AtomicReference<String> error = new AtomicReference<String>();
-            for (String dependencyName : dependencies.stringPropertyNames()) {
-                error.set(null);
-                DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyName, error);
-                if (dependencyAtom == null) {
-                    Output.print("^warn^ could not parse dependency ^b^%s^r^, ignoring.", dependencyName);
-                } else {
-                    dependencyAtoms.add(dependencyAtom);
-                }
-            }
-            Properties resolvedDependencies = Deps
-                    .resolveDependencies(dependencyAtoms, createRepositoryList(projectConfigDir, scope));
+            List<DependencyAtom> deps = Deps.parse(dependencies);
+            RepositoryRegistry repos = createRepositoryList(projectConfigDir, scope);
+            DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(deps, repos);
+            Properties resolvedDependencies = Deps.convertToResolvedPropertiesFile(depGraph);
             StringBuilder classpath = new StringBuilder();
             for (String resolvedDependency : resolvedDependencies.stringPropertyNames()) {
                 classpath.append(resolvedDependencies.getProperty(resolvedDependency));
@@ -130,7 +120,7 @@ public class JarExec {
         return null;
     }
 
-    private static List<RepositoryAtom> createRepositoryList(File projectConfigDir, String scope) {
+    private static RepositoryRegistry createRepositoryList(File projectConfigDir, String scope) {
         Prop prop = PropsExt.get(projectConfigDir, "depmngr", scope, "localRepo");
         String filteredLocalRepo = PropsExt.filterForPly(projectConfigDir, prop, scope);
         RepositoryAtom localRepo = RepositoryAtom.parse(filteredLocalRepo);
@@ -139,7 +129,6 @@ public class JarExec {
             System.exit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
-        repositoryAtoms.add(localRepo);
         Map<String, Prop> repositoryProps = PropsExt.getPropsForScope(projectConfigDir, "repositories", scope); // TODO - filter the props?
         if (repositoryProps != null) {
             for (String repoUri : repositoryProps.keySet()) {
@@ -156,7 +145,7 @@ public class JarExec {
                 }
             }
         }
-        return repositoryAtoms;
+        return new RepositoryRegistry(localRepo, repositoryAtoms, null);
     }
 
     /**

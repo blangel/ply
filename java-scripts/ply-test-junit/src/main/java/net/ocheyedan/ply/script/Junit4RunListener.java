@@ -34,7 +34,8 @@ public class Junit4RunListener extends RunListener {
         if (isSyntheticDescription(description)) {
             // ignore...means no-tests or something, process during failure
         } else {
-            PrivilegedOutput.print("\nRunning tests from ^b^%d^r^ classes\n", description.getChildren().size());
+            int size = description.getChildren().size();
+            PrivilegedOutput.print("\nRunning tests from ^b^%d^r^ class\n", size, (size != 1 ? "es" : ""));
         }
     }
 
