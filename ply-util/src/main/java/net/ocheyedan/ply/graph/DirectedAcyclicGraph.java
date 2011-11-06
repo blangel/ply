@@ -95,4 +95,14 @@ public class DirectedAcyclicGraph<T> implements Graph<T> {
     @Override public List<Vertex<T>> getVertices() {
         return new ArrayList<Vertex<T>>(vertices.values());
     }
+
+    @Override public List<Vertex<T>> getRootVertices() {
+        ArrayList<Vertex<T>> roots = new ArrayList<Vertex<T>>();
+        for (Vertex<T> vertex : vertices.values()) {
+            if (vertex.isRoot() && !roots.contains(vertex)) {
+                roots.add(vertex);
+            }
+        }
+        return roots;
+    }
 }

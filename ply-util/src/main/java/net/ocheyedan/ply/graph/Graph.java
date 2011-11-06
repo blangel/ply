@@ -101,4 +101,9 @@ public interface Graph<T> {
      */
     List<Vertex<T>> getVertices();
 
+    /**
+     * @return only the root {@link Vertex<T>} objects held by this implementation
+     */
+    List<Vertex<T>> getRootVertices();
+
 }

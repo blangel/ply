@@ -27,11 +27,15 @@ public final class Vertex<T> {
     }
 
     public void addEdgeTo(Vertex<T> vertex) {
-        children.add(vertex);
+        if (!children.contains(vertex)) {
+            children.add(vertex);
+        }
     }
 
     public void addEdgeFrom(Vertex<T> vertex) {
-        parents.add(vertex);
+        if (!parents.contains(vertex)) {
+            parents.add(vertex);
+        }
     }
 
     public void removeEdgeTo(Vertex<T> vertex) {
