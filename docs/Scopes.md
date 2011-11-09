@@ -1,7 +1,7 @@
 Scopes
 ------
 
-Sometimes property values are only relevant or should be changed to a different value depending upon the particular invocation.  Scopes provide a way of facilitating this in ply.  Those familiar with the build tool __maven__ can think of scopes as a more powerful form of profiles.  More powerful as, in maven the profile is applied to all phases in a lifecycle but in ply, using maven parlance, scopes allow for each phase to be tied to a different profile during a single execution.  For example, `mvn clean install -PX` means run phases _clean_ and _install_ both within profile X but in ply one could say `ply X:clean install` which means run _clean_ in scope X but _install_ in the default scope.  To illustrate the usefulness of this, first consider, in a simplified form, what happens during compilation. 
+Sometimes property values are only relevant (or should be changed to a different value) depending upon the particular invocation.  Scopes provide a way of facilitating this in ply.  Those familiar with the build tool __maven__ can think of scopes as a more powerful form of profiles.  More powerful as, in maven the profile is applied to all phases in a lifecycle but in ply, using maven parlance, scopes allow for each phase to be tied to a different profile during a single execution.  For example, `mvn clean install -PX` means run phases _clean_ and _install_ both within profile X but in ply one could say `ply X:clean install` which means run _clean_ in scope X but _install_ in the default scope.  To illustrate the usefulness of this, first consider, in a simplified form, what happens during compilation. 
 
     $ ply compile
 

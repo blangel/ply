@@ -46,10 +46,11 @@ Concepts
 * [Scopes](ply/tree/master/docs/Scopes.md)
 * [Submodules](ply/tree/master/docs/Submodules.md)
 
-Examples
-------
+Tutorials
+--------
 
 * [Project setup](TODO)
 * [Add dependencies](TODO)
 * [Add submodules](TODO)
 * [Running tests](TODO)
+* [Changing log levels](TODO)
