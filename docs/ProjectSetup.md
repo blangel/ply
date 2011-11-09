@@ -11,7 +11,7 @@ This will create the `.ply/config` directory and also a `project.properties` fil
 * __name__ - will default to be the name of the project directory.  The _name_ is analogous to _artifactId_ in __maven__.
 * __version__ - will default to be `1.0`.
 
-So issueing the following sequence of commands:
+So issuing the following sequence of commands:
 
      $ mkdir electric-chilly
      $ cd electric-chilly/
