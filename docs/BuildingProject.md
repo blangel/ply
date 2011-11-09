@@ -26,7 +26,7 @@ Then copy/paste the following code into the `FrigidWinter.java` file.
      
      public class FrigidWinter {
      
-	public boolean pluginFizzleElectricBlanket() {
+        public boolean pluginFizzleElectricBlanket() {
              return (System.currentTimeMillis() % 2) == 0;
     	}
 
