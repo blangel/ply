@@ -50,6 +50,7 @@ Tutorials
 --------
 
 * [Project setup](ply/tree/master/docs/ProjectSetup.md)
+* [Building](ply/tree/master/docs/BuildingProject.md)
 * [Add dependencies](TODO)
 * [Add submodules](TODO)
 * [Running tests](TODO)
