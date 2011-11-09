@@ -13,14 +13,14 @@ This will create the `.ply/config` directory and also a `project.properties` fil
 
 So issueing the following sequence of commands:
 
-   $ mkdir myproject
-   $ cd myproject
-   $ ply init
+     $ mkdir electric-chilly
+     $ cd electric-chilly/
+     $ ply init
 
-Will create directories `.ply/config` under `myproject` and the following `project.properties` file within `.ply/config`
+Will create directories `.ply/config` under `electric-chilly` and the following `project.properties` file within `.ply/config`
 
-     namespace=myproject
-     name=myproject
+     namespace=electric-chilly
+     name=electric-chilly
      version=1.0
 
 This can also be verified via _ply_ itself by doing:
