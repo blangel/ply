@@ -27,11 +27,14 @@ Features
 Download/Install
 ----------------
 
-[ply.tar](ply/raw/ply.tar)
+[ply.tar](ply/raw/master/ply.tar)
 
 Untar the `ply.tar` package to a directory of your choosing (say `/opt/ply`) and then make sure the following properties are set as environmental variables:
+
 * `JAVA_HOME` -> (likely already set by your distro) set to the home directory of the java installation
+
 * `PLY_HOME` -> set to the directory of where ever you untar-ed ply (i.e., `/opt/ply`).
+
 Finally add `${PLY_HOME}/bin` to your `$PATH`
 
 Concepts
