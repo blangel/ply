@@ -192,9 +192,9 @@ public interface MavenPomParser {
                     parseDependencies(child, parseResult, false);
                 } else if ("properties".equals(nodeName)) {
                     parseProperties(child, parseResult);
-                } else if ("groupId".equals(nodeName)) {
+                } else if ("groupId".equals(nodeName) && !"${parent.groupId}".equals(child.getTextContent())) {
                     localGroupId = child.getTextContent();
-                } else if ("version".equals(nodeName)) {
+                } else if ("version".equals(nodeName) && !"${parent.version}".equals(child.getTextContent())) {
                     localVersion = child.getTextContent();
                 } else if ("parent".equals(nodeName)) { // parent
                     parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentGroupId, parentVersion);
@@ -284,8 +284,7 @@ public interface MavenPomParser {
                 return toFilter;
             }
             if (toFilter.contains("${" + filterValue + "}")) {
-                return toFilter.replaceAll("\\$\\{" + Pattern.quote(filterValue) + "\\}",
-                        replacementMap.get(filterValue));
+                return toFilter.replaceAll(Pattern.quote("${" + filterValue + "}"), replacementMap.get(filterValue));
             }
             return toFilter;
         }
