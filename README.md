@@ -49,7 +49,7 @@ Concepts
 Tutorials
 --------
 
-* [Project setup](TODO)
+* [Project setup](ply/tree/master/docs/ProjectSetup.md)
 * [Add dependencies](TODO)
 * [Add submodules](TODO)
 * [Running tests](TODO)
