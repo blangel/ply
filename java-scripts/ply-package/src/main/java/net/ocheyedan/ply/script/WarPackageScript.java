@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.jna.JnaAccessor;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -94,11 +95,16 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
     }
 
     protected void copyDependencies(Properties resolvedProperties, File copyToDir) {
+        copyToDir.mkdirs();
         for (String resolvedKey : resolvedProperties.stringPropertyNames()) {
             File dependency = new File(resolvedProperties.getProperty(resolvedKey));
             File to = FileUtil.fromParts(copyToDir.getPath(), dependency.getName());
             if (!to.exists()) {
-                FileUtil.copy(dependency, to);
+                if (JnaAccessor.getCUnixLibrary() != null) {
+                    JnaAccessor.getCUnixLibrary().symlink(dependency.getPath(), to.getPath());
+                } else {
+                    FileUtil.copy(dependency, to);
+                }
             }
         }
     }
