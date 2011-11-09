@@ -17,10 +17,12 @@ To enable a directory/project to use ply, simply run init from within the direct
 Features
 --------
 
-* Pretty print - _ply_'s output is clean and colored.  Here's the actual output of running `ply clean test` from the `ply-util` module:
+* __Pretty print__ - _ply_'s output is clean and colored.  Here's the actual output of running `ply clean test` from the `ply-util` module:
+
 ![ply-util: ply clean test](https://github.com/blangel/ply/raw/master/docs/imgs/ply-util-test.png "ply-util: ply clean test")
-* Sensible defaults - _ply_ uses defaults which are intuitive (i.e., the default _java_ source/target for compilation is the version of the `$JAVA_HOME` jdk) and make setting up a new project extremely easy. 
-* Easily extensible - since _ply_ simply executes scripts (or aliases of scripts; i.e., _clean_, _install_, _test_) changing or augmenting a build lifecycle is just a matter of adding/removing/replacing scripts (or re-aliasing them).  The default scripts and aliases provided specify a best practice for development but if your project wants/needs to deviate from this approach doing so shouldn't feel like working against the grain.  And keep in mind, [scripts](ply/tree/master/docs/Scripts.md) are anything executable (bash, perl, ruby, python, ...) so even though your project's written in one language feel free to flex your polyglot-side and augment your build process in any way you like! 
+
+* __Sensible defaults__ - _ply_ uses defaults which are intuitive (i.e., the default _java_ source/target for compilation is the version of the `$JAVA_HOME` jdk) and make setting up a new project extremely easy. 
+* __Easily extensible__ - since _ply_ simply executes scripts (or aliases of scripts; i.e., _clean_, _install_, _test_) changing or augmenting a build lifecycle is just a matter of adding/removing/replacing scripts (or re-aliasing them).  The default scripts and aliases provided specify a best practice for development but if your project wants/needs to deviate from this approach doing so shouldn't feel like working against the grain.  And keep in mind, [scripts](ply/tree/master/docs/Scripts.md) are anything executable (bash, perl, ruby, python, ...) so even though your project's written in one language feel free to flex your polyglot-muscles and augment your build process in any language you like! 
 
 Download/Install
 ----------------

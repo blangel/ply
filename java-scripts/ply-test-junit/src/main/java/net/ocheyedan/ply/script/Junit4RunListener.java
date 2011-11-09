@@ -35,7 +35,7 @@ public class Junit4RunListener extends RunListener {
             // ignore...means no-tests or something, process during failure
         } else {
             int size = description.getChildren().size();
-            PrivilegedOutput.print("\nRunning tests from ^b^%d^r^ class\n", size, (size != 1 ? "es" : ""));
+            PrivilegedOutput.print("\nRunning tests from ^b^%d^r^ class%s\n", size, (size != 1 ? "es" : ""));
         }
     }
 
