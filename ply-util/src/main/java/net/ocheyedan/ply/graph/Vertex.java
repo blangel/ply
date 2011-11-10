@@ -26,40 +26,28 @@ public final class Vertex<T> {
         this.value = value;
     }
 
-    public void addEdgeTo(Vertex<T> vertex) {
+    void addEdgeTo(Vertex<T> vertex) {
         if (!children.contains(vertex)) {
             children.add(vertex);
         }
     }
 
-    public void addEdgeFrom(Vertex<T> vertex) {
+    void addEdgeFrom(Vertex<T> vertex) {
         if (!parents.contains(vertex)) {
             parents.add(vertex);
         }
     }
 
-    public void removeEdgeTo(Vertex<T> vertex) {
+    void removeEdgeTo(Vertex<T> vertex) {
         children.remove(vertex);
     }
 
-    public void removeEdgeFrom(Vertex<T> vertex) {
+    void removeEdgeFrom(Vertex<T> vertex) {
         parents.remove(vertex);
     }
 
     public boolean hasEdgeTo(Vertex<T> to) {
         return children.contains(to);
-    }
-
-    public boolean isReachable(Vertex<T> vertex) {
-        if (hasEdgeTo(vertex)) {
-            return true;
-        }
-        for (Vertex<T> child : children) {
-            if (child.isReachable(vertex)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public boolean hasEdgeFrom(Vertex<T> from) {

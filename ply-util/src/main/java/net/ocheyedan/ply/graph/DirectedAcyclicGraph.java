@@ -71,23 +71,6 @@ public class DirectedAcyclicGraph<T> implements Graph<T> {
                 && vertices.containsKey(to.getValue()) && from.hasEdgeTo(to);
     }
 
-    @Override public boolean isReachable(Vertex<T> vertex) {
-        return (vertex != null) && (vertices.containsKey(vertex.getValue()) || isReachableFromVertices(vertex));
-    }
-
-    @Override public boolean isReachable(T vertexValue) {
-        return (vertexValue != null) && (hasVertex(vertexValue) || isReachableFromVertices(new Vertex<T>(vertexValue)));
-    }
-
-    private boolean isReachableFromVertices(Vertex<T> vertex) {
-        for (Vertex<T> ver : vertices.values()) {
-            if (ver.isReachable(vertex)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override public boolean isCyclic() {
         return false;
     }

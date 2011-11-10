@@ -93,9 +93,9 @@ public final class Submodules {
                 Dep depB = new Dep(DependencyAtom.parse(submoduleB.dependencyName, null), null, null);
                 DirectedAcyclicGraph<Dep> depAGraph = depGraphs.get(submoduleA.dependencyName);
                 DirectedAcyclicGraph<Dep> depBGraph = depGraphs.get(submoduleB.dependencyName);
-                if ((depAGraph != null) && depAGraph.isReachable(depB)) {
+                if ((depAGraph != null) && depAGraph.hasVertex(depB)) {
                     return 1;
-                } else if ((depBGraph != null) && depBGraph.isReachable(depA)) {
+                } else if ((depBGraph != null) && depBGraph.hasVertex(depA)) {
                     return -1;
                 }
                 if (submoduleA.name.contains(submoduleB.name)) {
