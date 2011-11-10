@@ -4,6 +4,9 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static junit.framework.Assert.*;
 
@@ -47,6 +50,24 @@ public class RepositoryAtomTest {
         assertEquals(RepositoryAtom.Type.ply, atom.type);
         assertEquals("file://" + System.getProperty("user.home"), atom.getPropertyName());
         
+    }
+
+    @Test
+    public void localComparator() {
+        RepositoryAtom local = RepositoryAtom.parse("/opt/ply/repo");
+        RepositoryAtom remote = RepositoryAtom.parse("http://repo1.maven.org/maven2/");
+        List<RepositoryAtom> repos = new ArrayList<RepositoryAtom>(2);
+        repos.add(remote);
+        repos.add(local);
+        Collections.sort(repos, RepositoryAtom.LOCAL_COMPARATOR);
+        assertSame(local, repos.get(0));
+        assertSame(remote, repos.get(1));
+        repos.clear();
+        repos.add(local);
+        repos.add(remote);
+        Collections.sort(repos, RepositoryAtom.LOCAL_COMPARATOR);
+        assertSame(local, repos.get(0));
+        assertSame(remote, repos.get(1));
     }
 
 }
