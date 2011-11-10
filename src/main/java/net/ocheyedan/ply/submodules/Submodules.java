@@ -153,6 +153,7 @@ public final class Submodules {
                 repositoryAtoms.add(repositoryAtom);
             }
         }
+        Collections.sort(repositoryAtoms, RepositoryAtom.LOCAL_COMPARATOR);
         return repositoryAtoms;
     }
 

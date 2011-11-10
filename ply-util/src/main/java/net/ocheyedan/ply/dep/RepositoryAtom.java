@@ -5,6 +5,7 @@ import net.ocheyedan.ply.FileUtil;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Comparator;
 
 /**
  * User: blangel
@@ -15,6 +16,23 @@ import java.net.URI;
  * Type is either ply or maven.  If type is null then ply will be used when necessary.
  */
 public class RepositoryAtom {
+
+    /**
+     * {@link Comparator} implementation in which local repositories are considered before remote.
+     */
+    public static final Comparator<RepositoryAtom> LOCAL_COMPARATOR = new Comparator<RepositoryAtom>() {
+        @Override public int compare(RepositoryAtom o1, RepositoryAtom o2) {
+            boolean local1 = "file".equals(o1.repositoryUri.getScheme());
+            boolean local2 = "file".equals(o2.repositoryUri.getScheme());
+            if (local1 == local2) {
+                return 0;
+            } else if (local1) {
+                return -1;
+            } else {
+                return 1;
+            }
+        }
+    };
 
     public static enum Type {
         ply, maven

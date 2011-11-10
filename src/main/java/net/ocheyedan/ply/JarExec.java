@@ -8,10 +8,7 @@ import net.ocheyedan.ply.props.PropsExt;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.jar.JarEntry;
@@ -145,6 +142,7 @@ public class JarExec {
                 }
             }
         }
+        Collections.sort(repositoryAtoms, RepositoryAtom.LOCAL_COMPARATOR);
         return new RepositoryRegistry(localRepo, repositoryAtoms, null);
     }
 

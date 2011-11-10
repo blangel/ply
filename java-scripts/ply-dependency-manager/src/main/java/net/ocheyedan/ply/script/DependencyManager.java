@@ -234,6 +234,7 @@ public class DependencyManager {
                 repositoryAtoms.add(repo);
             }
         }
+        Collections.sort(repositoryAtoms, RepositoryAtom.LOCAL_COMPARATOR);
         Map<DependencyAtom, List<DependencyAtom>> synthetic = null;
         if (dependencyAtom != null) {
             synthetic = new HashMap<DependencyAtom, List<DependencyAtom>>(1);
