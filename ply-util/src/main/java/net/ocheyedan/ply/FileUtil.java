@@ -134,7 +134,8 @@ public final class FileUtil {
         }
         StringBuilder buf = new StringBuilder();
         for (String part : parts) {
-            if ((buf.length() > 0) && (buf.charAt(buf.length() - 1) != File.separatorChar)) {
+            if ((buf.length() > 0) && (buf.charAt(buf.length() - 1) != File.separatorChar)
+                    && !part.startsWith(File.separator)) {
                 buf.append(File.separatorChar);
             }
             buf.append(part);
@@ -155,6 +156,22 @@ public final class FileUtil {
         } else {
             return new File(path);
         }
+    }
+
+    private static final String USER_HOME = System.getProperty("user.home");
+
+    /**
+     * If {@code path} starts with the {@literal ~} character, treats it like the Unix-convention of tilde being a
+     * placeholder for the user home directory and return the resolved path (that is replace the {@literal ~} character
+     * with the value of {@link System#getProperty(String)} with parameter {@literal user.home}.
+     * @param path to resolve
+     * @return the resolved {@code path} if it starts with a {@literal ~} or simply the input {@code path} if it doesn't.
+     */
+    public static String resolveUnixTilde(String path) {
+        if (!path.startsWith("~") || USER_HOME == null) {
+            return path;
+        }
+        return pathFromParts(USER_HOME, path.substring(1));
     }
 
     private FileUtil() { }

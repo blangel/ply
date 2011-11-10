@@ -1,5 +1,9 @@
 package net.ocheyedan.ply.dep;
 
+import net.ocheyedan.ply.FileUtil;
+
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 
 /**
@@ -60,7 +64,25 @@ public class RepositoryAtom {
         } else {
             type = Type.ply;
         }
-        URI repositoryUri = URI.create(atom);
+        atom = FileUtil.resolveUnixTilde(atom);
+        URI repositoryUri;
+        // first check if this is a local file reference
+        File localRef = new File(atom);
+        try {
+            localRef = localRef.getCanonicalFile();
+            if (localRef.exists()) {
+                // don't use toURI as it's not appending 'file://' but simply 'file:'
+                atom = "file://" + localRef.getCanonicalPath();
+            }
+        } catch (IOException ioe) {
+            // ignore, try URI directly
+        }
+        try {
+            repositoryUri = URI.create(atom);
+        } catch (IllegalArgumentException iae) {
+            // invalid, return null
+            return null;
+        }
         return new RepositoryAtom(repositoryUri, type);
     }
 }

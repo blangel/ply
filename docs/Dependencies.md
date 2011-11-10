@@ -19,7 +19,7 @@ Utilizing the `electric-chilly` project made in [Project Setup](ProjectSetup.md)
 
       $ ply "dep add com.google.guava:guava-collections:r03" -Pply.log.levels=info
 
-The `-Pply.log.levels=info` is unnecessary but added to give more detailed feedback about what transitive dependencies are being downloaded as well, see [Changing Log Levels](ChangingLogLevels.md) for details about log levels.  Your output should be similar to the following:
+The `-Pply.log.levels=info` property override is unnecessary but added to give more detailed feedback about what transitive dependencies are being downloaded, see [Changing Log Levels](ChangingLogLevels.md) for details about available log levels.  Your output should be similar to the following:
 
 ![dep guava](https://github.com/blangel/ply/raw/master/docs/imgs/ply-dep-guava.png "dep guava")
 
@@ -42,7 +42,20 @@ The junit dependency has now been added but only within the _test_ scope.  To vi
 
      $ ply "test:dep tree"
 
+Using Your Local Maven Repository
+---------------------------------
 
+For those who have used __maven__ and have built a large local repository, you can add your local __maven__ repository to your list of ply repositories, thus circumventing re-downloading of copious amounts of _jar_ files.  To do so issue the following command from within your project:
+
+     $ ply "dep add-repo maven:~/.m2/repository"
+
+Where `~/.m2/repository` points to your local __maven__ repository.
+
+This will add your local __maven__ repository to the list of repositories _ply_ uses for your project.  If you want to add your local __maven__ repository globally so that each _ply_ project automatically utilizes it, add the following to the `$PLY_HOME/config/repositories.properties` file:
+
+     ~/.m2/repository=maven
+
+Where, again, `~/.m2/repository` points to your local __maven__ repository.
 
 
 

@@ -2,6 +2,9 @@ package net.ocheyedan.ply.dep;
 
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
+
 import static junit.framework.Assert.*;
 
 /**
@@ -12,7 +15,7 @@ import static junit.framework.Assert.*;
 public class RepositoryAtomTest {
 
     @Test
-    public void parse() {
+    public void parse() throws IOException {
 
         RepositoryAtom atom = RepositoryAtom.parse(null);
         assertNull(atom);
@@ -32,7 +35,18 @@ public class RepositoryAtomTest {
         assertEquals(RepositoryAtom.Type.maven, atom.type);
         assertEquals("http://www.anothertest.com/test.txt", atom.getPropertyName());
 
+        File tmp = File.createTempFile("test", "parse");
+        String path = tmp.getPath();
+        atom = RepositoryAtom.parse(path);
+        assertNotNull(atom);
+        assertEquals(RepositoryAtom.Type.ply, atom.type);
+        assertEquals("file://" + path, atom.getPropertyName());
 
+        atom = RepositoryAtom.parse("~/");
+        assertNotNull(atom);
+        assertEquals(RepositoryAtom.Type.ply, atom.type);
+        assertEquals("file://" + System.getProperty("user.home"), atom.getPropertyName());
+        
     }
 
 }
