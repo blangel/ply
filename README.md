@@ -52,6 +52,5 @@ Tutorials
 * [Project setup](ply/tree/master/docs/ProjectSetup.md)
 * [Building](ply/tree/master/docs/BuildingProject.md)
 * [Add dependencies](ply/tree/master/docs/Dependencies.md)
-* [Add submodules](TODO)
-* [Running tests](TODO)
-* [Changing log levels](TODO)
+* [Running tests](ply/tree/master/docs/RunningTests.md)
+* [Changing log levels](ply/tree/master/docs/Logging.md)
