@@ -19,7 +19,7 @@ Utilizing the `electric-chilly` project made in [Project Setup](ProjectSetup.md)
 
       $ ply "dep add com.google.guava:guava-collections:r03" -Pply.log.levels=info
 
-The `-Pply.log.levels=info` property override is unnecessary but added to give more detailed feedback about what transitive dependencies are being downloaded, see [Changing Log Levels](ChangingLogLevels.md) for details about available log levels.  Your output should be similar to the following:
+The `-Pply.log.levels=info` property override is unnecessary but added to give more detailed feedback about what transitive dependencies are being downloaded, see [Changing Log Levels](Logging.md) for details about available log levels.  Your output should be similar to the following:
 
 ![dep guava](https://github.com/blangel/ply/raw/master/docs/imgs/ply-dep-guava.png "dep guava")
 

@@ -1,7 +1,7 @@
 Running Tests
 -------------
 
-Tests are configured using the `test` scope (see [Scopes](Scopes.md) for a description).  Following the __maven__ convention, test files by default are located at `src/test` relative to the project directory.  To build test files:
+Tests are configured using the `test` scope (see [Scopes](Scopes.md) for a general description).  Following the __maven__ convention, test files by default are located at `src/test` relative to the project directory.  To build test files:
 
     $ ply test:compile
 
@@ -9,11 +9,11 @@ To build, package and install the project's test files into the local repository
 
     $ ply test:install
 
-To build, package install and run the `junit` tests:
+To build, package, install and run the `junit` tests:
 
     $ ply test 
 
-Utilizing the `electric-chilly` project made in [Project Setup](ProjectSetup.md), let's create a test files:
+Utilizing the `electric-chilly` project made in [Project Setup](ProjectSetup.md), let's create a test file:
 
       $ mkdir -p src/test/java/net/ocheyedan/electricchilly/
       $ touch src/test/java/net/ocheyedan/electricchilly/FrigidWinterTest.java
