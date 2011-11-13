@@ -1,18 +1,16 @@
 Overview
 --------
-Ply is a build tool.  At its simplest it just invokes a series of scripts. The following is a valid series of scripts for ply:
+Ply is a fun build tool that works.
 
-    $ ply "echo ply says:" "echo hello"
+Build tools suck. Make is a disaster. Maven and Ant have copious XML configurations and don't allow the developer to easily override things they want.
+DSL's seem nice on the surface but end up being inflexible when one has a large complex project to work on.
+Ply fixes all of this by providing a few simple paradigms:
 
-The series is space delimited so the previous example ran two scripts: `echo ply says:` and `echo hello`.
+  * Small, simple run-time written in Java
+  * Complete configuration of everything by using code in any language (i.e.; not a DSL)
+  * Sensible defaults so you have to work very little
 
-[Scripts](ply/tree/master/docs/Scripts.md) can be extended and [aliased](ply/tree/master/docs/Aliases.md).
-Ply ships with property defaults and packaged scripts which allow most java projects to
-build with no-to-minimal configuration.  For a list of all scripts which ply ships with see [Included Scripts](ply/tree/master/docs/IncludedScripts.md).
-
-To enable a directory/project to use ply, simply run init from within the directory:
-
-    $ ply init
+Ply currently only supports Java builds, but is language agnostic. Future work is planned to make Ply build other languages.
 
 Features
 --------
@@ -45,6 +43,20 @@ Concepts
 * [Aliases](ply/tree/master/docs/Aliases.md)
 * [Scopes](ply/tree/master/docs/Scopes.md)
 * [Submodules](ply/tree/master/docs/Submodules.md)
+
+At its simplest _ply_ just invokes a series of scripts. The following is a valid series of scripts for ply:
+
+    $ ply "echo ply says:" "echo hello"
+
+The series is space delimited so the previous example ran two scripts: `echo ply says:` and `echo hello`.
+
+[Scripts](ply/tree/master/docs/Scripts.md) can be extended and [aliased](ply/tree/master/docs/Aliases.md).
+Ply ships with property defaults and packaged scripts which allow most java projects to
+build with no-to-minimal configuration.  For a list of all scripts which ply ships with see [Included Scripts](ply/tree/master/docs/IncludedScripts.md).
+
+To enable a directory/project to use ply, simply run init from within the directory:
+
+    $ ply init
 
 Tutorials
 --------
