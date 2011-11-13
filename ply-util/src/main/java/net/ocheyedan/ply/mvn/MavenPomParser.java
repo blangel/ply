@@ -191,15 +191,15 @@ public interface MavenPomParser {
                     Node child = pomChildren.item(i);
                     String nodeName = child.getNodeName();
                     if ("dependencyManagement".equals(nodeName)) {
-                        parseDependencyManagement(child, parseResult);
+                        parseDependencyManagement(child, parseResult, repositoryAtom);
                     } else if ("dependencies".equals(nodeName)) {
-                        parseDependencies(child, parseResult, false);
+                        parseDependencies(child, parseResult, repositoryAtom, false);
                     } else if ("properties".equals(nodeName)) {
                         parseProperties(child, parseResult);
                     } else if ("groupId".equals(nodeName) && !"${parent.groupId}".equals(child.getTextContent())) {
                         localGroupId = child.getTextContent();
                     } else if ("version".equals(nodeName) && !"${parent.version}".equals(child.getTextContent())) {
-                        localVersion = child.getTextContent();
+                        localVersion = Version.resolve(child.getTextContent(), getMetadataBaseUrl(pomUrlPath));
                     } else if ("parent".equals(nodeName)) { // parent
                         parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentGroupId, parentVersion);
                     }
@@ -222,18 +222,36 @@ public interface MavenPomParser {
             }
         }
 
-        private void parseDependencyManagement(Node dependencyManagementNode, ParseResult parseResult) {
+        private String getMetadataBaseUrl(String pomUrlPath) {
+            int index = pomUrlPath.lastIndexOf("/");
+            if (index == -1) {
+                return null;
+            }
+            String url = pomUrlPath.substring(0, index);
+            index = url.lastIndexOf("/");
+            if (index == -1) {
+                return null;
+            }
+            return url.substring(0, index);
+        }
+
+        private String getMetadataBaseUrl(RepositoryAtom repositoryAtom, String groupId, String artifactId) {
+            String repoUrl = repositoryAtom.getPropertyName();
+            return (repoUrl + (repoUrl.endsWith("/") ? "" : "/") + groupId.replaceAll("\\.", "/") + "/" + artifactId);
+        }
+
+        private void parseDependencyManagement(Node dependencyManagementNode, ParseResult parseResult, RepositoryAtom repositoryAtom) {
             NodeList dependencyManagementChildren = dependencyManagementNode.getChildNodes();
             for (int i = 0; i < dependencyManagementChildren.getLength(); i++) {
                 Node dependenciesNode = dependencyManagementChildren.item(i);
                 if ("dependencies".equals(dependenciesNode.getNodeName())) {
-                    parseDependencies(dependenciesNode, parseResult, true);
+                    parseDependencies(dependenciesNode, parseResult, repositoryAtom, true);
                     break;
                 }
             }
         }
 
-        private void parseDependencies(Node dependenciesNode, ParseResult parseResult, boolean resolutionOnly) {
+        private void parseDependencies(Node dependenciesNode, ParseResult parseResult, RepositoryAtom repositoryAtom, boolean resolutionOnly) {
             NodeList dependencies = dependenciesNode.getChildNodes();
             for (int i = 0; i < dependencies.getLength(); i++) {
                 if (!"dependency".equals(dependencies.item(i).getNodeName())) {
@@ -262,6 +280,7 @@ public interface MavenPomParser {
                         systemPath = true;
                     }
                 }
+                version = Version.resolve(version, getMetadataBaseUrl(repositoryAtom, groupId, artifactId));
                 // iterating child->parent, per maven, child overrides parent, only place in if not already
                 // exists (hence !override).
                 parseResult.addDep(groupId, artifactId, version, classifier, type, scope, optional, systemPath, false, resolutionOnly);
@@ -342,6 +361,8 @@ public interface MavenPomParser {
             if (endPath.startsWith("/") || endPath.startsWith("\\")) {
                 endPath = endPath.substring(1, endPath.length());
             }
+            String pomUrlPath = startPath + endPath;
+            parentVersion.set(Version.resolve(parentVersion.get(), getMetadataBaseUrl(pomUrlPath)));
             return startPath + endPath;
         }
 

@@ -145,6 +145,8 @@ public final class Version {
         if (version.length() != (index + 1)) {
             throw new UnsupportedRangeSet();
         }
+        lower = lower.trim();
+        upper = upper.trim();
         if (lower.isEmpty() && upper.isEmpty()) {
             throw new Invalid();
         }
@@ -166,7 +168,7 @@ public final class Version {
         String latest = (metadata.latest == null ? metadata.versions.get(metadata.versions.size() - 1) : metadata.latest);
         // ensure the lower bound is satisfied with this latest
         if (!lower.isEmpty() && !withinLowerBound(inclusiveStart, lower, latest)) {
-            Output.print("^warn^ Version ^b^%s^r^ falls outside of lower bound restriction: ^b^%s%s^r^.", latest,
+            Output.print("^warn^ Version ^b^%s^r^ falls outside of lower bound restriction: ^b^%s%s^r^", latest,
                     (inclusiveStart ? "[" :"("), lower);
             return null;
         }
@@ -184,7 +186,7 @@ public final class Version {
                         latest = metadata.versions.get(i);
                         if (MAVEN_VERSION_COMPARATOR.compare(upper, latest) > 0) {
                             if (!lower.isEmpty() && !withinLowerBound(inclusiveStart, lower, latest)) {
-                                Output.print("^warn^ All available versions fall outside of lower bound restriction: ^b^%s%s^r^.",
+                                Output.print("^warn^ All available versions fall outside of lower bound restriction: ^b^%s%s^r^",
                                     (inclusiveStart ? "[" :"("), lower);
                                 return null; // lower bound violated
                             }
@@ -192,8 +194,8 @@ public final class Version {
                         }
                     }
                 }
-                Output.print("^warn^ All available versions fall outside of upper bound restriction ^b^%s%s^r^.",
-                        (inclusiveEnd ? "[" : "("), upper);
+                Output.print("^warn^ All available versions fall outside of upper bound restriction: ^b^%s%s^r^",
+                        upper, (inclusiveEnd ? "[" : "("));
                 return null;
             }
             return latest;

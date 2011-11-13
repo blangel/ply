@@ -47,7 +47,7 @@ public class VersionTest {
         version = "3.0.5.RELEASE";
         assertEquals(version, Version.resolve(version, null));
 
-        version = "[,1.0]";
+        version = "[, 1.0 ]";
         assertEquals("1.0", Version.resolve(version, null));
         version = "(,1.0]";
         assertEquals("1.0", Version.resolve(version, null));
@@ -71,7 +71,7 @@ public class VersionTest {
         assertEquals("1.4.3-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
         version = "[1.4.3-rc1,1.4.3)";
         assertEquals("1.4.3-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
-        version = "(1.4.3-rc1,1.4.3)";
+        version = "( 1.4.3-rc1 ,1.4.3)";
         assertNull(Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
         version = "[,1.4.4-rc1)";
         assertEquals("1.4.3", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));

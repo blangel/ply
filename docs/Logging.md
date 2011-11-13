@@ -21,4 +21,4 @@ Log levels can also be changed just for a single execution using the ad-hoc prop
 
      $ ply test -Pply.log.levels=warn,info
 
-Now the next execution will revert to the existing defaults of just `error` and `warn`.
+Since we used the ad-hoc directive, the next execution will revert to the existing log levels of just `error` and `warn`.
