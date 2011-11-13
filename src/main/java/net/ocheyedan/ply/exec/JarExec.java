@@ -1,5 +1,6 @@
-package net.ocheyedan.ply;
+package net.ocheyedan.ply.exec;
 
+import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.props.Prop;
@@ -20,7 +21,7 @@ import java.util.jar.Manifest;
  * Date: 10/2/11
  * Time: 7:29 PM
  */
-public class JarExec {
+public final class JarExec {
 
     /**
      * Translates {@code execution#scriptArgs[0]} into an executable statement for a JVM invoker.
@@ -30,7 +31,7 @@ public class JarExec {
      * @param projectConfigDir the ply configuration directory from which to resolve properties
      * @return the translated execution
      */
-    public static Exec.Execution createJarExecutable(Exec.Execution execution, File projectConfigDir) {
+    public static Execution createJarExecutable(Execution execution, File projectConfigDir) {
         String script = execution.script;
         String classpath = null;
         AtomicReference<String> mainClass = new AtomicReference<String>();
@@ -171,5 +172,7 @@ public class JarExec {
         }
         return options.split(" ");
     }
+
+    private JarExec() { }
 
 }
