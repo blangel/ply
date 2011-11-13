@@ -7,7 +7,7 @@ import org.junit.runner.Result;
 import org.junit.runner.manipulation.Filter;
 import org.junit.runner.notification.Failure;
 
-import java.util.Set;
+import java.util.*;
 
 /**
  * User: blangel
@@ -17,6 +17,12 @@ import java.util.Set;
  * Executes {@literal junit}-4 unit tests.
  */
 public class Junit4Invoker implements Runnable {
+
+    private static final Comparator<Class> CLASS_NAME_COMPARATOR = new Comparator<Class>() {
+        @Override public int compare(Class o1, Class o2) {
+            return o1.getName().compareTo(o2.getName());
+        }
+    };
 
     private final Set<Class> classes;
 
@@ -53,13 +59,15 @@ public class Junit4Invoker implements Runnable {
         // TODO - allow skipping of report generation or always skip and allow override
         jUnitCore.addListener(new MavenReporter());
 
-        Request request = Request.classes(classes.toArray(new Class[classes.size()]));
+        List<Class> sorted = new ArrayList<Class>(classes);
+        Collections.sort(sorted, CLASS_NAME_COMPARATOR);
+        Request request = Request.classes(sorted.toArray(new Class[sorted.size()]));
         if (filter != null) {
             request = request.filterWith(filter);
         }
         Result result = jUnitCore.run(request);
 
-        int syntheticCount = 0;
+        int syntheticCount;
         if ((syntheticCount = countSynthetic(result)) == result.getRunCount()) {
             if (originalMatchers != null) {
                 PrivilegedOutput.print("^warn^ No tests matched ^b^%s^r^", originalMatchers);

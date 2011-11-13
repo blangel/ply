@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.input.Resources;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
@@ -112,8 +113,9 @@ public class JunitTester {
         // invoke the Junit4Runner in a thread to force usage of the {@code loader} which has reference to the
         // resolved dependencies
         try {
-            Class junit4RunnerClass = loader.loadClass("net.ocheyedan.ply.script.Junit4Invoker");
-            Runnable instance = (Runnable) junit4RunnerClass.getConstructor(Set.class, String[].class,  String.class)
+            Resources.setResourcesLoader(loader);
+            Class junit4Invoker = loader.loadClass("net.ocheyedan.ply.script.Junit4Invoker");
+            Runnable instance = (Runnable) junit4Invoker.getConstructor(Set.class, String[].class,  String.class)
                                                  .newInstance(classes, matchers, unsplitMatchers);
             Thread runner = new Thread(instance);
             runner.setContextClassLoader(loader);

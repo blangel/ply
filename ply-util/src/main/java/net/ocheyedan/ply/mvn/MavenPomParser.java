@@ -11,6 +11,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -171,41 +172,53 @@ public interface MavenPomParser {
         private void parse(String pomUrlPath, RepositoryAtom repositoryAtom, ParseResult parseResult)
                 throws ParserConfigurationException, IOException, SAXException {
             URL pomUrl = new URL(pomUrlPath);
-            Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(pomUrl.openStream());
-            NodeList pomChildren = document.getDocumentElement().getChildNodes();
-            // store the parent pom url so that recursive processing is down after the entire current pom is analyzed
-            // so that any local property filtering (i.e., version) can be done.
-            String parentPomUrlPath = null;
-            // store the parent version in case the version of the project is not explicitly specified, will use
-            // parent's per maven convention.
-            AtomicReference<String> parentVersion = new AtomicReference<String>("");
-            String localVersion = null;
-            // similar to the parent version, need to store the parent's groupId
-            AtomicReference<String> parentGroupId = new AtomicReference<String>("");
-            String localGroupId = null;
-            for (int i = 0; i < pomChildren.getLength(); i++) {
-                Node child = pomChildren.item(i);
-                String nodeName = child.getNodeName();
-                if ("dependencyManagement".equals(nodeName)) {
-                    parseDependencyManagement(child, parseResult);
-                } else if ("dependencies".equals(nodeName)) {
-                    parseDependencies(child, parseResult, false);
-                } else if ("properties".equals(nodeName)) {
-                    parseProperties(child, parseResult);
-                } else if ("groupId".equals(nodeName) && !"${parent.groupId}".equals(child.getTextContent())) {
-                    localGroupId = child.getTextContent();
-                } else if ("version".equals(nodeName) && !"${parent.version}".equals(child.getTextContent())) {
-                    localVersion = child.getTextContent();
-                } else if ("parent".equals(nodeName)) { // parent
-                    parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentGroupId, parentVersion);
+            InputStream stream = null;
+            try {
+                stream = pomUrl.openStream();
+                Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stream);
+                NodeList pomChildren = document.getDocumentElement().getChildNodes();
+                // store the parent pom url so that recursive processing is down after the entire current pom is analyzed
+                // so that any local property filtering (i.e., version) can be done.
+                String parentPomUrlPath = null;
+                // store the parent version in case the version of the project is not explicitly specified, will use
+                // parent's per maven convention.
+                AtomicReference<String> parentVersion = new AtomicReference<String>("");
+                String localVersion = null;
+                // similar to the parent version, need to store the parent's groupId
+                AtomicReference<String> parentGroupId = new AtomicReference<String>("");
+                String localGroupId = null;
+                for (int i = 0; i < pomChildren.getLength(); i++) {
+                    Node child = pomChildren.item(i);
+                    String nodeName = child.getNodeName();
+                    if ("dependencyManagement".equals(nodeName)) {
+                        parseDependencyManagement(child, parseResult);
+                    } else if ("dependencies".equals(nodeName)) {
+                        parseDependencies(child, parseResult, false);
+                    } else if ("properties".equals(nodeName)) {
+                        parseProperties(child, parseResult);
+                    } else if ("groupId".equals(nodeName) && !"${parent.groupId}".equals(child.getTextContent())) {
+                        localGroupId = child.getTextContent();
+                    } else if ("version".equals(nodeName) && !"${parent.version}".equals(child.getTextContent())) {
+                        localVersion = child.getTextContent();
+                    } else if ("parent".equals(nodeName)) { // parent
+                        parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentGroupId, parentVersion);
+                    }
                 }
-            }
-            parseResult.mavenProperties.put("project.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));
-            parseResult.mavenProperties.put("project.version", (localVersion != null ? localVersion : parentVersion.get()));
-            if (parentPomUrlPath != null) {
-                // filter project.* so that they are not overridden by the recursion on parent
-                filterLocalProjectProperties(parseResult);
-                parse(parentPomUrlPath, repositoryAtom, parseResult);
+                parseResult.mavenProperties.put("project.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));
+                parseResult.mavenProperties.put("project.version", (localVersion != null ? localVersion : parentVersion.get()));
+                if (parentPomUrlPath != null) {
+                    // filter project.* so that they are not overridden by the recursion on parent
+                    filterLocalProjectProperties(parseResult);
+                    parse(parentPomUrlPath, repositoryAtom, parseResult);
+                }
+            } finally {
+                if (stream != null) {
+                    try {
+                        stream.close();
+                    } catch (IOException ioe) {
+                        throw new AssertionError(ioe);
+                    }
+                }
             }
         }
 
