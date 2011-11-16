@@ -221,9 +221,9 @@ public class CompilerScript {
             args.add("-Xlint:none");
         } else {
             if (!isEmpty(Props.getValue("compiler", "java.warningsLevel"))) {
-                String[] tokens = Props.getValue("compiler", "java.warningsLevel").split(",");
+                String[] tokens = Props.getValue("compiler", "java.warningsLevel").split(" ");
                 for (String token : tokens) {
-                    args.add("-Xlint:" + token);
+                    args.add("-Xlint:" + token.trim());
                 }
             } else {
                 args.add("-Xlint");
