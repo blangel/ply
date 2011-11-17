@@ -79,21 +79,6 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
         return explodedWarDir;
     }
 
-    /**
-     * @return the contents of ${project.build.dir}/${resolved-deps.properties}
-     */
-    protected Properties getResolvedProperties() {
-        String buildDir = Props.getValue("project", "build.dir");
-        // load the resolved-deps.properties file from the build directory.
-        String scope = Props.getValue("ply", "scope");
-        String suffix = (scope.isEmpty() ? "" : scope + ".");
-        File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
-        if (!dependenciesFile.exists()) {
-            return new Properties();
-        }
-        return PropertiesFileUtil.load(dependenciesFile.getPath());
-    }
-
     protected void copyDependencies(Properties resolvedProperties, File copyToDir) {
         copyToDir.mkdirs();
         for (String resolvedKey : resolvedProperties.stringPropertyNames()) {

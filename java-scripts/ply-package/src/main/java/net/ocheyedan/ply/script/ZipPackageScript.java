@@ -2,10 +2,17 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Properties;
+import java.util.Set;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 /**
  * User: blangel
@@ -20,6 +27,7 @@ import java.util.Arrays;
  * name=string [[default=${project[.scope].artifact.name}]] (the name of the package file to create [excluding the packaging; i.e., '.zip'])
  * verbose=boolean [[default=false]] (print verbose output).
  * compress=boolean [[default=true]] (if true, the package file will be compressed).
+ * includeDeps=boolean [[default=false]] (if true, the dependencies will be included in the archive).
  */
 public class ZipPackageScript implements PackagingScript {
 
@@ -43,6 +51,11 @@ public class ZipPackageScript implements PackagingScript {
             System.out.println(processStdoutLine); // don't use Output, just print directly and let ply itself handle
         }
         int result = process.waitFor();
+        if (result != 0) {
+            System.exit(result);
+        } else {
+            result = postprocess(result);
+        }
         System.exit(result);
     }
 
@@ -58,6 +71,53 @@ public class ZipPackageScript implements PackagingScript {
      * packaging the files.
      */
     protected void preprocess() { }
+
+    /**
+     * Allows subclasses a hook to process after the package is created (provided the creation succeeded).
+     * @param exitCode exit code of the package creation
+     * @return an exit code (which should be {@code exitCode} unless an exception occurs).
+     */
+    protected int postprocess(int exitCode) {
+        if (getBoolean(Props.getValue("package", "includeDeps"))) {
+            Properties deps = getResolvedProperties();
+            if (deps.isEmpty()) {
+                return exitCode;
+            }
+            String packaging = getType();
+            int numberDeps = deps.size();
+            Output.print("^info^ Including ^b^%d^r^ dependenc%s in ^b^%s^r^ package.", numberDeps,
+                         (numberDeps == 1 ? "y" : "ies"), packaging);
+            String name = getPackageName(packaging);
+            String nameWithDeps = getPackageName(packaging, "with-deps");
+            File nameWithDepsFile = new File(nameWithDeps);
+            ZipOutputStream output = null;
+            try {
+                nameWithDepsFile.createNewFile();
+                Set<String> existing = new HashSet<String>();
+                output = new ZipOutputStream(new FileOutputStream(nameWithDepsFile));
+                ZipFiles.append(new ZipInputStream(new FileInputStream(name)), output, existing);
+                for (String dep : deps.stringPropertyNames()) {
+                    String depFile = deps.getProperty(dep);
+                    ZipFiles.append(new ZipInputStream(new FileInputStream(depFile)), output, existing);
+                }
+                output.close();
+            } catch (FileNotFoundException fnfe) {
+                throw new AssertionError(fnfe);
+            } catch (IOException ioe) {
+                Output.print(ioe);
+                return 1;
+            } finally {
+                if (output != null) {
+                    try {
+                        output.close();
+                    } catch (IOException ioe) {
+                        throw new AssertionError(ioe);
+                    }
+                }
+            }
+        }
+        return exitCode;
+    }
 
     /**
      * Allows subclasses a hook to augment the included files/directories within the package.
@@ -103,6 +163,21 @@ public class ZipPackageScript implements PackagingScript {
         if (!getBoolean(Props.getValue("package", "compress"))) {
             options += "0";
         }
+        String name = getPackageName(packaging);
+
+        String[] args = new String[includes.length + 3];
+        args[0] = jarScript;
+        args[1] = options;
+        args[2] = name;
+        System.arraycopy(includes, 0, args, 3, includes.length);
+        return args;
+    }
+
+    protected String getPackageName(String packaging) {
+        return getPackageName(packaging, null);
+    }
+
+    protected String getPackageName(String packaging, String suffix) {
         String name = Props.getValue("package", "name");
         if (isEmpty(name)) {
             Output.print("^warn^ Property 'package.name' was empty, defaulting to value of ${project.artifact.name}.");
@@ -117,14 +192,29 @@ public class ZipPackageScript implements PackagingScript {
             }
             name = name + "." + packaging;
         }
-        name = getPackageFilePath(name);
+        if ((suffix != null) && !suffix.isEmpty()) {
+            if (name.lastIndexOf(".") != -1) {
+                name = name.substring(0, name.lastIndexOf(".")) + "-" + suffix + name.substring(name.lastIndexOf("."));
+            } else {
+                name = name + "-" + suffix;
+            }
+        }
+        return getPackageFilePath(name);
+    }
 
-        String[] args = new String[includes.length + 3];
-        args[0] = jarScript;
-        args[1] = options;
-        args[2] = name;
-        System.arraycopy(includes, 0, args, 3, includes.length);
-        return args;
+    /**
+     * @return the contents of ${project.build.dir}/${resolved-deps.properties}
+     */
+    protected Properties getResolvedProperties() {
+        String buildDir = Props.getValue("project", "build.dir");
+        // load the resolved-deps.properties file from the build directory.
+        String scope = Props.getValue("ply", "scope");
+        String suffix = (scope.isEmpty() ? "" : scope + ".");
+        File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
+        if (!dependenciesFile.exists()) {
+            return new Properties();
+        }
+        return PropertiesFileUtil.load(dependenciesFile.getPath());
     }
 
     static String getPackageFilePath(String name) {
