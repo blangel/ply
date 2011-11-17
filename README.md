@@ -25,7 +25,7 @@ Features
 Download/Install
 ----------------
 
-[ply.tar](ply/raw/master/ply.tar)
+[ply.tar](ply/raw/master/dist/ply.tar)
 
 Untar the `ply.tar` package to a directory of your choosing (say `/opt/ply`) and then make sure the following properties are set as environmental variables:
 
@@ -34,6 +34,12 @@ Untar the `ply.tar` package to a directory of your choosing (say `/opt/ply`) and
 * `PLY_HOME` -> set to the directory of where ever you untar-ed ply (i.e., `/opt/ply`).
 
 Finally add `${PLY_HOME}/bin` to your `$PATH`
+
+__Bash Tab Completion__ (i.e., readline support)
+
+Within the distribution is a file [ply_completion.bash](ply/raw/master/dist/ply/ply_completion.bash) which provides Bash tab completion.  To enable:
+
+       $ sudo cp ply_completion.bash /etc/bash_completion.d/
 
 Concepts
 --------
