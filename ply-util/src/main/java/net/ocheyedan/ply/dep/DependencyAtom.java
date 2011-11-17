@@ -7,8 +7,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * Date: 10/2/11
  * Time: 1:31 PM
  *
- * Represents a dependency atom made up of namespace:name:version[:artifactName]
+ * Represents a dependency atom made up of namespace:name:version[:artifactName][:transient]
  * If {@literal artifactName} is null then (name-version.jar) will be used when necessary.
+ * A transient dependency is one which is not packaged and whose dependencies are not themselves
+ * resolved for a project which depends upon the transient dependency,
  *
  * To force a different packaging type, explicitly set {@literal artifactName}.
  */
@@ -24,15 +26,26 @@ public class DependencyAtom {
 
     public final String artifactName;
 
-    public DependencyAtom(String namespace, String name, String version, String artifactName) {
+    public final boolean transientDep;
+
+    public DependencyAtom(String namespace, String name, String version, String artifactName, boolean transientDep) {
         this.namespace = namespace;
         this.name = name;
         this.version = version;
         this.artifactName = artifactName;
+        this.transientDep = transientDep;
+    }
+
+    public DependencyAtom(String namespace, String name, String version, String artifactName) {
+        this(namespace, name, version, artifactName, false);
+    }
+
+    public DependencyAtom(String namespace, String name, String version, boolean transientDep) {
+        this(namespace, name, version, null, transientDep);
     }
 
     public DependencyAtom(String namespace, String name, String version) {
-        this(namespace, name, version, null);
+        this(namespace, name, version, null, false);
     }
 
     public String getPropertyName() {
@@ -49,6 +62,10 @@ public class DependencyAtom {
 
     public String getArtifactName() {
         return (artifactName == null ? name + "-" + version + "." + DEFAULT_PACKAGING : artifactName);
+    }
+
+    public DependencyAtom with(String packaging) {
+        return new DependencyAtom(namespace, name, version, name + "-" + version + "." + packaging);
     }
 
     /**
@@ -127,8 +144,11 @@ public class DependencyAtom {
             }
             return null;
         }
-        return (parsed.length == 3 ? new DependencyAtom(parsed[0], parsed[1], parsed[2]) :
-                new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3]));
+        return (parsed.length == 3
+                ? new DependencyAtom(parsed[0], parsed[1], parsed[2])
+                : parsed.length == 4
+                  ? new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3])
+                  : new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3], "transient".equals(parsed[4])));
     }
 
 }

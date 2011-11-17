@@ -31,6 +31,36 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class Deps {
 
     /**
+     * Encapsulates a {@link DependencyAtom} object's paths to the local {@link RepositoryAtom}.
+     */
+    static class LocalPaths {
+
+        final String localPath;
+        final URL localUrl;
+        final String localDirUrlPath;
+        final String localDirPath;
+
+        LocalPaths(String localPath, URL localUrl, String localDirUrlPath, String localDirPath) {
+            this.localPath = localPath;
+            this.localUrl = localUrl;
+            this.localDirUrlPath = localDirUrlPath;
+            this.localDirPath = localDirPath;
+        }
+
+        static LocalPaths get(DependencyAtom dependencyAtom, RepositoryAtom localRepo) {
+            String localPath = getDependencyPathForRepo(dependencyAtom, localRepo);
+            URL localUrl = getUrl(localPath);
+            if (localUrl == null) {
+                throw new AssertionError(String.format("The local path is not valid [ %s ]", localPath));
+            }
+            String localDirUrlPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
+            String localDirPath = (localDirUrlPath.startsWith("file://") ? localDirUrlPath.substring(7) : localDirUrlPath);
+            return new LocalPaths(localPath, localUrl, localDirUrlPath, localDirPath);
+        }
+
+    }
+
+    /**
      * @param dependencyAtoms the direct dependencies from which to create a dependency graph
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @return a DAG {@link Graph<Dep>} implementation representing the resolved {@code dependencyAtoms} and its tree of
@@ -39,7 +69,7 @@ public final class Deps {
     public static DirectedAcyclicGraph<Dep> getDependencyGraph(List<DependencyAtom> dependencyAtoms,
                                                                RepositoryRegistry repositoryRegistry) {
         DirectedAcyclicGraph<Dep> dependencyDAG = new DirectedAcyclicGraph<Dep>();
-        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG);
+        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG, false);
         return dependencyDAG;
     }
 
@@ -48,18 +78,27 @@ public final class Deps {
      * to {@code graph}.  If {@code parentVertex} is not null, an edge will be added from {@code parentVertex} and
      * each resolved property.  If adding such an edge violates the acyclic nature of {@code graph} an error message
      * will be printed and this program will halt.
+     * The {@code pomSufficient} exists as maven appears to be lax on transitive dependency's transitive dependency.
+     * For instance, depending upon log4j:log4j:1.2.15 will fail b/c it depends upon javax.jms:jms:1.1 for which
+     * there is no artifact in maven-central.  But if you depend upon org.apache.zookeeper:zookeeper:3.3.2
+     * which depends upon log4j:log4j:1.2.15, resolution completes.  It will download the pom of
+     * javax.jms:jms:1.1 but not require the packaged artifact (which is defaulted to jar) be present.  The
+     * pom must be present.
      * @param parentVertex the parent of {@code dependencyAtoms}
      * @param dependencyAtoms the dependencies which to resolve and place into {@code graph}
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @param graph to fill with the resolved {@link Dep} objects of {@code dependencyAtoms}.
+     * @param pomSufficient if true, then only the pom from a maven repository is necessary to have successfully
+     *                      resolved the {@code dependencyAtom}.
      */
     private static void fillDependencyGraph(Vertex<Dep> parentVertex, List<DependencyAtom> dependencyAtoms,
-                                            RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph) {
+                                            RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph,
+                                            boolean pomSufficient) {
         if (repositoryRegistry.isEmpty()) {
             throw new IllegalArgumentException("Need at least one repository!");
         }
         for (DependencyAtom dependencyAtom : dependencyAtoms) {
-            Dep resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry);
+            Dep resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, pomSufficient);
             if (resolvedDep == null) {
                 System.exit(1);
             }
@@ -72,7 +111,7 @@ public final class Deps {
                     System.exit(1);
                 }
             }
-            fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph);
+            fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, true);
         }
     }
 
@@ -81,35 +120,76 @@ public final class Deps {
      * over {@code repositoryAtoms} and if {@code dependencyAtom} is found downloading or copying it into the first
      * item within {@code repositoryAtoms} which must be the local repository (downloading/copying only if it is not
      * already present in the first item in {@code repositoryAtoms}).
+     * The {@code pomSufficient} exists as maven appears to be lax on transitive dependency's transitive dependency.
+     * For instance, depending upon log4j:log4j:1.2.15 will fail b/c it depends upon javax.jms:jms:1.1 for which
+     * there is no artifact in maven-central.  But if you depend upon org.apache.zookeeper:zookeeper:3.3.2
+     * which depends upon log4j:log4j:1.2.15, resolution completes.  It will download the pom of
+     * javax.jms:jms:1.1 but not require the packaged artifact (which is defaulted to jar) be present.  The
+     * pom must be present.
      * @param dependencyAtom to resolve
      * @param repositoryRegistry repositories to use when resolving {@code dependencyAtom}
+     * @param pomSufficient if true, then only the pom from a maven repository is necessary to have successfully
+     *                      resolved the {@code dependencyAtom}.
      * @return a {@link Dep} representation of {@code dependencyAtom} or null if {@code dependencyAtom} could
      *         not be resolved.
      */
-    private static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry) {
+    private static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry,
+                                         boolean pomSufficient) {
         // determine the local-repository directory for dependencyAtom; as it is needed regardless of where the dependency
         // if found.
         RepositoryAtom localRepo = repositoryRegistry.localRepository;
-        String localPath = getDependencyPathForRepo(dependencyAtom, localRepo);
-        URL localUrl = getUrl(localPath);
-        if (localUrl == null) {
-            throw new AssertionError(String.format("The local path is not valid [ %s ]", localPath));
-        }
-        String localDirUrlPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
-        String localDirPath = (localDirUrlPath.startsWith("file://") ? localDirUrlPath.substring(7) : localDirUrlPath);
+        LocalPaths localPaths = LocalPaths.get(dependencyAtom, localRepo);
 
         // first consult the synthetic repository.
         if (repositoryRegistry.syntheticRepository != null && repositoryRegistry.syntheticRepository.containsKey(dependencyAtom)) {
-            return new Dep(dependencyAtom, repositoryRegistry.syntheticRepository.get(dependencyAtom), localDirPath);
+            return new Dep(dependencyAtom, repositoryRegistry.syntheticRepository.get(dependencyAtom), localPaths.localDirPath);
+        }
+        // not present within the synthetic, check the local and other (likely remote) repositories
+        Dep resolved = resolveDependency(dependencyAtom, repositoryRegistry, localRepo, pomSufficient);
+        if (resolved != null) {
+            return resolved;
         }
 
-        // not present within the synthetic, check the local
-        File localDepFile = new File(localUrl.getFile());
+        Output.print("^error^ Dependency ^b^%s^r^ not found in any repository; ensure repositories are accessible.", dependencyAtom.toString());
+        Output.print("^error^ Project's local repository is ^b^%s^r^.", localRepo.toString());
+        StringBuilder remoteRepoString = new StringBuilder();
+        for (RepositoryAtom remote : repositoryRegistry.remoteRepositories) {
+            if (remoteRepoString.length() != 0) {
+                remoteRepoString.append(", ");
+            }
+            remoteRepoString.append(remote.toString());
+        }
+        int remoteRepoSize = repositoryRegistry.remoteRepositories.size();
+        Output.print("^error^ Project has ^b^%d^r^ other repositor%s%s", remoteRepoSize, (remoteRepoSize != 1 ? "ies" : "y"),
+                     (remoteRepoSize > 0 ? String.format(" [ %s ]", remoteRepoString.toString()) : ""));
+        return null;
+    }
+
+    private static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry,
+                                         RepositoryAtom localRepo, boolean pomSufficient) {
+        LocalPaths localPaths = LocalPaths.get(dependencyAtom, localRepo);
+        // also create pom-only objects
+        DependencyAtom pomDependencyAtom = dependencyAtom.with("pom");
+        LocalPaths localPomPaths = LocalPaths.get(pomDependencyAtom, localRepo);
+        // check the local repository
+        File localDepFile = new File(localPaths.localUrl.getFile());
+        File localPomDepFile = new File(localPomPaths.localUrl.getFile());
         if (localDepFile.exists()) {
-            return resolveDependency(dependencyAtom, localRepo, localDirUrlPath, localDirPath);
+            return resolveDependency(dependencyAtom, localRepo, localPaths.localDirUrlPath, localPaths.localDirPath);
+        } else if (pomSufficient && localPomDepFile.exists()) {
+            return resolveDependency(pomDependencyAtom, localRepo, localPomPaths.localDirUrlPath, localPomPaths.localDirPath);
         }
-
         // not in the local repository, check each other repository.
+        Dep resolved = resolveDependencyFromRemoteRepos(dependencyAtom, repositoryRegistry, localPaths, localDepFile);
+        if ((resolved == null) && pomSufficient) {
+            resolved = resolveDependencyFromRemoteRepos(pomDependencyAtom, repositoryRegistry, localPomPaths, localPomDepFile);
+        }
+        return resolved;
+    }
+
+    private static Dep resolveDependencyFromRemoteRepos(DependencyAtom dependencyAtom,
+                                                        RepositoryRegistry repositoryRegistry, LocalPaths localPaths,
+                                                        File localDepFile) {
         List<RepositoryAtom> nonLocalRepos = repositoryRegistry.remoteRepositories;
         for (RepositoryAtom remoteRepo : nonLocalRepos) {
             String remotePathDir = getDependencyDirectoryPathForRepo(dependencyAtom, remoteRepo);
@@ -132,21 +212,9 @@ public final class Deps {
             }
             Output.print("^info^ Downloading %s from %s...", dependencyAtom.toString(), remoteRepo.toString());
             if (FileUtil.copy(stream, localDepFile)) {
-                return resolveDependency(dependencyAtom, remoteRepo, remotePathDir, localDirPath);
+                return resolveDependency(dependencyAtom, remoteRepo, remotePathDir, localPaths.localDirPath);
             }
         }
-        Output.print("^error^ Dependency ^b^%s^r^ not found in any repository; ensure repositories are accessible.", dependencyAtom.toString());
-        Output.print("^error^ Project's local repository is ^b^%s^r^.", localRepo.toString());
-        StringBuilder remoteRepoString = new StringBuilder();
-        for (RepositoryAtom remote : repositoryRegistry.remoteRepositories) {
-            if (remoteRepoString.length() != 0) {
-                remoteRepoString.append(", ");
-            }
-            remoteRepoString.append(remote.toString());
-        }
-        int remoteRepoSize = repositoryRegistry.remoteRepositories.size();
-        Output.print("^error^ Project has ^b^%d^r^ remote repositor%s%s", remoteRepoSize, (remoteRepoSize != 1 ? "ies" : "y"),
-                     (remoteRepoSize > 0 ? String.format(" [ %s ]", remoteRepoString.toString()) : ""));
         return null;
     }
 
