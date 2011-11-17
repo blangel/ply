@@ -1,5 +1,6 @@
 package net.ocheyedan.ply.script;
 
+import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.script.print.PrivilegedOutput;
 import net.ocheyedan.ply.script.print.PrivilegedPrintStream;
 import org.junit.runner.Description;
@@ -21,6 +22,10 @@ public class Junit4RunListener extends RunListener {
     private final Map<String, Integer> methodNameOffsets = new HashMap<String, Integer>();
 
     private final AllFilterCollectPad padding;
+
+    private final String successChar = Output.isUnicode() ? "\u2713" : "";
+    private final String failureChar = Output.isUnicode() ? "\u2620" : "";
+    private final String ignoredChar = Output.isUnicode() ? "\u26A0" : "";
 
     public Junit4RunListener() {
         this.padding = null;
@@ -56,9 +61,9 @@ public class Junit4RunListener extends RunListener {
         if (failures.containsKey(description)) {
             Failure failure = failures.get(description);
             String message = createEasilyIdentifiableDiffMessage(failure, failure.getMessage());
-            System.out.println(String.format("%s^no_prefix^%s^red^^i^ \u2620 FAILURE \u2620 ^r^ %s", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description), message));
+            System.out.println(String.format("%s^no_prefix^%s^red^^i^ %s FAILURE %s ^r^ %s", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description), failureChar, failureChar, message));
         } else {
-            System.out.println(String.format("%s^no_prefix^%s^green^^i^ \u2713 SUCCESS \u2713 ^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description)));
+            System.out.println(String.format("%s^no_prefix^%s^green^^i^ %s SUCCESS %s ^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description), successChar, successChar));
         }
     }
 
@@ -75,7 +80,7 @@ public class Junit4RunListener extends RunListener {
         }
         handleNewDescription(description);
         System.out.println(String.format("%s^no_line^\t^b^%s^r^ ", PrivilegedPrintStream.PRIVILEGED_PREFIX, description.getMethodName()));
-        System.out.println(String.format("%s^no_prefix^%s^yellow^^i^ \u26A0 IGNORED \u26A0 ^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description)));
+        System.out.println(String.format("%s^no_prefix^%s^yellow^^i^ %s IGNORED %s ^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description), ignoredChar, ignoredChar));
     }
 
     public static boolean isSyntheticDescription(Description description) {

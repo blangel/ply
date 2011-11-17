@@ -111,7 +111,7 @@ public class DependencyManager {
                 int size = dependencies.size();
                 Output.print("Project ^b^%s^r^ has ^b^%d^r^ direct %sdependenc%s: ", Props.getValue("project", "name"), size,
                         scope.forPrint, (size == 1 ? "y" : "ies"));
-                printDependencyGraph(depGraph.getRootVertices(), "\u26AC ", new HashSet<Vertex<Dep>>());
+                printDependencyGraph(depGraph.getRootVertices(), String.format("%s ", Output.isUnicode() ? "\u26AC" : "+"), new HashSet<Vertex<Dep>>());
             }
         } else if ((args.length > 1) && "add-repo".equals(args[0])) {
             addRepository(args[1]);
@@ -328,7 +328,7 @@ public class DependencyManager {
             String version = vertex.getValue().dependencyAtom.getPropertyValue();
             Output.print("%s^b^%s:%s^r^%s", indent, name, version, (enc ? " (already printed)" : ""));
             if (!enc) {
-                printDependencyGraph(vertex.getChildren(), String.format("  \u2937 %s", indent), encountered);
+                printDependencyGraph(vertex.getChildren(), String.format("  %s %s", Output.isUnicode() ? "\u2937" : "\\", indent), encountered);
             }
         }
     }

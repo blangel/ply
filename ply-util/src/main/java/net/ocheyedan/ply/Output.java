@@ -38,6 +38,7 @@ public final class Output {
     private static final AtomicReference<Boolean> warnLevel = new AtomicReference<Boolean>(true);
     private static final AtomicReference<Boolean> infoLevel = new AtomicReference<Boolean>(true);
     private static final AtomicReference<Boolean> dbugLevel = new AtomicReference<Boolean>(true);
+    private static final boolean unicodeSupport;
 
     /**
      * A mapping of easily identifiable words to a {@link TermCode} object for colored output.
@@ -49,7 +50,7 @@ public final class Output {
         // TODO - what are the range of terminal values and what looks best for each?
         String terminalBold = ("xterm".equals(terminal) ? "1" : "0");
         Prop colorProp = Props.get("color");
-        boolean colorDisabled = ((colorProp != null) && "false".equals(colorProp.value));
+        boolean colorDisabled = ((colorProp != null) && "false".equalsIgnoreCase(colorProp.value));
         boolean useColor = withinTerminal && !colorDisabled;
         // first place color values (in case call to Config tries to print, at least have something in
         // TERM_CODES with which to strip messages.
@@ -73,7 +74,8 @@ public final class Output {
         if (Props.get("log.levels") != null) {
             init(Props.getValue("log.levels"));
         }
-
+        Prop unicodeProp = Props.get("unicode");
+        unicodeSupport = ((unicodeProp == null) || "true".equalsIgnoreCase(unicodeProp.value));
     }
 
     static void init(String logLevels) {
@@ -121,6 +123,13 @@ public final class Output {
 
     public static void print(Throwable t) {
         print("^error^ Message: ^i^^red^%s^r^", (t == null ? "" : t.getMessage()));
+    }
+
+    /**
+     * @return true if unicode is supported as output
+     */
+    public static boolean isUnicode() {
+        return unicodeSupport;
     }
 
     private static String resolve(String message, Object[] args) {
