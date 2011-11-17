@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
@@ -79,7 +80,7 @@ public class ZipPackageScript implements PackagingScript {
      */
     protected int postprocess(int exitCode) {
         if (getBoolean(Props.getValue("package", "includeDeps"))) {
-            Properties deps = getResolvedProperties();
+            Properties deps = Deps.getResolvedProperties();
             if (deps.isEmpty()) {
                 return exitCode;
             }
@@ -200,21 +201,6 @@ public class ZipPackageScript implements PackagingScript {
             }
         }
         return getPackageFilePath(name);
-    }
-
-    /**
-     * @return the contents of ${project.build.dir}/${resolved-deps.properties}
-     */
-    protected Properties getResolvedProperties() {
-        String buildDir = Props.getValue("project", "build.dir");
-        // load the resolved-deps.properties file from the build directory.
-        String scope = Props.getValue("ply", "scope");
-        String suffix = (scope.isEmpty() ? "" : scope + ".");
-        File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
-        if (!dependenciesFile.exists()) {
-            return new Properties();
-        }
-        return PropertiesFileUtil.load(dependenciesFile.getPath());
     }
 
     static String getPackageFilePath(String name) {

@@ -287,6 +287,21 @@ public final class Deps {
     }
 
     /**
+     * @return the contents of ${project.build.dir}/${resolved-deps.properties}
+     */
+    public static Properties getResolvedProperties() {
+        String buildDir = Props.getValue("project", "build.dir");
+        // load the resolved-deps.properties file from the build directory.
+        String scope = Props.getValue("ply", "scope");
+        String suffix = (scope.isEmpty() ? "" : scope + ".");
+        File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
+        if (!dependenciesFile.exists()) {
+            return new Properties();
+        }
+        return PropertiesFileUtil.load(dependenciesFile.getPath());
+    }
+
+    /**
      * Constructs a classpath string for {@code resolvedDependencies} and {@code supplemental}
      * @param resolvedDependencies to add to the classpath
      * @param supplemental file references to add to the classpath

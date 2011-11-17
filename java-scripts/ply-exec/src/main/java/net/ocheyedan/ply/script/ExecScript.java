@@ -30,7 +30,7 @@ public class ExecScript {
         String artifactName = Props.getValue("package", "name");
         String buildDirPath = Props.getValue("project", "build.dir");
         String artifactPath = FileUtil.pathFromParts(buildDirPath, artifactName);
-        Properties deps = getResolvedProperties();
+        Properties deps = Deps.getResolvedProperties();
         String classpath = Deps.getClasspath(deps, artifactPath);
         String java = Props.getValue("ply", "java");
         String[] javaArgs = new String[] { java, "-cp", classpath, mainClass };
@@ -79,21 +79,6 @@ public class ExecScript {
             buffer.append(arg);
         }
         return buffer.toString();
-    }
-
-/**
-     * @return the contents of ${project.build.dir}/${resolved-deps.properties}
-     */
-    protected static Properties getResolvedProperties() {
-        String buildDir = Props.getValue("project", "build.dir");
-        // load the resolved-deps.properties file from the build directory.
-        String scope = Props.getValue("ply", "scope");
-        String suffix = (scope.isEmpty() ? "" : scope + ".");
-        File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
-        if (!dependenciesFile.exists()) {
-            return new Properties();
-        }
-        return PropertiesFileUtil.load(dependenciesFile.getPath());
     }
 
 }

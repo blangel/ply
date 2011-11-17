@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.jna.JnaAccessor;
 import net.ocheyedan.ply.props.Props;
 
@@ -66,7 +67,7 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
             FileUtil.copyDir(resBuildPathDir, FileUtil.fromParts(explodedWarDir.getPath(), "WEB-INF", "classes"));
         }
         // copy the dependencies to the WEB-INF/lib directory
-        Properties resolvedProperties = getResolvedProperties();
+        Properties resolvedProperties = Deps.getResolvedProperties();
         Output.print("^info^ Copying dependencies for war file.");
         copyDependencies(resolvedProperties, FileUtil.fromParts(explodedWarDir.getPath(), "WEB-INF", "lib"));
     }
