@@ -161,7 +161,7 @@ public final class Deps {
         }
         int remoteRepoSize = repositoryRegistry.remoteRepositories.size();
         Output.print("^error^ Project has ^b^%d^r^ other repositor%s%s", remoteRepoSize, (remoteRepoSize != 1 ? "ies" : "y"),
-                     (remoteRepoSize > 0 ? String.format(" [ %s ]", remoteRepoString.toString()) : ""));
+                (remoteRepoSize > 0 ? String.format(" [ %s ]", remoteRepoString.toString()) : ""));
         return null;
     }
 
@@ -287,6 +287,24 @@ public final class Deps {
     }
 
     /**
+     * Constructs a classpath string for {@code resolvedDependencies} and {@code supplemental}
+     * @param resolvedDependencies to add to the classpath
+     * @param supplemental file references to add to the classpath
+     * @return the classpath made up of {@code resolvedDependencies} and {@code supplemental}.
+     */
+    public static String getClasspath(Properties resolvedDependencies, String ... supplemental) {
+        StringBuilder classpath = new StringBuilder();
+        for (String resolvedDependency : resolvedDependencies.stringPropertyNames()) {
+            classpath.append(resolvedDependencies.getProperty(resolvedDependency));
+            classpath.append(File.pathSeparator);
+        }
+        for (String sup : supplemental) {
+            classpath.append(sup);
+        }
+        return classpath.toString();
+    }
+
+    /**
      * @return a {@link DependencyAtom} representing this project
      */
     public static DependencyAtom getProjectDep() {
@@ -361,7 +379,7 @@ public final class Deps {
             return PropertiesFileUtil.load(url.getFile(), false, true);
         } catch (MalformedURLException murle) {
             Output.print(murle);
-        }   
+        }
         return null;
     }
 

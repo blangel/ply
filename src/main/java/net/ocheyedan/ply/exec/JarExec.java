@@ -96,13 +96,7 @@ public final class JarExec {
             RepositoryRegistry repos = createRepositoryList(projectConfigDir, scope);
             DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(deps, repos);
             Properties resolvedDependencies = Deps.convertToResolvedPropertiesFile(depGraph);
-            StringBuilder classpath = new StringBuilder();
-            for (String resolvedDependency : resolvedDependencies.stringPropertyNames()) {
-                classpath.append(resolvedDependencies.getProperty(resolvedDependency));
-                classpath.append(File.pathSeparator);
-            }
-            classpath.append(jarPath);
-            return classpath.toString();
+            return Deps.getClasspath(resolvedDependencies, jarPath);
         } catch (IOException ioe) {
             Output.print(ioe);
             System.exit(1);
