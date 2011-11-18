@@ -1,7 +1,10 @@
 package net.ocheyedan.ply.mvn;
 
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.RepositoryAtom;
+import net.ocheyedan.ply.input.Resource;
+import net.ocheyedan.ply.input.Resources;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -67,17 +70,20 @@ public interface MavenPomParser {
                     this.resolutionOnly = resolutionOnly;
                 }
                 private void complete(Map<String, String> placement) {
-                    if (resolutionOnly || shouldSkip(scope, optional, systemPath)) {
+                    if (resolutionOnly || shouldSkip(scope, systemPath)) {
                         return; // not applicable
                     } else if ((version == null) || version.isEmpty()) {
                         Output.print("^warn^ Encountered dependency without a version - %s:%s:%s:%s:%s", groupId, artifactId, version, classifier, type);
                     }
+                    boolean transientDep = ("provided".equals(scope) || Boolean.valueOf(optional));
+                    DependencyAtom atom;
                     if (classifier.isEmpty() && (type.isEmpty() || "jar".equals(type))) {
-                        placement.put(groupId + ":" + artifactId, version);
+                        atom = new DependencyAtom(groupId, artifactId, version, transientDep);
                     } else {
                         String artifactName = artifactId + "-" + version + (classifier.isEmpty() ? "" : "-" + classifier) + "." + (type.isEmpty() ? "jar" : type);
-                        placement.put(groupId + ":" + artifactId, version + ":" + artifactName);
+                        atom = new DependencyAtom(groupId, artifactId, version, artifactName, transientDep);
                     }
+                    placement.put(atom.getPropertyName(), atom.getPropertyValue());
                 }
             }
 
@@ -118,16 +124,17 @@ public interface MavenPomParser {
                 }
             }
 
-            private static boolean shouldSkip(String scope, String optional, Boolean systemPath) {
+            private static boolean shouldSkip(String scope, Boolean systemPath) {
                 if ((systemPath != null) && systemPath) {
                     return true;
-                } else if ((scope != null) && !scope.isEmpty() && !"compile".equals(scope)) {
-                    // TODO - revisit ... only include compile scoped deps as rest are not for compilation
-                    // TODO - and are not transitive; see http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html.
-                    return true;
-                } else if (Boolean.valueOf(optional)) {
+                }
+                // compile/runtime will become deps in ply and provided will become transient deps in ply
+                else if ((scope != null) && !scope.isEmpty() && ("system".equals(scope) || "test".equals(scope)) ) {
+                    // TODO - if ply running in scope 'test', capture the 'test' dependencies
                     return true;
                 }
+                // optional will become transient deps in ply
+
                 return false;
             }
 
@@ -171,10 +178,9 @@ public interface MavenPomParser {
 
         private void parse(String pomUrlPath, RepositoryAtom repositoryAtom, ParseResult parseResult)
                 throws ParserConfigurationException, IOException, SAXException {
-            URL pomUrl = new URL(pomUrlPath);
-            InputStream stream = null;
+            Resource pomResource = Resources.parse(pomUrlPath);
             try {
-                stream = pomUrl.openStream();
+                InputStream stream = pomResource.open();
                 Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stream);
                 NodeList pomChildren = document.getDocumentElement().getChildNodes();
                 // store the parent pom url so that recursive processing is down after the entire current pom is analyzed
@@ -212,13 +218,7 @@ public interface MavenPomParser {
                     parse(parentPomUrlPath, repositoryAtom, parseResult);
                 }
             } finally {
-                if (stream != null) {
-                    try {
-                        stream.close();
-                    } catch (IOException ioe) {
-                        throw new AssertionError(ioe);
-                    }
-                }
+                pomResource.close();
             }
         }
 

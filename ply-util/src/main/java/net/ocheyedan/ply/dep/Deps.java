@@ -276,6 +276,10 @@ public final class Deps {
         Graphs.visit(graph, new Graphs.Visitor<Dep>() {
             @Override public void visit(Vertex<Dep> vertex) {
                 Dep dep = vertex.getValue();
+                // exclude transitive transient dependencies
+                if (!vertex.isRoot() && dep.dependencyAtom.transientDep) {
+                    return;
+                }
                 String dependencyAtomKey = dep.dependencyAtom.getPropertyName() + ":" + dep.dependencyAtom.getPropertyValue();
                 String location = FileUtil.pathFromParts(dep.localRepositoryDirectory, dep.dependencyAtom.getArtifactName());
                 if (!props.containsKey(dependencyAtomKey)) {
@@ -310,6 +314,9 @@ public final class Deps {
     public static String getClasspath(Properties resolvedDependencies, String ... supplemental) {
         StringBuilder classpath = new StringBuilder();
         for (String resolvedDependency : resolvedDependencies.stringPropertyNames()) {
+            if (DependencyAtom.isTransient(resolvedDependency)) {
+                continue;
+            }
             classpath.append(resolvedDependencies.getProperty(resolvedDependency));
             classpath.append(File.pathSeparator);
         }

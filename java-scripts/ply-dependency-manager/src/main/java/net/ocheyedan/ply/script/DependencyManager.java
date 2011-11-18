@@ -324,10 +324,12 @@ public class DependencyManager {
             if (!enc) {
                 encountered.add(vertex);
             }
-            String name = vertex.getValue().dependencyAtom.getPropertyName();
-            String version = vertex.getValue().dependencyAtom.getPropertyValue();
-            Output.print("%s^b^%s:%s^r^%s", indent, name, version, (enc ? " (already printed)" : ""));
-            if (!enc) {
+            Dep dep = vertex.getValue();
+            String name = dep.dependencyAtom.getPropertyName();
+            String version = dep.dependencyAtom.getPropertyValueWithoutTransient();
+            Output.print("%s^b^%s:%s^r^%s%s", indent, name, version, (dep.dependencyAtom.transientDep ? " ^black^[transient]^r^" : ""),
+                                              (enc ? " (already printed)" : ""));
+            if (!enc && !dep.dependencyAtom.transientDep) {
                 printDependencyGraph(vertex.getChildren(), String.format("  %s %s", Output.isUnicode() ? "\u2937" : "\\", indent), encountered);
             }
         }

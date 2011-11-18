@@ -53,19 +53,27 @@ public class DependencyAtom {
     }
 
     public String getPropertyValue() {
+        return getPropertyValueWithoutTransient() + getTransient();
+    }
+
+    public String getPropertyValueWithoutTransient() {
         return (version == null ? "" : version) + (artifactName != null ? ":" + artifactName : "");
     }
 
     public String getResolvedPropertyValue() {
-        return version + ":" + getArtifactName();
+        return version + ":" + getArtifactName() + getTransient();
     }
 
     public String getArtifactName() {
         return (artifactName == null ? name + "-" + version + "." + DEFAULT_PACKAGING : artifactName);
     }
 
+    private String getTransient() {
+        return (transientDep ? ":transient" : "");
+    }
+
     public DependencyAtom with(String packaging) {
-        return new DependencyAtom(namespace, name, version, name + "-" + version + "." + packaging);
+        return new DependencyAtom(namespace, name, version, name + "-" + version + "." + packaging, transientDep);
     }
 
     /**
@@ -119,6 +127,15 @@ public class DependencyAtom {
         return result;
     }
 
+    /**
+     * Determines if {@code atom} is transient without fulling parsing into a {@link DependencyAtom}.
+     * @param atom to parse enough to determine if it represents a transient atom.
+     * @return true if {@code atom} would parse to a {@link DependencyAtom} with {@link #transientDep} being true.
+     */
+    public static boolean isTransient(String atom) {
+        return ((atom != null) && atom.endsWith(":transient"));
+    }
+
     public static DependencyAtom parse(String atom, AtomicReference<String> error) {
         if (atom == null) {
             return null;
@@ -126,12 +143,12 @@ public class DependencyAtom {
         atom = atom.trim();
         if (atom.contains(" ")) {
             if (error != null) {
-                error.set("Spaces not allowed in dependency atom.");
+                error.set("Spaces not allowed in dependency atoms.");
             }
             return null;
         }
         String[] parsed = atom.split(":");
-        if ((parsed.length < 3) || (parsed.length > 4)) {
+        if ((parsed.length < 3) || (parsed.length > 5)) {
             if (error != null) {
                 if ((parsed.length == 1) && parsed[0].isEmpty()) {
                     parsed = new String[0];
@@ -143,12 +160,17 @@ public class DependencyAtom {
                 }
             }
             return null;
+        } else if ((parsed.length == 5) && !"transient".equalsIgnoreCase(parsed[4])) {
+            error.set("transient");
+            return null;
         }
         return (parsed.length == 3
                 ? new DependencyAtom(parsed[0], parsed[1], parsed[2])
                 : parsed.length == 4
-                  ? new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3])
-                  : new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3], "transient".equals(parsed[4])));
+                ? ("transient".equalsIgnoreCase(parsed[3]))
+                    ? new DependencyAtom(parsed[0], parsed[1], parsed[2], true)
+                    : new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3])
+                  : new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3], "transient".equalsIgnoreCase(parsed[4])));
     }
 
 }

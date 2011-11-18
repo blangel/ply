@@ -34,7 +34,7 @@ public class DependencyAtomTest {
         error.set(null);
         atom = DependencyAtom.parse("test and more", error);
         assertNull(atom);
-        assertEquals("Spaces not allowed in dependency atom.", error.get());
+        assertEquals("Spaces not allowed in dependency atoms.", error.get());
 
         error.set(null);
         atom = DependencyAtom.parse(" test ", error); // will trim though
@@ -47,6 +47,11 @@ public class DependencyAtomTest {
         assertEquals("version", error.get());
 
         error.set(null);
+        atom = DependencyAtom.parse("namespace:name:version:artifact-name.zip:nottransient", error);
+        assertNull(atom);
+        assertEquals("transient", error.get());
+
+        error.set(null);
         atom = DependencyAtom.parse("namespace:name:version", error);
         assertNotNull(atom);
         assertNull(error.get());
@@ -55,6 +60,7 @@ public class DependencyAtomTest {
         assertEquals("version", atom.version);
         assertNull(atom.artifactName);
         assertEquals("version:name-version." + DependencyAtom.DEFAULT_PACKAGING, atom.getResolvedPropertyValue());
+        assertFalse(atom.transientDep);
 
         error.set(null);
         atom = DependencyAtom.parse("namespace:name:version:artifact-name.zip", error);
@@ -65,6 +71,29 @@ public class DependencyAtomTest {
         assertEquals("version", atom.version);
         assertEquals("artifact-name.zip", atom.artifactName);
         assertEquals("version:artifact-name.zip", atom.getResolvedPropertyValue());
+        assertFalse(atom.transientDep);
+
+        error.set(null);
+        atom = DependencyAtom.parse("namespace:name:version:transient", error);
+        assertNotNull(atom);
+        assertNull(error.get());
+        assertEquals("namespace", atom.namespace);
+        assertEquals("name", atom.name);
+        assertEquals("version", atom.version);
+        assertNull(atom.artifactName);
+        assertEquals("version:name-version." + DependencyAtom.DEFAULT_PACKAGING + ":transient", atom.getResolvedPropertyValue());
+        assertTrue(atom.transientDep);
+
+        error.set(null);
+        atom = DependencyAtom.parse("namespace:name:version:artifact-name.zip:transient", error);
+        assertNotNull(atom);
+        assertNull(error.get());
+        assertEquals("namespace", atom.namespace);
+        assertEquals("name", atom.name);
+        assertEquals("version", atom.version);
+        assertEquals("artifact-name.zip", atom.artifactName);
+        assertEquals("version:artifact-name.zip:transient", atom.getResolvedPropertyValue());
+        assertTrue(atom.transientDep);
 
     }
 

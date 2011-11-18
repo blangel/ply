@@ -153,6 +153,7 @@ public class JunitTester {
         }
 
         for (String depName : dependencies.stringPropertyNames()) {
+            // TODO - should this exclude the direct-transient deps? perhaps not b/c need for testing?
             String depPath = dependencies.getProperty(depName);
             URL depUrl = getUrl(new File(depPath));
             if (depUrl == null) {

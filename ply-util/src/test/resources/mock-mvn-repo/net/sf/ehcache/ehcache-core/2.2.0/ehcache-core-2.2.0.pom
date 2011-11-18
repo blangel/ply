@@ -1,0 +1,682 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>net.sf.ehcache</groupId>
+        <artifactId>ehcache-parent</artifactId>
+        <version>2.1</version>
+    </parent>
+    <artifactId>ehcache-core</artifactId>
+    <packaging>jar</packaging>
+    <version>2.2.0</version>
+    <name>Ehcache Core</name>
+    <description>This is the ehcache core module. Pair it with other modules for added
+        functionality.
+    </description>
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>src/assemble/LICENSE.txt</url>
+        </license>
+    </licenses>
+    <url>http://ehcache.org</url>
+
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <net.sf.ehcache.speedAdjustmentFactor>5</net.sf.ehcache.speedAdjustmentFactor>
+        <name>ehcache</name>
+    </properties>
+
+    <dependencies>
+        <!--Required scope-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.5.11</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!--
+              With slf4j, users must choose a concrete logging implementation at
+              deploy time, which they provide The maven dependency declarations are
+              reproduced here for convenience. <dependency>
+              <groupId>org.slf4j</groupId> <artifactId>slf4j-jdk14</artifactId>
+              <version>1.5.11</version> </dependency> <dependency>
+              <groupId>org.slf4j</groupId> <artifactId>slf4j-log4j12</artifactId>
+              <version>1.5.11</version> </dependency> <dependency>
+              <groupId>org.slf4j</groupId> <artifactId>slf4j-simple</artifactId>
+              <version>1.5.11</version> </dependency>
+          -->
+
+        <!--
+              Provided scope. This one, or another concrete logging implementation
+              must be provided.
+          -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>1.5.11</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- bkl, commented out to lighten the load -->
+        <!--<dependency>-->
+            <!--<groupId>org.hibernate</groupId>-->
+            <!--<artifactId>hibernate-core</artifactId>-->
+            <!--<version>3.5.1-Final</version>-->
+            <!--<scope>provided</scope>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>org.codehaus.btm</groupId>-->
+            <!--<artifactId>btm</artifactId>-->
+            <!--<version>1.3.3</version>-->
+            <!--<scope>provided</scope>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>javax.transaction</groupId>-->
+            <!--<artifactId>jta</artifactId>-->
+            <!--<version>1.1</version>-->
+            <!--<scope>provided</scope>-->
+        <!--</dependency>-->
+
+        <!-- Test scope -->
+        <dependency>
+            <groupId>net.sf.hibernate</groupId>
+            <artifactId>hibernate</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>dom4j</groupId>
+            <artifactId>dom4j</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>3.4.GA</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-ehcache</artifactId>
+            <version>3.3.2.GA</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.derby</groupId>
+            <artifactId>derby</artifactId>
+            <version>10.5.3.0_1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+            <version>1.8.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+          <groupId>com.sun.xsom</groupId>
+          <artifactId>xsom</artifactId>
+          <version>20081112</version>
+          <scope>test</scope>
+        </dependency>
+        <!--
+        <dependency>
+            <groupId>net.sf.ehcache</groupId>
+            <artifactId>ehcache-terracotta</artifactId>
+            <version>2.2.0</version>
+            <scope>test</scope>
+        </dependency>
+        -->
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <directory>${basedir}/src/main/config/jcache</directory>
+            </testResource>
+            <testResource>
+                <directory>${basedir}/src/test/resources</directory>
+            </testResource>
+        </testResources>
+        <filters>
+            <filter>${project.build.directory}/filter.properties</filter>
+        </filters>
+
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>1.5</source>
+                    <target>1.5</target>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>compile_for_javadoc</id>
+                        <phase>pre-site</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.3</version>
+
+                <configuration>
+                    <author>true</author>
+                    <bottom>true</bottom>
+                    <!--<destDir>${project.build.directory}/site/javadoc</destDir>-->
+                    <header><![CDATA[<a href="/" target="_top">ehcache</a>]]></header>
+                    <minmemory>128m</minmemory>
+                    <maxmemory>512</maxmemory>
+                    <overview>${basedir}/src/main/java/net/sf/ehcache/overview.html
+                    </overview>
+                    <use>true</use>
+                    <version>true</version>
+                    <windowtitle>${project.name} ${project.version} API</windowtitle>
+                </configuration>
+
+                <executions>
+                    <execution>
+                        <id>generate-javadoc</id>
+                        <phase>pre-site</phase>
+                        <goals>
+                            <goal>javadoc</goal>
+                        </goals>
+                        <configuration>
+                            <doclet>ydoc.doclets.YStandard</doclet>
+                            <docletPath>
+                                ${ydoc.home}/lib/ydoc.jar${path.separator}${ydoc.home}/lib/class2svg.jar${path.separator}${ydoc.home}/resources
+                            </docletPath>
+                            <additionalparam>-license ${ydoc.license} -filter
+                                ydoc.filters.ExcludeFilter -filterpath
+                                ${ydoc.home}/lib/ydoc.jar -umlautogen
+                            </additionalparam>
+                            <author>true</author>
+                            <bottom>true</bottom>
+                            <!--<destDir>${project.build.directory}/site/javadoc</destDir>-->
+                            <header>
+                                <![CDATA[<a href="/" target="_top">ehcache</a>]]></header>
+                            <minmemory>128m</minmemory>
+                            <maxmemory>512</maxmemory>
+                            <overview>${basedir}/src/main/java/net/sf/ehcache/overview.html
+                            </overview>
+                            <use>true</use>
+                            <version>true</version>
+                            <windowtitle>${project.name} ${project.version} API
+                            </windowtitle>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>1.0-beta-3</version>
+                <executions>
+                    <execution>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <doCheck>false</doCheck>
+                    <doUpdate>false</doUpdate>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.3</version>
+                <executions>
+                    <execution>
+                        <id>rmic</id>
+                        <phase>compile</phase>
+                        <configuration>
+                            <tasks>
+                                <rmic base="${project.build.outputDirectory}"
+                                      includes="**/RMICachePeer.class"
+                                      compiler="forking">
+                                </rmic>
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+
+                    <!--<execution>-->
+                    <!--<id>singlepageguide</id>-->
+                    <!--<phase>pre-site</phase>-->
+                    <!--<configuration>-->
+                    <!--<tasks>-->
+                    <!--<ant target="singlepageguide"/>-->
+                    <!--</tasks>-->
+                    <!--</configuration>-->
+                    <!--<goals>-->
+                    <!--<goal>run</goal>-->
+                    <!--</goals>-->
+                    <!--</execution>-->
+
+                    <!--<execution>-->
+                        <!--<id>unhide_embedded_html</id>-->
+                        <!--<phase>site</phase>-->
+                        <!--<configuration>-->
+                            <!--<tasks>-->
+                                <!--<ant target="unhide_html"/>-->
+                            <!--</tasks>-->
+                        <!--</configuration>-->
+                        <!--<goals>-->
+                            <!--<goal>run</goal>-->
+                        <!--</goals>-->
+                    <!--</execution>-->
+
+                    <execution>
+                        <id>copy_files</id>
+                        <phase>site</phase>
+                        <configuration>
+                            <tasks>
+                                <ant target="copy_files"/>
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+
+                    <execution>
+                        <id>build_info</id>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <tasks>
+                                <mkdir dir="${project.build.directory}"/>
+                                <tstamp>
+                                    <format property="last.updated"
+                                            pattern="yyyy-MM-dd hh:mm:ss"/>
+                                </tstamp>
+                                <echo file="${project.build.directory}/filter.properties"
+                                      message="build.time=${last.updated}${line.separator}"/>
+                                <echo file="${project.build.directory}/filter.properties"
+                                      append="true"
+                                      message="build.revision=${buildNumber}${line.separator}"/>
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+
+                </executions>
+            </plugin>
+
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.0.3</version>
+                <!--<executions>-->
+                <!--<execution>-->
+                <!--<id>attach-sources</id>-->
+                <!--<phase>package</phase>-->
+                <!--<goals>-->
+                <!--<goal>jar</goal>-->
+                <!--</goals>-->
+                <!--</execution>-->
+                <!--</executions>-->
+            </plugin>
+            <!-- temp ingore since test is ignored
+            <plugin>
+                <groupId>org.terracotta.maven.plugins</groupId>
+                <artifactId>tc-maven-plugin</artifactId>
+                <version>1.5.1</version>
+                <executions>
+                    <execution>
+                        <id>run-integration</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>run-integration</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>terminate-integration</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>terminate-integration</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin> -->
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <inherited>true</inherited>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                    <excludes>
+                        <exclude>**/*$*</exclude>
+                        <exclude>**/Abstract*Test.java</exclude>
+                        <exclude>**/RMICacheReplicatorWithLargePayloadTest.java</exclude>
+                    </excludes>
+                    <forkMode>pertest</forkMode>
+                    <debugForkedProcess>true</debugForkedProcess>
+                    <childDelegation>false</childDelegation>
+                    <disableXmlReport>false</disableXmlReport>
+                    <printSummary>true</printSummary>
+                    <reportFormat>plain</reportFormat>
+                    <redirectTestOutputToFile>false</redirectTestOutputToFile>
+                    <systemProperties>
+                        <property>
+                            <name>net.sf.ehcache.skipUpdateCheck</name>
+                            <value>true</value>
+                        </property>
+                        <property>
+                            <name>java.awt.headless</name>
+                            <value>true</value>
+                        </property>
+                        <property>
+                            <name>
+                                net.sf.ehcache.speedAdjustmentFactor
+                            </name>
+                            <value>
+                                ${net.sf.ehcache.speedAdjustmentFactor}
+                            </value>
+                        </property>
+                    </systemProperties>
+                </configuration>
+                <executions>
+                    <execution>
+                        <!-- Run RMICacheReplicatorWithLargePayloadTest with 256 MB heap -->
+                        <id>large-heap-test-execution</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/*$*</exclude>
+                            </excludes>
+                            <includes>
+                                <include>**/RMICacheReplicatorWithLargePayloadTest.java</include>
+                                <include>**/TerracottaIntegrationTest.java</include>
+                            </includes>
+                            <argLine>-Xms512m -Xmx512m</argLine>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
+                   <plugin> <groupId>org.apache.felix</groupId>
+                   <artifactId>maven-bundle-plugin</artifactId>
+                   <extensions>true</extensions> <configuration> <instructions>
+                   <Bundle-SymbolicName> ${pom.artifactId} </Bundle-SymbolicName>
+                   <Export-Package> *;version=${pom.version} </Export-Package>
+                   <Import-Package>
+                   net.sf.hibernate.cache;resolution:=optional,*;-split-package:=merge-first
+                   </Import-Package> </instructions> <classifier>osgi</classifier>
+                   </configuration> <executions> <execution> <id>bundle</id>
+                   <phase>package</phase> <goals> <goal>bundle</goal> </goals>
+                   </execution> </executions> </plugin>
+               -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>2.3</version>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>checkstyle</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <configLocation>${basedir}/checkstyle/checkstyle.xml
+                    </configLocation>
+                    <suppressionsLocation>${basedir}/checkstyle/suppressions.xml
+                    </suppressionsLocation>
+                    <headerLocation>${basedir}/checkstyle/ClassHeader.txt
+                    </headerLocation>
+                    <enableRSS>false</enableRSS>
+                    <linkXRef>true</linkXRef>
+                    <skip>true</skip>
+                    <consoleOutput>true</consoleOutput>
+                    <failsOnError>true</failsOnError>
+                    <failOnViolation>true</failOnViolation>
+                    <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                    <enableRulesSummary>true</enableRulesSummary>
+                </configuration>
+            </plugin>
+
+            <!--
+                   Use this to specify a different template. It also needs a local copy
+                   of maven-base.css
+               -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>2.1</version>
+                <configuration>
+                    <templateFile>${basedir}/src/site/default-site-ehcache.vm
+                    </templateFile>
+                </configuration>
+            </plugin>
+
+
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.2-beta-5</version>
+                <configuration>
+                    <filters>
+                        <filter>src/assemble/filter.properties</filter>
+                    </filters>
+                    <descriptors>
+                        <descriptor>src/assemble/distribution.xml</descriptor>
+                    </descriptors>
+                    <tarLongFileMode>gnu</tarLongFileMode>
+                </configuration>
+                <!--<executions>-->
+                <!--<execution>-->
+                <!--<id>assemble</id>-->
+                <!--<phase>verify</phase>-->
+                <!--<goals>-->
+                <!--<goal>assembly</goal>-->
+                <!--</goals>-->
+                <!--</execution>-->
+                <!--</executions>-->
+            </plugin>
+
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>staging</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+
+    <!-- Reports -->
+    <reporting>
+        <plugins>
+
+            <!--Reports -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-project-info-reports-plugin</artifactId>
+                <version>2.1.2</version>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>project-team</report>
+                            <report>mailing-list</report>
+                            <report>issue-tracking</report>
+                            <report>license</report>
+                            <report>scm</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+
+            <!--Manual Changelist -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-changes-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <issueLinkTemplatePerSystem>
+                        <JIRA>https://jira.terracotta.org/jira/browse/%ISSUE%</JIRA>
+                    </issueLinkTemplatePerSystem>
+                </configuration>
+
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>changes-report</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+
+            <!--Java Cross Reference (JXR) -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>jxr-maven-plugin</artifactId>
+                <version>2.0-beta-1</version>
+                <configuration>
+                    <outputDirectory>${project.build.directory}/site</outputDirectory>
+                    <docTitle>ehcache</docTitle>
+                </configuration>
+            </plugin>
+
+
+        </plugins>
+    </reporting>
+
+    <!-- The JBoss repository is only here to satisfy the 'provided' dependency on hibernate-core -->
+    <repositories>
+        <repository>
+      <id>jboss-releases</id>
+      <url>http://repository.jboss.org/maven2</url>
+      <releases>
+          <enabled>true</enabled>
+      </releases>
+      <snapshots>
+          <enabled>false</enabled>
+      </snapshots>
+  </repository>
+  <repository>
+      <id>java-net</id>
+      <url>http://download.java.net/maven/2/</url>
+      <releases>
+          <enabled>true</enabled>
+      </releases>
+      <snapshots>
+          <enabled>false</enabled>
+      </snapshots>
+  </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>terracotta-snapshots</id>
+            <url>http://www.terracotta.org/download/reflector/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <distributionManagement>
+        <repository>
+            <id>sourceforge-releases</id>
+            <name>Sourceforge Release Repository</name>
+            <url>http://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        </repository>
+        <snapshotRepository>
+            <id>sourceforge-snapshots</id>
+            <name>Sourceforge Snapshot Repository</name>
+            <url>http://oss.sonatype.org/content/repositories/sourceforge-snapshots
+            </url>
+        </snapshotRepository>
+
+
+        <!--
+              The server id here defined must also appear in ~/.m2/settings.xml
+              with username Note: site URL repeated here to ensure correct
+              deployment path
+          -->
+        <site>
+            <id>ehcache.org</id>
+            <name>EHCache Site</name>
+            <url>dav:https://echache-stage.terracotta.lan/export1/ehcache.org
+            </url>
+        </site>
+    </distributionManagement>
+
+    <scm>
+        <connection>scm:svn:http://svn.terracotta.org/svn/ehcache/trunk
+        </connection>
+        <developerConnection>scm:svn:https://svn.terracotta.org/repo/ehcache/trunk
+        </developerConnection>
+        <tag/>
+        <url>http://svn.terracotta.org/svn/ehcache/trunk</url>
+    </scm>
+
+    <issueManagement>
+        <system>JIRA</system>
+        <url>https://jira.terracotta.org/jira/browse/EHC</url>
+    </issueManagement>
+
+</project>
+

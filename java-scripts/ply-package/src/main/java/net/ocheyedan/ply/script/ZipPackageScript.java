@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.props.Props;
 
@@ -98,6 +99,9 @@ public class ZipPackageScript implements PackagingScript {
                 output = new ZipOutputStream(new FileOutputStream(nameWithDepsFile));
                 ZipFiles.append(new ZipInputStream(new FileInputStream(name)), output, existing);
                 for (String dep : deps.stringPropertyNames()) {
+                    if (DependencyAtom.isTransient(dep)) {
+                        continue;
+                    }
                     String depFile = deps.getProperty(dep);
                     ZipFiles.append(new ZipInputStream(new FileInputStream(depFile)), output, existing);
                 }
