@@ -1,7 +1,7 @@
 Repositories
 ------------
 
-Repositories in Ply are nearly identical to those in __maven__.  They are a hierarchical collection of dependencies organized by _namespace_, _name_ and _version_.  Ply downloads dependencies to your project's local repository (which is controlled by `depmngr`'s property named `localRepo`).  Besides the local repository (specified by _depmngr.localRepo_) repositories are found within property file named `repositories.properties`.  Repositories can be added/removed like any other project by interacting with the `repositories.properties` file either directly or via `ply config --repositories`.  One can also use the `dep` script's `add-repo` or `remove-repo` options.  For instance, to add __JBoss__'s __maven__ repository to your project's repositories:
+Repositories in Ply are nearly identical to those in __maven__.  They are a hierarchical collection of dependencies organized by _namespace_, _name_ and _version_.  Ply downloads dependencies to your project's local repository (which is controlled by `depmngr`'s property named `localRepo`).  Besides the local repository (specified by _depmngr.localRepo_) repositories are found within property file named `repositories.properties`.  Repositories can be added/removed like any other property by interacting with the `repositories.properties` file either directly or via `ply config --repositories`.  One can also use the `dep` script's `add-repo` or `remove-repo` options.  For instance, to add __JBoss__'s __maven__ repository to your project's repositories:
 
       $ ply "dep add-repo maven:https://repository.jboss.org/"
 
