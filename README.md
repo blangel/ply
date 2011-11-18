@@ -48,6 +48,7 @@ Concepts
 * [Properties](ply/tree/master/docs/Properties.md)
 * [Aliases](ply/tree/master/docs/Aliases.md)
 * [Scopes](ply/tree/master/docs/Scopes.md)
+* [Dependencies](ply/tree/master/docs/Dependencies.md)
 * [Submodules](ply/tree/master/docs/Submodules.md)
 
 At its simplest _ply_ just invokes a series of scripts. The following is a valid series of scripts for ply:
@@ -69,6 +70,7 @@ Tutorials
 
 * [Project setup](ply/tree/master/docs/ProjectSetup.md)
 * [Building](ply/tree/master/docs/BuildingProject.md)
-* [Adding dependencies](ply/tree/master/docs/Dependencies.md)
+* [Adding dependencies](ply/tree/master/docs/DependenciesTutorial.md)
+* [Managing repositories](ply/tree/master/docs/Repositories.md)
 * [Running tests](ply/tree/master/docs/RunningTests.md)
 * [Changing log levels](ply/tree/master/docs/Logging.md)

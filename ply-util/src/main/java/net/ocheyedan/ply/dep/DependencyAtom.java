@@ -136,6 +136,17 @@ public class DependencyAtom {
         return ((atom != null) && atom.endsWith(":transient"));
     }
 
+    /**
+     * @param atom from which to strip the transient marker
+     * @return {@code atom} without the trailing transient marker if present
+     */
+    public static String stripTransient(String atom) {
+        if (isTransient(atom)) {
+            atom = atom.substring(0, atom.length() - ":transient".length());
+        }
+        return atom;
+    }
+
     public static DependencyAtom parse(String atom, AtomicReference<String> error) {
         if (atom == null) {
             return null;

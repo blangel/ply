@@ -80,6 +80,8 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class DependencyManager {
 
+    private static final String TRANSIENT_PRINT = " ^black^[transient]^r^";
+
     public static void main(String[] args) {
         if ((args == null) || (args.length > 0 && "--usage".equals(args[0]))) {
             usage();
@@ -97,7 +99,12 @@ public class DependencyManager {
                 Output.print("Project ^b^%s^r^ has ^b^%d^r^ %sdependenc%s: ", Props.getValue("project", "name"), size,
                         scope.forPrint, (size == 1 ? "y" : "ies"));
                 for (String key : dependencies.keySet()) {
-                    Output.print("\t%s:%s", key, dependencies.get(key));
+                    String dep = dependencies.get(key);
+                    boolean transientDep = DependencyAtom.isTransient(dep);
+                    if (transientDep) {
+                        dep = DependencyAtom.stripTransient(dep);
+                    }
+                    Output.print("\t%s:%s%s", key, dep, (transientDep ? TRANSIENT_PRINT : ""));
                 }
             } else {
                 Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.getValue("project", "name"), scope.forPrint);
@@ -327,9 +334,9 @@ public class DependencyManager {
             Dep dep = vertex.getValue();
             String name = dep.dependencyAtom.getPropertyName();
             String version = dep.dependencyAtom.getPropertyValueWithoutTransient();
-            Output.print("%s^b^%s:%s^r^%s%s", indent, name, version, (dep.dependencyAtom.transientDep ? " ^black^[transient]^r^" : ""),
+            Output.print("%s^b^%s:%s^r^%s%s", indent, name, version, (dep.dependencyAtom.transientDep ? TRANSIENT_PRINT : ""),
                                               (enc ? " (already printed)" : ""));
-            if (!enc && !dep.dependencyAtom.transientDep) {
+            if (!enc && (!dep.dependencyAtom.transientDep || vertex.isRoot())) {
                 printDependencyGraph(vertex.getChildren(), String.format("  %s %s", Output.isUnicode() ? "\u2937" : "\\", indent), encountered);
             }
         }
