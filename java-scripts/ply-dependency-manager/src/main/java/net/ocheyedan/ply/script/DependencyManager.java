@@ -1,6 +1,7 @@
 package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
@@ -118,7 +119,7 @@ public class DependencyManager {
                 int size = dependencies.size();
                 Output.print("Project ^b^%s^r^ has ^b^%d^r^ direct %sdependenc%s: ", Props.getValue("project", "name"), size,
                         scope.forPrint, (size == 1 ? "y" : "ies"));
-                printDependencyGraph(depGraph.getRootVertices(), String.format("%s ", Output.isUnicode() ? "\u26AC" : "+"), new HashSet<Vertex<Dep>>());
+                printDependencyGraph(depGraph.getRootVertices(), String.format("%s ", PlyUtil.isUnicodeSupported() ? "\u26AC" : "+"), new HashSet<Vertex<Dep>>());
             }
         } else if ((args.length > 1) && "add-repo".equals(args[0])) {
             addRepository(args[1]);
@@ -228,17 +229,19 @@ public class DependencyManager {
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
         Map<String, Prop> repositories = Props.getProps("repositories");
-        for (String repoUri : repositories.keySet()) {
-            if (localRepo.getPropertyName().equals(repoUri)) {
-                continue;
-            }
-            String repoType = repositories.get(repoUri).value;
-            String repoAtom = repoType + ":" + repoUri;
-            RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
-            if (repo == null) {
-                Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);
-            } else {
-                repositoryAtoms.add(repo);
+        if (repositories != null) {
+            for (String repoUri : repositories.keySet()) {
+                if (localRepo.getPropertyName().equals(repoUri)) {
+                    continue;
+                }
+                String repoType = repositories.get(repoUri).value;
+                String repoAtom = repoType + ":" + repoUri;
+                RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
+                if (repo == null) {
+                    Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);
+                } else {
+                    repositoryAtoms.add(repo);
+                }
             }
         }
         Collections.sort(repositoryAtoms, RepositoryAtom.LOCAL_COMPARATOR);
@@ -337,7 +340,7 @@ public class DependencyManager {
             Output.print("%s^b^%s:%s^r^%s%s", indent, name, version, (dep.dependencyAtom.transientDep ? TRANSIENT_PRINT : ""),
                                               (enc ? " (already printed)" : ""));
             if (!enc && (!dep.dependencyAtom.transientDep || vertex.isRoot())) {
-                printDependencyGraph(vertex.getChildren(), String.format("  %s %s", Output.isUnicode() ? "\u2937" : "\\", indent), encountered);
+                printDependencyGraph(vertex.getChildren(), String.format("  %s %s", PlyUtil.isUnicodeSupported() ? "\u2937" : "\\", indent), encountered);
             }
         }
     }

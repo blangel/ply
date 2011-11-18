@@ -3,7 +3,6 @@ _ply_completion() {
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-
     projectdir="./"
     while [ -d ${projectdir} ]; do
 	local result=$(find ${projectdir} -maxdepth 1 -type d -name ".ply")
@@ -31,6 +30,7 @@ _ply_completion() {
     
     # if '-P' is start of cur, print the contexts after the -P
     if [[ ${cur} == -P* ]]; then
+	compopt -o nospace
 	# the start of the -P
 	if [[ ${cur} != *.* ]]; then
 	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" -printf "%f\n" | \
@@ -71,14 +71,15 @@ _ply_completion() {
 		    | grep -v '^$' | sed "s/\(.*\)=.*/$curcontext\1/")
 		projectprops="${projectprops} ${nonscopedprojectprops}"
 	    fi
-	    COMPREPLY=( $(compgen -W "${defaultprops} ${projectprops}" -- ${cur}) )
+	    COMPREPLY=( $(compgen -S "=" -W "${defaultprops} ${projectprops}" -- ${cur}) )
 	fi
 	return 0;
     fi
-	
+
     case "${prev}" in 
 	init)
-	    COMPREPLY=();;
+	    compopt -o nospace
+	    COMPREPLY=( $(compgen -S '=' -W "--from-pom" -- ${cur}) );;
 	config)
 	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" -printf "%f\n" | \
 		sed 's/\(.*\)\.properties/--\1/')
@@ -87,6 +88,7 @@ _ply_completion() {
 	    COMPREPLY=( $(compgen -W "${configtasks} ${defaultcontexts} ${projectcontexts}" -- ${cur}) );;
 	dep)
 	    local deptasks="add remove repo-add repo-remove list tree"
+	    # TODO - look into -S and -P
 	    COMPREPLY=( $(compgen -W "${deptasks}" -- ${cur}) );;
 	ply)
 	    COMPREPLY=( $(compgen -W "${tasks}" -- ${cur}) );;

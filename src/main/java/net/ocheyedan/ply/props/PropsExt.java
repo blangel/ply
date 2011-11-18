@@ -175,6 +175,17 @@ public final class PropsExt {
         Loader.setAdHocProps(adHocProps);
     }
 
+    /**
+     * Exposes {@link Loader#loadProjectProps(java.io.File, String)} for the {@link net.ocheyedan.ply.Init}
+     * @param projectConfigDir from which to retrieve properties
+     * @return the properties
+     */
+    public static Map<String, Map<String, Prop>> loadProjectProps(File projectConfigDir) {
+        Map<String, Map<String, Prop>> props = new HashMap<String, Map<String, Prop>>();
+        Loader.resolvePropertiesFromDirectory(projectConfigDir, true, props);
+        return props;
+    }
+
     private PropsExt() { }
 
 }

@@ -174,6 +174,22 @@ public final class FileUtil {
         return pathFromParts(USER_HOME, path.substring(1));
     }
 
+    /**
+     * Deletes {@code file} and if it is a directory recursively deletes all its files and sub-directories (like
+     * {@literal rm -rf} would).
+     * @param file to delete
+     */
+    public static void delete(File file) {
+        if (file.isDirectory()) {
+            for (File subFile : file.listFiles()) {
+                delete(subFile);
+            }
+        }
+        if (!file.delete()) {
+            Output.print("^error^ could not delete file ^b^%s^r^", file.getPath());
+        }
+    }
+
     private FileUtil() { }
 
 }

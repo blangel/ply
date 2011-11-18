@@ -38,7 +38,6 @@ public final class Output {
     private static final AtomicReference<Boolean> warnLevel = new AtomicReference<Boolean>(true);
     private static final AtomicReference<Boolean> infoLevel = new AtomicReference<Boolean>(true);
     private static final AtomicReference<Boolean> dbugLevel = new AtomicReference<Boolean>(true);
-    private static final boolean unicodeSupport;
 
     /**
      * A mapping of easily identifiable words to a {@link TermCode} object for colored output.
@@ -74,8 +73,6 @@ public final class Output {
         if (Props.get("log.levels") != null) {
             init(Props.getValue("log.levels"));
         }
-        Prop unicodeProp = Props.get("unicode");
-        unicodeSupport = ((unicodeProp == null) || "true".equalsIgnoreCase(unicodeProp.value));
     }
 
     static void init(String logLevels) {
@@ -125,14 +122,7 @@ public final class Output {
         print("^error^ Message: ^i^^red^%s^r^", (t == null ? "" : t.getMessage()));
     }
 
-    /**
-     * @return true if unicode is supported as output
-     */
-    public static boolean isUnicode() {
-        return unicodeSupport;
-    }
-
-    private static String resolve(String message, Object[] args) {
+    static String resolve(String message, Object[] args) {
         String formatted = String.format(message, args);
         // TODO - fix!  this case fails: ^cyan^warn^r^ if ^warn^ is evaluated first...really meant for ^cyan^ and ^r^
         // TODO - to be resolved

@@ -29,6 +29,7 @@ public class Ply {
             usage();
             System.exit(0);
         }
+        args = handleCommandLineProps(args);
         if ("--usage".equals(args[0])) {
             usage();
         } else if ("init".equals(args[0])) {
@@ -38,7 +39,6 @@ public class Ply {
             Config.invoke(args);
         } else {
             checkAssumptions();
-            args = handleCommandLineProps(args);
             if (args.length > 0) {
                 exec(args);
             } else {
@@ -208,7 +208,7 @@ public class Ply {
     }
 
     private static void usage() {
-        Output.print("ply [--usage] <^b^command^r^> [-PadHocProp]...");
+        Output.print("ply [--usage] <^b^command^r^> [-PadHocProp...]");
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^config^r^ <options>\t: see ^b^ply config --usage^r^");
         Output.print("    ^b^init^r^");

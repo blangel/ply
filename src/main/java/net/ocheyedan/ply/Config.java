@@ -44,6 +44,14 @@ public final class Config {
     }
 
     /**
+     * Prints {@code localProps}.  Exists for the {@link Init} summary print.
+     * @param localProps to print.
+     */
+    static void print(Map<String, Map<String, Prop>> localProps) {
+        get().print(localProps, true);
+    }
+
+    /**
      * @return the singleton instance of this class.
      */
     private static Config get() {
@@ -213,7 +221,10 @@ public final class Config {
         if (contextProps == null) {
             Output.print("No context ^b^%s^r^ found.", contextDotScope);
         } else {
-            printContext(contextDotScope, contextProps, justLocal);
+            boolean hasGlobal = printContext(contextDotScope, contextProps, justLocal);
+            if (hasGlobal && !justLocal) {
+                Output.print("^green^*^r^ indicates system-wide property.");
+            }
         }
     }
 

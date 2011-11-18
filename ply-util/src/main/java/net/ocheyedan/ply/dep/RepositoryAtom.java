@@ -1,6 +1,7 @@
 package net.ocheyedan.ply.dep;
 
 import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.props.Prop;
 
 import java.io.File;
 import java.io.IOException;
@@ -68,6 +69,12 @@ public class RepositoryAtom {
     @Override public String toString() {
         return getResolvedPropertyValue() + ":" + getPropertyName();
     }
+
+    public static String atomFromProp(Prop repositoryProp) {
+        String value = ((repositoryProp.value != null) && !repositoryProp.value.isEmpty()) ? repositoryProp.value + ":" : "";
+        return value + repositoryProp.name;
+    }
+
     public static RepositoryAtom parse(String atom) {
         if (atom == null) {
             return null;

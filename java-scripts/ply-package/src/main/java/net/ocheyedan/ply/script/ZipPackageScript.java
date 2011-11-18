@@ -217,7 +217,7 @@ public class ZipPackageScript implements PackagingScript {
     }
 
     static boolean getBoolean(String value) {
-        return ((value != null) && value.equalsIgnoreCase("true"));
+        return "true".equalsIgnoreCase(value);
     }
 
 }

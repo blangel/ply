@@ -17,7 +17,7 @@ import java.util.Properties;
  *
  * Loads property values from a supplied project directory.
  */
-public class Loader {
+public final class Loader {
 
     /**
      * A {@link java.io.FilenameFilter} for {@link java.util.Properties} files.
@@ -99,12 +99,7 @@ public class Loader {
         scope = ((scope == null) || scope.isEmpty() ? "" : scope);
         // ensure the cache-key is different than that made by {@link #loadProjectProps(File)} as on default scope
         // this method returns only the default scoped properties, no other scope.
-        String projectConfigCanonicalDirPath = "";
-        try {
-            projectConfigCanonicalDirPath = projectConfigDir.getCanonicalPath();
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
-        }
+        String projectConfigCanonicalDirPath = getCanonicalPath(projectConfigDir);
         String cacheKey = projectConfigCanonicalDirPath + File.separator + "#" + scope;
         if (cache.containsKey(cacheKey)) {
             return cache.get(cacheKey);
@@ -170,8 +165,8 @@ public class Loader {
      * @param placement map into which resolved properties will be placed
      * @see {@link #PROPERTIES_FILENAME_FILTER}
      */
-    private static void resolvePropertiesFromDirectory(File fromDirectory, boolean local,
-                                                       Map<String, Map<String, Prop>> placement) {
+    static void resolvePropertiesFromDirectory(File fromDirectory, boolean local,
+                                               Map<String, Map<String, Prop>> placement) {
         File[] subFiles = fromDirectory.listFiles(PROPERTIES_FILENAME_FILTER);
         if (subFiles == null) {
             return;
@@ -228,5 +223,7 @@ public class Loader {
             }
         }
     }
+
+    private Loader() { }
 
 }

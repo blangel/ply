@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  * Time: 2:14 PM
  *
  * Responsible for parsing {@literal Maven} pom files, resolving all dependencies including the dependencies'
- * {@literal groupId}, {@literal artifactId} and {@literal version} from any property values referenceable from
+ * {@literal groupId}, {@literal artifactId} and {@literal version} from any property values reference-able from
  * the pom file.  Parsing a given pom will resolve parent pom information if present.
  */
 public interface MavenPomParser {
@@ -147,7 +147,7 @@ public interface MavenPomParser {
             }
         }
 
-        @Override public Properties parsePom(String pomUrlPath, RepositoryAtom repositoryAtom) {
+        @Override public MavenPom parsePom(String pomUrlPath, RepositoryAtom repositoryAtom) {
             try {
                 ParseResult result = parse(pomUrlPath, repositoryAtom);
                 Properties properties = new Properties();
@@ -163,7 +163,12 @@ public interface MavenPomParser {
                     }
                     properties.put(filteredDependencyKey, filteredDependencyValue);
                 }
-                return properties;
+                return new MavenPom(result.mavenProperties.get("project.groupId"),
+                                    result.mavenProperties.get("project.artifactId"),
+                                    result.mavenProperties.get("project.version"),
+                                    result.mavenProperties.get("project.packaging"),
+                                    properties,
+                                    new Properties());
             } catch (Exception e) {
                 throw new RuntimeException(e.getMessage(), e);
             }
@@ -192,7 +197,7 @@ public interface MavenPomParser {
                 String localVersion = null;
                 // similar to the parent version, need to store the parent's groupId
                 AtomicReference<String> parentGroupId = new AtomicReference<String>("");
-                String localGroupId = null;
+                String localGroupId = null, localArtifactId = null, packaging = null;
                 for (int i = 0; i < pomChildren.getLength(); i++) {
                     Node child = pomChildren.item(i);
                     String nodeName = child.getNodeName();
@@ -204,14 +209,20 @@ public interface MavenPomParser {
                         parseProperties(child, parseResult);
                     } else if ("groupId".equals(nodeName) && !"${parent.groupId}".equals(child.getTextContent())) {
                         localGroupId = child.getTextContent();
+                    } else if ("artifactId".equals(nodeName)) {
+                        localArtifactId = child.getTextContent();
                     } else if ("version".equals(nodeName) && !"${parent.version}".equals(child.getTextContent())) {
                         localVersion = Version.resolve(child.getTextContent(), getMetadataBaseUrl(pomUrlPath));
+                    } else if ("packaging".equals(nodeName)) {
+                        packaging = child.getTextContent();
                     } else if ("parent".equals(nodeName)) { // parent
                         parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentGroupId, parentVersion);
                     }
                 }
                 parseResult.mavenProperties.put("project.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));
+                parseResult.mavenProperties.put("project.artifactId", localArtifactId);
                 parseResult.mavenProperties.put("project.version", (localVersion != null ? localVersion : parentVersion.get()));
+                parseResult.mavenProperties.put("project.packaging", packaging);
                 if (parentPomUrlPath != null) {
                     // filter project.* so that they are not overridden by the recursion on parent
                     filterLocalProjectProperties(parseResult);
@@ -368,6 +379,12 @@ public interface MavenPomParser {
 
     }
 
-    Properties parsePom(String pomUrlPath, RepositoryAtom repositoryAtom);
+    /**
+     * Parses the pom file represented by {@code pomUrlPath} positioned at {@code repositoryAtom}.
+     * @param pomUrlPath to parse
+     * @param repositoryAtom from which to resolve subsequently found dependencies (TODO - augment as list)
+     * @return the parsed pom file as a {@link MavenPom}
+     */
+    MavenPom parsePom(String pomUrlPath, RepositoryAtom repositoryAtom);
 
 }

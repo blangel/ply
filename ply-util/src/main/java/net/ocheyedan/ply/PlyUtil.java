@@ -1,5 +1,7 @@
 package net.ocheyedan.ply;
 
+import net.ocheyedan.ply.props.Props;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -41,6 +43,20 @@ public final class PlyUtil {
      * The local configuration directory (local to the init-ed project).
      */
     public static final File LOCAL_CONFIG_DIR = resolveLocalConfigDir(LOCAL_PROJECT_DIR);
+
+    /**
+     * @return true if all prompts should be disallowed.
+     */
+    public static boolean isHeadless() {
+        return "true".equalsIgnoreCase(Props.getValue("headless"));
+    }
+
+    /**
+     * @return true if unicode is supported as output
+     */
+    public static boolean isUnicodeSupported() {
+        return "true".equalsIgnoreCase(Props.getValue("unicode"));
+    }
 
     /**
      * This directory has to be resolved as ply can be invoked from within a nested directory.

@@ -7,6 +7,7 @@ import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Graph;
 import net.ocheyedan.ply.graph.Graphs;
 import net.ocheyedan.ply.graph.Vertex;
+import net.ocheyedan.ply.mvn.MavenPom;
 import net.ocheyedan.ply.mvn.MavenPomParser;
 import net.ocheyedan.ply.props.Props;
 
@@ -407,7 +408,8 @@ public final class Deps {
 
     private static Properties getDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
         MavenPomParser mavenPomParser = new MavenPomParser.Default();
-        return mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
+        MavenPom mavenPom = mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
+        return (mavenPom == null ? new Properties() : mavenPom.dependencies);
     }
 
     private static void storeDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {

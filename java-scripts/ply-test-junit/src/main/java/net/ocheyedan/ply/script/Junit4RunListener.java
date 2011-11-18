@@ -1,6 +1,7 @@
 package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.script.print.PrivilegedOutput;
 import net.ocheyedan.ply.script.print.PrivilegedPrintStream;
 import org.junit.runner.Description;
@@ -23,9 +24,9 @@ public class Junit4RunListener extends RunListener {
 
     private final AllFilterCollectPad padding;
 
-    private final String successChar = Output.isUnicode() ? "\u2713" : "";
-    private final String failureChar = Output.isUnicode() ? "\u2620" : "";
-    private final String ignoredChar = Output.isUnicode() ? "\u26A0" : "";
+    private final String successChar = PlyUtil.isUnicodeSupported() ? "\u2713" : "";
+    private final String failureChar = PlyUtil.isUnicodeSupported() ? "\u2620" : "";
+    private final String ignoredChar = PlyUtil.isUnicodeSupported() ? "\u26A0" : "";
 
     public Junit4RunListener() {
         this.padding = null;
