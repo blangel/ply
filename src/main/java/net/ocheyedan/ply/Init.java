@@ -179,14 +179,45 @@ public class Init {
         if (!DependencyAtom.DEFAULT_PACKAGING.equals(pom.packaging)) {
             projectProps.put("packaging", pom.packaging);
         }
+        if (pom.buildDirectory != null) {
+            projectProps.put("build.dir", pom.buildDirectory);
+        }
+        if (pom.buildSourceDirectory != null) {
+            projectProps.put("src.dir", pom.buildSourceDirectory);
+        }
+        if (pom.buildFinalName != null) {
+            projectProps.put("artifact.name", pom.buildFinalName);
+        }
         fileToProps.put("./.ply/config/project.properties", projectProps);
 
         if ((pom.dependencies != null) && !pom.dependencies.isEmpty()) {
             fileToProps.put("./.ply/config/dependencies.properties", pom.dependencies);
         }
 
+        if ((pom.testDependencies != null) && !pom.testDependencies.isEmpty()) {
+            fileToProps.put("./.ply/config/dependencies.test.properties", pom.testDependencies);
+        }
+
         if ((pom.repositories != null) && !pom.repositories.isEmpty()) {
             fileToProps.put("./.ply/config/repositories.properties", pom.repositories);
+        }
+
+        if (pom.buildOutputDirectory != null) {
+            Properties compilerProps = new Properties();
+            compilerProps.put("build.path", pom.buildOutputDirectory);
+            fileToProps.put("./.ply/config/compiler.properties", compilerProps);
+        }
+
+        if (pom.buildTestOutputDirectory != null) {
+            Properties compilerTestProps = new Properties();
+            compilerTestProps.put("build.path", pom.buildTestOutputDirectory);
+            fileToProps.put("./.ply/config/compiler.test.properties", compilerTestProps);
+        }
+
+        if (pom.buildTestSourceDirectory != null) {
+            Properties projectTestProps = new Properties();
+            projectTestProps.put("src.dir", pom.buildTestSourceDirectory);
+            fileToProps.put("./.ply/config/project.test.properties", projectTestProps);
         }
 
         return createProperties(fileToProps);

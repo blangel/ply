@@ -16,9 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
@@ -40,7 +38,8 @@ public interface MavenPomParser {
     static class Default implements MavenPomParser {
 
         /**
-         * Holds a collection of resolved property values and un-resolved dependencies from parsing a pom file.
+         * Holds a collection of resolved property values and un-resolved dependencies and repositories from
+         * parsing a pom file.
          */
         private static class ParseResult {
 
@@ -69,7 +68,7 @@ public interface MavenPomParser {
                     this.systemPath = systemPath;
                     this.resolutionOnly = resolutionOnly;
                 }
-                private void complete(Map<String, String> placement) {
+                private void complete(Map<String, Map<String, String>> placement) {
                     if (resolutionOnly || shouldSkip(scope, systemPath)) {
                         return; // not applicable
                     } else if ((version == null) || version.isEmpty()) {
@@ -83,7 +82,13 @@ public interface MavenPomParser {
                         String artifactName = artifactId + "-" + version + (classifier.isEmpty() ? "" : "-" + classifier) + "." + (type.isEmpty() ? "jar" : type);
                         atom = new DependencyAtom(groupId, artifactId, version, artifactName, transientDep);
                     }
-                    placement.put(atom.getPropertyName(), atom.getPropertyValue());
+                    String plyScope = ("test".equals(scope) ? "test" : "");
+                    Map<String, String> scopedPlacement = placement.get(plyScope);
+                    if (scopedPlacement == null) {
+                        scopedPlacement = new HashMap<String, String>();
+                        placement.put(plyScope, scopedPlacement);
+                    }
+                    scopedPlacement.put(atom.getPropertyName(), atom.getPropertyValue());
                 }
             }
 
@@ -91,9 +96,12 @@ public interface MavenPomParser {
 
             private final Map<String, Incomplete> mavenIncompleteDeps;
 
+            private final Set<String> mavenRepositoryUrls;
+
             private ParseResult() {
                 this.mavenProperties = new HashMap<String, String>();
                 this.mavenIncompleteDeps = new HashMap<String, Incomplete>();
+                this.mavenRepositoryUrls = new HashSet<String>(2);
             }
 
             private void addDep(String groupId, String artifactId, String version, String classifier, String type,
@@ -124,13 +132,16 @@ public interface MavenPomParser {
                 }
             }
 
+            private void addRepo(String repoUrl) {
+                this.mavenRepositoryUrls.add(repoUrl);
+            }
+
             private static boolean shouldSkip(String scope, Boolean systemPath) {
                 if ((systemPath != null) && systemPath) {
                     return true;
                 }
                 // compile/runtime will become deps in ply and provided will become transient deps in ply
-                else if ((scope != null) && !scope.isEmpty() && ("system".equals(scope) || "test".equals(scope)) ) {
-                    // TODO - if ply running in scope 'test', capture the 'test' dependencies
+                else if ((scope != null) && !scope.isEmpty() && "system".equals(scope)) {
                     return true;
                 }
                 // optional will become transient deps in ply
@@ -138,8 +149,8 @@ public interface MavenPomParser {
                 return false;
             }
 
-            private Map<String, String> resolveDeps() {
-                Map<String, String> deps = new HashMap<String, String>(mavenIncompleteDeps.size());
+            private Map<String, Map<String, String>> resolveDeps() {
+                Map<String, Map<String, String>> deps = new HashMap<String, Map<String, String>>(mavenIncompleteDeps.size());
                 for (Incomplete incomplete : mavenIncompleteDeps.values()) {
                     incomplete.complete(deps);
                 }
@@ -150,25 +161,40 @@ public interface MavenPomParser {
         @Override public MavenPom parsePom(String pomUrlPath, RepositoryAtom repositoryAtom) {
             try {
                 ParseResult result = parse(pomUrlPath, repositoryAtom);
-                Properties properties = new Properties();
-                Map<String, String> resolvedDeps = result.resolveDeps();
-                for (String dependencyKey : resolvedDeps.keySet()) {
-                    String filteredDependencyKey = dependencyKey;
-                    String filteredDependencyValue = resolvedDeps.get(dependencyKey);
-                    if (filteredDependencyKey.contains("${") || filteredDependencyValue.contains("${")) {
-                        for (String mavenProperty : result.mavenProperties.keySet()) {
-                            filteredDependencyKey = filter(filteredDependencyKey, mavenProperty, result.mavenProperties);
-                            filteredDependencyValue = filter(filteredDependencyValue, mavenProperty, result.mavenProperties);
+                Properties deps = new Properties();
+                Properties testDeps = new Properties();
+                Map<String, Map<String, String>> resolvedDeps = result.resolveDeps();
+                for (String scope : resolvedDeps.keySet()) {
+                    Map<String, String> scopedResolvedDeps = resolvedDeps.get(scope);
+                    Properties scopedDeps = ("test".equals(scope) ? testDeps : deps); // maven for ply has either test or default scoped deps.
+                    for (String dependencyKey : scopedResolvedDeps.keySet()) {
+                        String filteredDependencyKey = dependencyKey;
+                        String filteredDependencyValue = scopedResolvedDeps.get(dependencyKey);
+                        if (filteredDependencyKey.contains("${") || filteredDependencyValue.contains("${")) {
+                            for (String mavenProperty : result.mavenProperties.keySet()) {
+                                filteredDependencyKey = filter(filteredDependencyKey, mavenProperty, result.mavenProperties);
+                                filteredDependencyValue = filter(filteredDependencyValue, mavenProperty, result.mavenProperties);
+                            }
                         }
+                        scopedDeps.put(filteredDependencyKey, filteredDependencyValue);
                     }
-                    properties.put(filteredDependencyKey, filteredDependencyValue);
+                }
+                Properties repos = new Properties();
+                for (String repoUrl : result.mavenRepositoryUrls) {
+                    RepositoryAtom repoAtom = RepositoryAtom.parse("maven:" + repoUrl);
+                    repos.put(repoAtom.getPropertyName(), repoAtom.getPropertyValue());
                 }
                 return new MavenPom(result.mavenProperties.get("project.groupId"),
-                                    result.mavenProperties.get("project.artifactId"),
-                                    result.mavenProperties.get("project.version"),
-                                    result.mavenProperties.get("project.packaging"),
-                                    properties,
-                                    new Properties());
+                        result.mavenProperties.get("project.artifactId"),
+                        result.mavenProperties.get("project.version"),
+                        result.mavenProperties.get("project.packaging"),
+                        deps, testDeps, repos,
+                        result.mavenProperties.get("project.build.directory"),
+                        result.mavenProperties.get("project.build.outputDirectory"),
+                        result.mavenProperties.get("project.build.finalName"),
+                        result.mavenProperties.get("project.build.sourceDirectory"),
+                        result.mavenProperties.get("project.build.testOutputDirectory"),
+                        result.mavenProperties.get("project.build.testSourceDirectory"));
             } catch (Exception e) {
                 throw new RuntimeException(e.getMessage(), e);
             }
@@ -205,6 +231,8 @@ public interface MavenPomParser {
                         parseDependencyManagement(child, parseResult, repositoryAtom);
                     } else if ("dependencies".equals(nodeName)) {
                         parseDependencies(child, parseResult, repositoryAtom, false);
+                    } else if ("repositories".equals(nodeName)) {
+                        parseRepositories(child, parseResult);
                     } else if ("properties".equals(nodeName)) {
                         parseProperties(child, parseResult);
                     } else if ("groupId".equals(nodeName) && !"${parent.groupId}".equals(child.getTextContent())) {
@@ -217,12 +245,22 @@ public interface MavenPomParser {
                         packaging = child.getTextContent();
                     } else if ("parent".equals(nodeName)) { // parent
                         parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentGroupId, parentVersion);
+                    } else if ("build".equals(nodeName)) {
+                        parseBuild(child, parseResult);
                     }
                 }
-                parseResult.mavenProperties.put("project.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));
-                parseResult.mavenProperties.put("project.artifactId", localArtifactId);
-                parseResult.mavenProperties.put("project.version", (localVersion != null ? localVersion : parentVersion.get()));
-                parseResult.mavenProperties.put("project.packaging", packaging);
+                if (!parseResult.mavenProperties.containsKey("project.groupId")) {
+                    parseResult.mavenProperties.put("project.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));
+                }
+                if (!parseResult.mavenProperties.containsKey("project.artifactId")) { // don't override artifactId with parent.artifactId
+                    parseResult.mavenProperties.put("project.artifactId", localArtifactId);
+                }
+                if (!parseResult.mavenProperties.containsKey("project.version")) {
+                    parseResult.mavenProperties.put("project.version", (localVersion != null ? localVersion : parentVersion.get()));
+                }
+                if (!parseResult.mavenProperties.containsKey("project.packaging")) {
+                    parseResult.mavenProperties.put("project.packaging", packaging);
+                }
                 if (parentPomUrlPath != null) {
                     // filter project.* so that they are not overridden by the recursion on parent
                     filterLocalProjectProperties(parseResult);
@@ -295,6 +333,59 @@ public interface MavenPomParser {
                 // iterating child->parent, per maven, child overrides parent, only place in if not already
                 // exists (hence !override).
                 parseResult.addDep(groupId, artifactId, version, classifier, type, scope, optional, systemPath, false, resolutionOnly);
+            }
+        }
+
+        /**
+         * Parses the {@literal <repositories>} tag and extracts all default layout repository urls and places them
+         * within {@code parseResult}
+         * @param repositoriesNode the {@literal <repositories>} tag
+         * @param parseResult into which to place parsed repository urls.
+         */
+        private void parseRepositories(Node repositoriesNode, ParseResult parseResult) {
+            NodeList repositories = repositoriesNode.getChildNodes();
+            for (int i = 0; i < repositories.getLength(); i++) {
+                if (!"repository".equals(repositories.item(i).getNodeName())) {
+                    continue;
+                }
+                NodeList repositoryNode = repositories.item(i).getChildNodes();
+                String repoUrl = "", layout = "";
+                for (int j = 0; j < repositoryNode.getLength(); j++) {
+                    Node child = repositoryNode.item(j);
+                    if ("url".equals(child.getNodeName())) {
+                        repoUrl = child.getTextContent();
+                    } else if ("layout".equals(child.getNodeName())) {
+                        layout = child.getTextContent();
+                    }
+                }
+                if (!repoUrl.isEmpty() && (layout.isEmpty() || "default".equals(layout))) {
+                    parseResult.addRepo(repoUrl);
+                } else if (!layout.isEmpty()) {
+                    Output.print("^warn^ Found a repository [ %s ] however its layout [ ^b^%s^r^ ] is not supported, skipping.", repoUrl, layout);
+                }
+            }
+        }
+
+        private void parseBuild(Node buildNode, ParseResult parseResult) {
+            NodeList build = buildNode.getChildNodes();
+            for (int i = 0; i < build.getLength(); i++) {
+                Node child = build.item(i);
+                String nodeName = child.getNodeName();
+                // TODO - all the following need to be filtered.
+                if ("directory".equals(nodeName)) {
+                    parseResult.mavenProperties.put("project.build.directory", child.getTextContent());
+                } else if ("outputDirectory".equals(nodeName)) {
+                    parseResult.mavenProperties.put("project.build.outputDirectory", child.getTextContent());
+                } else if ("sourceDirectory".equals(nodeName)) {
+                    parseResult.mavenProperties.put("project.build.sourceDirectory", child.getTextContent());
+                } else if ("testOutputDirectory".equals(nodeName)) {
+                    parseResult.mavenProperties.put("project.build.testOutputDirectory", child.getTextContent());
+                } else if ("testSourceDirectory".equals(nodeName)) {
+                    parseResult.mavenProperties.put("project.build.testSourceDirectory", child.getTextContent());
+                } else if ("finalName".equals(nodeName)) {
+                    parseResult.mavenProperties.put("project.build.finalName", child.getTextContent());
+                }
+                // TODO - resources / testResources [ requires ply to support multiple-resource dirs ]
             }
         }
 

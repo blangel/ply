@@ -27,9 +27,7 @@ public class FileResource implements Resource {
         if (file.startsWith("file://")) {
             file = file.substring(7);
         }
-        if (file.startsWith("~")) {
-            file = FileUtil.resolveUnixTilde(file);
-        }
+        file = FileUtil.resolveUnixTilde(file);
         this.file = new File(file);
         this.ref = new AtomicReference<InputStream>();
     }
