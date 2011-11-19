@@ -10,9 +10,15 @@ import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * User: blangel
@@ -254,11 +260,27 @@ public class DependencyManager {
     }
 
     private static Properties resolveDependencies(Map<String, String> dependencies) {
+        // if the project hasn't already resolved these dependencies locally and is not running with 'info' logging
+        // it appears that ply has hung if downloading lots of dependencies...print out a warning if not running
+        // in 'info' logging and dependency resolution takes longer than 2 seconds.
+        final Lock lock = new ReentrantLock();
+        Thread printThread = null;
+        if (!Output.isInfo()) {
+            printThread = new SlowResolutionThread(lock);
+            printThread.start();
+        }
+
         DependencyAtom self = Deps.getProjectDep();
         List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
         DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms,
                 createRepositoryList(self, dependencyAtoms));
-        return Deps.convertToResolvedPropertiesFile(dependencyGraph);
+        Properties deps = Deps.convertToResolvedPropertiesFile(dependencyGraph);
+
+        if (printThread != null) {
+            printThread.interrupt();
+            lock.lock(); // never release, one-time-lock; the print-thread should always release after print if it holds the lock
+        }
+        return deps;
     }
 
     private static Map<String, String> getDependencies(Scope scope) {
@@ -338,7 +360,7 @@ public class DependencyManager {
             String name = dep.dependencyAtom.getPropertyName();
             String version = dep.dependencyAtom.getPropertyValueWithoutTransient();
             Output.print("%s^b^%s:%s^r^%s%s", indent, name, version, (dep.dependencyAtom.transientDep ? TRANSIENT_PRINT : ""),
-                                              (enc ? " (already printed)" : ""));
+                    (enc ? " (already printed)" : ""));
             if (!enc && (!dep.dependencyAtom.transientDep || vertex.isRoot())) {
                 printDependencyGraph(vertex.getChildren(), String.format("  %s %s", PlyUtil.isUnicodeSupported() ? "\u2937" : "\\", indent), encountered);
             }

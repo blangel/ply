@@ -3,6 +3,7 @@ package net.ocheyedan.ply;
 import net.ocheyedan.ply.exec.ClojureExec;
 import net.ocheyedan.ply.exec.Execution;
 import net.ocheyedan.ply.exec.JarExec;
+import net.ocheyedan.ply.exec.StdinProcessPipe;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.PropsExt;
 
@@ -37,6 +38,8 @@ import java.util.Map;
  * 'test:file-changed test:compile test:package'.
  */
 public final class Exec {
+
+    private final static StdinProcessPipe STDIN_PROCESS_PIPE = new StdinProcessPipe();
 
     /**
      * Invokes all scripts associated with {@code unresolved} by resolving it to a list of {@code Execution} objects
@@ -98,7 +101,7 @@ public final class Exec {
         }
         if (encountered.contains(script)) {
             Output.print("^error^ Alias (^b^%s^r^) contains a circular reference (run '^b^ply config --scripts get %s^r^' to analyze).",
-                         script, script);
+                    script, script);
             System.exit(1);
         }
         encountered.add(script);
@@ -159,18 +162,21 @@ public final class Exec {
             ProcessBuilder processBuilder = new ProcessBuilder(execution.scriptArgs).redirectErrorStream(true).directory(projectRoot);
             Map<String, String> environment = processBuilder.environment();
             environment.putAll(PropsExt.getPropsForEnv(FileUtil.fromParts(projectRoot.getPath(), ".ply"),
-                                                       projectConfigDir,
-                                                       execution.scope));
+                    projectConfigDir,
+                    execution.scope));
             Output.print("^dbug^ invoking %s", script);
             // the Process thread reaps the child if the parent (this) is terminated
-            Process process = processBuilder.start();
-            InputStream processStdout = process.getInputStream();
-            BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
+            final Process process = processBuilder.start();
+            // take the parent's input and pipe to the child's output
+            STDIN_PROCESS_PIPE.startPipe(process.getOutputStream());
+            // take the child's input and reformat for output on parent process
+            BufferedReader processStdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String processStdoutLine;
-            while ((processStdoutLine = lineReader.readLine()) != null) {
+            while ((processStdoutLine = processStdout.readLine()) != null) {
                 Output.printFromExec("[^green^%s^r^] %s", execution.originalScript, processStdoutLine);
             }
             int result = process.waitFor();
+            STDIN_PROCESS_PIPE.pausePipe();
             if (result == 0) {
                 return true;
             }

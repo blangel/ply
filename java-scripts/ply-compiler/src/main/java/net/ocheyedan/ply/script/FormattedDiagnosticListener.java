@@ -5,6 +5,7 @@ import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 import java.io.File;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * User: blangel
@@ -27,13 +28,13 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
     }
 
     @Override public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
-	// odd - mac-osx's compiler appears to report a Diagnostic on ignored warnings (ignored via compiler options)
-	// but the source is null, skip these.
-	if ((diagnostic == null) || (diagnostic.getSource() == null)) {
-	    return;
-	}
+        // odd - mac-osx's compiler appears to report a Diagnostic on ignored warnings (ignored via compiler options)
+        // but the source is null, skip these.
+        if ((diagnostic == null) || (diagnostic.getSource() == null)) {
+            return;
+        }
 
-	String kind = "", pad = " ", color = "blue";
+        String kind = "", pad = " ", color = "blue";
         Type type = Type.Note;
         switch (diagnostic.getKind()) {
             case ERROR:
@@ -51,8 +52,11 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
             default:
                 kind = "message";
         }
-	String className = diagnostic.getSource().toUri().toString();
-        className = className.replace(srcPath, "").replace(".java", "").replaceAll(File.separator, ".").replace("$", ".");
+        String className = diagnostic.getSource().toUri().toString();
+        className = className.replace(srcPath, "").replace(".java", "").replaceAll(File.separator, ".");
+        String classShortName = (className.lastIndexOf(".") != -1) ? className.substring(className.lastIndexOf(".") + 1) : className;
+        classShortName = classShortName.replace("$", ".");
+        className = className.replace("$", ".");
 
         String lineNumber = String.valueOf(diagnostic.getLineNumber());
 
@@ -73,6 +77,9 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
         message = message.replaceAll("\\[serial\\] ", "");
         message = message.replaceAll(" symbol  :", ";^b^");
         message = message.replaceAll("location:", "^r^in^b^");
+        // since we're printing the className at the end of every message, if the className is within the message
+        // replace it with the shortClassName (i.e., className without package) for readability.
+        message = message.replaceAll(Pattern.quote(className), classShortName);
 
         Set<String> messages = statements.get(type);
         if (messages == null) {
@@ -80,7 +87,7 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
             statements.put(type, messages);
         }
         messages.add(String.format("^%s^^i^%s%s%s^r^ %s^r^ @ line ^b^%s^r^ in ^b^%s^r^", color, pad, kind, pad,
-                        message, lineNumber, className));
+                message, lineNumber, className));
     }
 
     public Set<String> getErrors() {

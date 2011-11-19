@@ -141,5 +141,47 @@ public final class Output {
         return formatted;
     }
 
+    /**
+     * @return true if warn level logging is enabled
+     */
+    public static boolean isWarn() {
+        return warnLevel.get();
+    }
+
+    /**
+     * @return true if info level logging is enabled
+     */
+    public static boolean isInfo() {
+        return infoLevel.get();
+    }
+
+    /**
+     * @return true if debug/dbug level logging is enabled
+     */
+    public static boolean isDebug() {
+        return dbugLevel.get();
+    }
+
+    /**
+     * Enable warn level logging.
+     */
+    public static void enableWarn() {
+        warnLevel.set(true);
+    }
+
+    /**
+     * Enables info level logging.
+     */
+    public static void enableInfo() {
+        infoLevel.set(true);
+    }
+
+    /**
+     * Enables debug/dbug level logging.
+     */
+    public static void enableDebug() {
+        dbugLevel.set(true);
+    }
+
     private Output() { }
 }
