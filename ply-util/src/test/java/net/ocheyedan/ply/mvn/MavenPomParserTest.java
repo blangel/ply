@@ -21,7 +21,12 @@ public class MavenPomParserTest {
     public void parsePom() throws URISyntaxException {
         MavenPomParser parser = new MavenPomParser.Default();
         RepositoryAtom mockRepo = new RepositoryAtom(new URI("classpath:mock-mvn-repo/"));
-        Properties properties = parser.parsePom("classpath:mock-mvn-repo/log4j/log4j/1.2.16/log4j-1.2.16.pom", mockRepo).dependencies;
+        MavenPom pom = parser.parsePom("classpath:mock-mvn-repo/log4j/log4j/1.2.16/log4j-1.2.16.pom", mockRepo);
+        assertEquals("log4j", pom.groupId);
+        assertEquals("log4j", pom.artifactId);
+        assertEquals("1.2.16", pom.version);
+        assertEquals("bundle", pom.packaging);
+        Properties properties = pom.dependencies;
         assertNotNull(properties);
         assertEquals(2, properties.size());
         String javaxMail = properties.getProperty("javax.mail:mail");
@@ -29,7 +34,12 @@ public class MavenPomParserTest {
         String geronimoJmsSpec = properties.getProperty("org.apache.geronimo.specs:geronimo-jms_1.1_spec");
         assertEquals("1.0:transient", geronimoJmsSpec);
 
-        properties = parser.parsePom("classpath:mock-mvn-repo/com/amazonaws/aws-java-sdk/1.2.12/aws-java-sdk-1.2.12.pom", mockRepo).dependencies;
+        pom = parser.parsePom("classpath:mock-mvn-repo/com/amazonaws/aws-java-sdk/1.2.12/aws-java-sdk-1.2.12.pom", mockRepo);
+        assertEquals("com.amazonaws", pom.groupId);
+        assertEquals("aws-java-sdk", pom.artifactId);
+        assertEquals("1.2.12", pom.version);
+        assertEquals("jar", pom.packaging);
+        properties = pom.dependencies;
         assertNotNull(properties);
         assertEquals(7, properties.size());
         String commonsCodec = properties.getProperty("commons-codec:commons-codec");

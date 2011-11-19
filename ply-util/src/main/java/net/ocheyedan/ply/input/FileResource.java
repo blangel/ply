@@ -1,5 +1,7 @@
 package net.ocheyedan.ply.input;
 
+import net.ocheyedan.ply.FileUtil;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -21,6 +23,13 @@ public class FileResource implements Resource {
 
     public FileResource(String file) {
         this.name = file;
+        // File doesn't support URI syntax, strip if present
+        if (file.startsWith("file://")) {
+            file = file.substring(7);
+        }
+        if (file.startsWith("~")) {
+            file = FileUtil.resolveUnixTilde(file);
+        }
         this.file = new File(file);
         this.ref = new AtomicReference<InputStream>();
     }
