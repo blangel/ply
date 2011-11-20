@@ -32,7 +32,8 @@ public final class SlowResolutionThread extends Thread {
                 if (lock.tryLock()) {
                     try {
                         Output.print(
-                                "^b^Yikes!^r^ Your project needs a lot of dependencies. Hang tight, ^b^ply^r^'s downloading them...");
+                                "^b^Hang tight,^r^ your project needs a lot of dependencies. ^b^Ply^r^'s downloading them...");
+                        // shouldn't be run if headless; but just in case.
                         if (PlyUtil.isHeadless()) {
                             Output.print("You can always run with ^b^-Pply.log.levels=info^r^ to see more log messages.");
                         } else {

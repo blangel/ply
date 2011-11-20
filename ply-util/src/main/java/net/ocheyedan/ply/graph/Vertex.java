@@ -78,6 +78,19 @@ public final class Vertex<T> {
         return (value == null ? "" : value.toString());
     }
 
+    public String toExtendedString() {
+        StringBuilder buffer = new StringBuilder();
+        buffer.append(toString());
+        for (Vertex<T> child : children) {
+            if (buffer.length() > toString().length()) {
+                buffer.append("\n\t");
+            }
+            buffer.append(" -> ");
+            buffer.append(child.toExtendedString());
+        }
+        return buffer.toString();
+    }
+
     @Override public boolean equals(Object o) {
         if (this == o) {
             return true;

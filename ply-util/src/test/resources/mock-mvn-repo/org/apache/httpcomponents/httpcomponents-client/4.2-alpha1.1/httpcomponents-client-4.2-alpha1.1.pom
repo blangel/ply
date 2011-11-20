@@ -38,7 +38,7 @@
   <description>Apache HttpComponents Client is a library of components for building client side HTTP services</description>
   <url>http://hc.apache.org/httpcomponents-client</url>
   <inceptionYear>1999</inceptionYear>
-  <packaging>jar</packaging>
+  <packaging>pom</packaging>
 
   <organization>
     <name>The Apache Software Foundation</name>
@@ -354,5 +354,13 @@
 
     </plugins>
   </reporting>
+
+    <modules>
+    <module>httpclient</module>
+    <module>httpmime</module>
+    <module>httpclient-cache</module>
+    <module>fluent-hc</module>
+    <module>httpclient-osgi</module>
+  </modules>
 
 </project>

@@ -70,7 +70,7 @@ public class MavenPomParserTest {
         assertEquals("org.apache.httpcomponents", pom.groupId);
         assertEquals("httpcomponents-client", pom.artifactId);
         assertEquals("4.2-alpha1.1", pom.version);
-        assertEquals("jar", pom.packaging);
+        assertEquals("pom", pom.packaging);
         properties = pom.dependencies;
         assertNotNull(properties);
         assertEquals(6, properties.size());
@@ -101,6 +101,16 @@ public class MavenPomParserTest {
         assertEquals(2, properties.size());
         assertEquals("maven", properties.getProperty("http://files.couchbase.com/maven2/"));
         assertEquals("maven", properties.getProperty("http://repository.apache.org/snapshots"));
+
+        properties = pom.modules;
+        assertEquals(7, properties.size());
+        assertEquals("", properties.getProperty("../httpcore"));
+        assertEquals("", properties.getProperty("../httpclient"));
+        assertEquals("", properties.getProperty("httpclient"));
+        assertEquals("", properties.getProperty("httpmime"));
+        assertEquals("", properties.getProperty("httpclient-cache"));
+        assertEquals("", properties.getProperty("fluent-hc"));
+        assertEquals("", properties.getProperty("httpclient-osgi"));
     }
 
 }

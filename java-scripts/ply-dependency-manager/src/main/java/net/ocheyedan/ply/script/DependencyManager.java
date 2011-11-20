@@ -265,7 +265,7 @@ public class DependencyManager {
         // in 'info' logging and dependency resolution takes longer than 2 seconds.
         final Lock lock = new ReentrantLock();
         Thread printThread = null;
-        if (!Output.isInfo()) {
+        if (!Output.isInfo() && !PlyUtil.isHeadless()) {
             printThread = new SlowResolutionThread(lock);
             printThread.start();
         }

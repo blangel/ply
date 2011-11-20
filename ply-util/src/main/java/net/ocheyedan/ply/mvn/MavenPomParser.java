@@ -98,10 +98,13 @@ public interface MavenPomParser {
 
             private final Set<String> mavenRepositoryUrls;
 
+            private final Set<String> modules;
+
             private ParseResult() {
                 this.mavenProperties = new HashMap<String, String>();
                 this.mavenIncompleteDeps = new HashMap<String, Incomplete>();
                 this.mavenRepositoryUrls = new HashSet<String>(2);
+                this.modules = new HashSet<String>(4);
             }
 
             private void addDep(String groupId, String artifactId, String version, String classifier, String type,
@@ -184,11 +187,15 @@ public interface MavenPomParser {
                     RepositoryAtom repoAtom = RepositoryAtom.parse("maven:" + repoUrl);
                     repos.put(repoAtom.getPropertyName(), repoAtom.getPropertyValue());
                 }
+                Properties modules = new Properties();
+                for (String module : result.modules) {
+                    modules.put(module, "");
+                }
                 return new MavenPom(result.mavenProperties.get("project.groupId"),
                         result.mavenProperties.get("project.artifactId"),
                         result.mavenProperties.get("project.version"),
                         result.mavenProperties.get("project.packaging"),
-                        deps, testDeps, repos,
+                        deps, testDeps, repos, modules,
                         result.mavenProperties.get("project.build.directory"),
                         result.mavenProperties.get("project.build.outputDirectory"),
                         result.mavenProperties.get("project.build.finalName"),
@@ -247,6 +254,8 @@ public interface MavenPomParser {
                         parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentGroupId, parentVersion);
                     } else if ("build".equals(nodeName)) {
                         parseBuild(child, parseResult);
+                    } else if ("modules".equals(nodeName)) {
+                        parseModules(child, parseResult);
                     }
                 }
                 if (!parseResult.mavenProperties.containsKey("project.groupId")) {
@@ -386,6 +395,17 @@ public interface MavenPomParser {
                     parseResult.mavenProperties.put("project.build.finalName", child.getTextContent());
                 }
                 // TODO - resources / testResources [ requires ply to support multiple-resource dirs ]
+            }
+        }
+
+        private void parseModules(Node modulesNode, ParseResult parseResult) {
+            NodeList modules = modulesNode.getChildNodes();
+            for (int i = 0; i < modules.getLength(); i++) {
+                if (!"module".equals(modules.item(i).getNodeName())) {
+                    continue;
+                }
+                Node moduleNode = modules.item(i);
+                parseResult.modules.add(moduleNode.getTextContent());
             }
         }
 

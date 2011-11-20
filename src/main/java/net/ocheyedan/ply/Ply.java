@@ -60,18 +60,17 @@ public class Ply {
         Output.printNoLine("^ply^ building ^b^%s^r^, %s", projectName, Props.getValue("project", "version"));
 
         String scope = Props.getValue("project", "submodules.scope");
-        Map<String, Prop> submodules = Submodules.getSubmodules(PlyUtil.LOCAL_CONFIG_DIR, scope);
+        List<Submodule> orderedSubmodules = Submodules.getSubmodules(PlyUtil.LOCAL_CONFIG_DIR, scope);
 
-        if ((submodules != null) && !submodules.isEmpty()) {
+        if ((orderedSubmodules != null) && !orderedSubmodules.isEmpty()) {
             Output.print(" and its submodules:");
-            List<Submodule> orderedSubmodules = Submodules.sortByDependencies(submodules.values(), scope);
             int maxSubmoduleName = projectName.length();
             float maxSubmoduleTime;
             for (Submodule submodule : orderedSubmodules) {
                 Output.print("^ply^\t^b^%s^r^", submodule.name);
             }
 
-            Map<String, Float> submodulesTimeMap = new LinkedHashMap<String, Float>(submodules.size());
+            Map<String, Float> submodulesTimeMap = new LinkedHashMap<String, Float>(orderedSubmodules.size());
 
             // first run the args against the current project
             Output.print("^ply^");

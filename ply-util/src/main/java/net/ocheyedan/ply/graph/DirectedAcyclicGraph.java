@@ -88,4 +88,17 @@ public class DirectedAcyclicGraph<T> implements Graph<T> {
         }
         return roots;
     }
+
+    @Override public String toString() {
+        StringBuilder buffer = new StringBuilder();
+        for (Vertex<T> vertex : getRootVertices()) {
+            if (buffer.length() > 0) {
+                buffer.append("\n");
+            }
+            buffer.append("[ ");
+            buffer.append(vertex.toExtendedString());
+            buffer.append(" ]");
+        }
+        return buffer.toString();
+    }
 }

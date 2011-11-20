@@ -1,9 +1,13 @@
 package net.ocheyedan.ply.submodules;
 
 import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.ListUtil;
+import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
+import net.ocheyedan.ply.graph.Graph;
+import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.PropsExt;
 
@@ -20,27 +24,52 @@ import java.util.*;
 public final class Submodules {
 
     /**
-     * Retrieves the {@literal submodules} from directory {@code localConfigDir} for scope {@code scope}.
+     * Retrieves the {@literal submodules} from directory {@code localConfigDir} for scope {@code scope} and then
+     * orders the results based on the following scheme:
+     * If submoduleA depends upon submoduleB then submoduleB goes first;
+     * else if submoduleA is child of submoduleB then submoduleB goes first;
+     * else if submoduleA is a child but submoduleB isn't then submoduleB goes first;
+     * else submoduleA is equal to submoduleB
+     *
      * Note, for each submodule found, this method recurs and collects any of its submodules as well.
+     * Any submodule whose {@link Prop#value} is equal to {@literal exclude} is ignored and not included in the returned
+     * map.
      * @param localConfigDir location from which to retrieve submodules
      * @param scope of the submodules to retrieve
-     * @return all submodules based on {@code localConfigDir}
+     * @return all {@link Submodule} based on {@code localConfigDir} mapped to their own {@link Submodule} objects.
      */
-    public static Map<String, Prop> getSubmodules(File localConfigDir, String scope) {
-        Map<String, Prop> submodules = new HashMap<String, Prop>();
+    public static List<Submodule> getSubmodules(File localConfigDir, String scope) {
+        Map<String, Submodule> submodules = new HashMap<String, Submodule>();
         getSubmodules(localConfigDir, scope, "", submodules);
-        return submodules;
+        return sortSubmodules(submodules, scope);
     }
-    private static void getSubmodules(File localConfigDir, String scope, String parent, Map<String, Prop> submodules) {
+
+    /**
+     * Retrieves the {@literal submodules} from directory {@code localConfigDir} for scope {@code scope}.
+     * Note, for each submodule found, this method recurs and collects any of its submodules as well.
+     * Any submodule whose {@link Prop#value} is equal to {@literal exclude} is ignored and not included in the returned
+     * map.
+     * @param localConfigDir location from which to retrieve submodules
+     * @param scope of the submodules to retrieve
+     * @param parentName is the parent submodule name for the invocation (relative)
+     * @param submodules all {@link Submodule} based on {@code localConfigDir} mapped by their dependency name.
+     */
+    private static void getSubmodules(File localConfigDir, String scope, String parentName,
+                                      Map<String, Submodule> submodules) {
         Map<String, Prop> dirSubmodules = PropsExt.getPropsForScope(localConfigDir, "submodules", scope);
         if ((dirSubmodules == null) || dirSubmodules.isEmpty()) {
             return;
         }
         for (String key : dirSubmodules.keySet()) {
             Prop prop = dirSubmodules.get(key);
-            String submodule = (parent.isEmpty() ? key : FileUtil.pathFromParts(parent, key));
-            submodules.put(submodule, new Prop(prop.context, prop.scope, submodule, prop.value, prop.localOverride));
+            if ("exclude".equalsIgnoreCase(prop.value)) {
+                continue;
+            }
+            String submoduleName = (parentName.isEmpty() ? key : FileUtil.pathFromParts(parentName, key));
             File submoduleConfigDir = FileUtil.fromParts(localConfigDir.getPath(), "..", "..", key, ".ply", "config");
+            String submoduleResolvedDepName = getSubmoduleResolvedDepName(submoduleConfigDir, scope);
+            Submodule submodule = new Submodule(submoduleName, submoduleResolvedDepName);
+            submodules.put(submoduleResolvedDepName, submodule);
             if (submoduleConfigDir.exists()) {
                 getSubmodules(submoduleConfigDir, scope, key, submodules);
             }
@@ -48,54 +77,41 @@ public final class Submodules {
     }
 
     /**
-     * Orders {@code submodules}'s {@link net.ocheyedan.ply.props.Prop#name} by the directory's dependencies.
-     * Any submodule within {@code submodules} whose {@link Prop#value} is equal to {@literal exclude} is ignored
-     * and not included in the returned list.
-     * @param submodules a collection of {@link net.ocheyedan.ply.props.Prop} objects which represent the submodules
-     * @param scope which resolved {@code submodules} and is used in this method when resolving properties
-     * @return an ordered list of {@code submodules} or an empty {@link java.util.List}.
+     * Sorts {@code submodules} by the following:
+     * If submoduleA depends upon submoduleB then submoduleB goes first;
+     * else if submoduleA is child of submoduleB then submoduleB goes first;
+     * else if submoduleA is a child but submoduleB isn't then submoduleB goes first;
+     * else submoduleA is equal to submoduleB
+
+     * @param submodules which to sort; {@link Submodule} objects mapped by their dependency name.
+     * @param scope of the retrieved {@code submodules}
+     * @return the sorted list of {@code submodules}
      */
-    public static List<Submodule> sortByDependencies(Collection<Prop> submodules, String scope) {
+    private static List<Submodule> sortSubmodules(final Map<String, Submodule> submodules, String scope) {
         if ((submodules == null) || submodules.isEmpty()) {
             return Collections.emptyList();
         }
         List<Submodule> orderedSubmodules = new ArrayList<Submodule>();
-        final Map<String, DirectedAcyclicGraph<Dep>> depGraphs = new HashMap<String, DirectedAcyclicGraph<Dep>>();
-        for (Prop submodule : submodules) {
-            if ("exclude".equalsIgnoreCase(submodule.value)) {
-                continue;
-            }
+        final Map<Submodule, Set<String>> submoduleDepMap = new HashMap<Submodule, Set<String>>();
+        for (String submoduleDepName : submodules.keySet()) {
+            Submodule submodule = submodules.get(submoduleDepName);
+            orderedSubmodules.add(submodule);
             File submoduleConfigDir = FileUtil.fromParts(PlyUtil.LOCAL_PROJECT_DIR.getPath(), "..", submodule.name,
                     ".ply", "config");
-            String submoduleResolvedDepName = getSubmoduleResolvedDepName(submoduleConfigDir, scope);
-            orderedSubmodules.add(new Submodule(submodule.name, submoduleResolvedDepName));
-            Map<String, Prop> deps = PropsExt.getPropsForScope(submoduleConfigDir, "dependencies", scope); // TODO - filter?
-            List<DependencyAtom> dependencyAtoms = convertDeps((deps == null ? null : deps.values()));
-            if (dependencyAtoms.isEmpty()) {
-                continue;
-            }
-            Map<String, Prop> repos = PropsExt.getPropsForScope(submoduleConfigDir, "repositories", scope); // TODO - filter?
-            List<RepositoryAtom> repositoryAtoms = convertRepos((repos == null ? null : repos.values()));
-            Prop localRepoProp = PropsExt.get(submoduleConfigDir, "depmngr", scope, "localRepo");
-            String filteredLocalRepo = PropsExt.filterForPly(submoduleConfigDir, localRepoProp, scope);
-            RepositoryAtom localRepo = RepositoryAtom.parse(filteredLocalRepo);
-            RepositoryRegistry repositoryRegistry = new RepositoryRegistry(localRepo, repositoryAtoms, null);
-            
-            DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry);
-            depGraphs.put(submoduleResolvedDepName, depGraph);
+            Map<String, Prop> depProps = PropsExt.getPropsForScope(submoduleConfigDir, "dependencies", scope); // TODO - filter?
+            Set<String> deps = convertDeps(depProps, submodules);
+            submoduleDepMap.put(submodule, deps);
         }
         // if submoduleA depends upon submoduleB then submoduleB goes first
         // if submoduleA is child of submoduleB then submoduleB goes first
         // if submoduleA is a child but submoduleB isn't then submoduleB goes first
-        Collections.sort(orderedSubmodules, new Comparator<Submodule>() {
+        Comparator<Submodule> comparator = new Comparator<Submodule>() {
             @Override public int compare(final Submodule submoduleA, Submodule submoduleB) {
-                Dep depA = new Dep(DependencyAtom.parse(submoduleA.dependencyName, null), null, null);
-                Dep depB = new Dep(DependencyAtom.parse(submoduleB.dependencyName, null), null, null);
-                DirectedAcyclicGraph<Dep> depAGraph = depGraphs.get(submoduleA.dependencyName);
-                DirectedAcyclicGraph<Dep> depBGraph = depGraphs.get(submoduleB.dependencyName);
-                if ((depAGraph != null) && depAGraph.hasVertex(depB)) {
+                Set<String> submoduleADeps = submoduleDepMap.get(submoduleA);
+                Set<String> submoduleBDeps = submoduleDepMap.get(submoduleB);
+                if ((submoduleADeps != null) && submoduleADeps.contains(submoduleB.dependencyName)) {
                     return 1;
-                } else if ((depBGraph != null) && depBGraph.hasVertex(depA)) {
+                } else if ((submoduleBDeps != null) && submoduleBDeps.contains(submoduleA.dependencyName)) {
                     return -1;
                 }
                 if (submoduleA.name.contains(submoduleB.name)) {
@@ -108,9 +124,10 @@ public final class Submodules {
                 } else if (submoduleB.name.contains(File.separator) && !submoduleA.name.contains(File.separator)) {
                     return -1;
                 }
-                return 0;
+                return 0; // TODO - default to order specified by user
             }
-        });
+        };
+        ListUtil.sort(orderedSubmodules, comparator);
         return orderedSubmodules;
     }
 
@@ -128,33 +145,18 @@ public final class Submodules {
         }
     }
 
-    private static List<DependencyAtom> convertDeps(Collection<Prop> deps) {
-        if ((deps == null) || deps.isEmpty()) {
-            return Collections.emptyList();
+    private static Set<String> convertDeps(Map<String, Prop> depProps, Map<String, Submodule> submodules) {
+        if ((depProps == null) || depProps.isEmpty()) {
+            return Collections.emptySet();
         }
-        List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>();
-        for (Prop dep : deps) {
-            DependencyAtom dependencyAtom = DependencyAtom.parse(dep.name + ":" + dep.value, null);
-            if (dependencyAtom != null) {
-                dependencyAtoms.add(dependencyAtom);
+        Set<String> deps = new HashSet<String>(depProps.size());
+        for (Prop depProp : depProps.values()) {
+            String dep = depProp.name + ":" + depProp.value;
+            if (submodules.containsKey(dep)) {
+                deps.add(dep);
             }
         }
-        return dependencyAtoms;
-    }
-
-    private static List<RepositoryAtom> convertRepos(Collection<Prop> repos) {
-        if ((repos == null) || repos.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
-        for (Prop repo : repos) {
-            RepositoryAtom repositoryAtom = RepositoryAtom.parse(repo.value + ":" + repo.name);
-            if (repositoryAtom != null) {
-                repositoryAtoms.add(repositoryAtom);
-            }
-        }
-        Collections.sort(repositoryAtoms, RepositoryAtom.LOCAL_COMPARATOR);
-        return repositoryAtoms;
+        return deps;
     }
 
     private Submodules() { }

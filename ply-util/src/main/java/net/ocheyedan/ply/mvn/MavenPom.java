@@ -23,6 +23,8 @@ public final class MavenPom {
 
     public final Properties testDependencies;
 
+    public final Properties modules;
+
     public final Properties repositories;
 
     public final String buildDirectory;
@@ -38,9 +40,9 @@ public final class MavenPom {
     public final String buildTestSourceDirectory;
 
     public MavenPom(String groupId, String artifactId, String version, String packaging, Properties dependencies,
-                    Properties testDependencies, Properties repositories, String buildDirectory, String buildOutputDirectory,
-                    String buildFinalName, String buildSourceDirectory, String buildTestOutputDirectory,
-                    String buildTestSourceDirectory) {
+                    Properties testDependencies, Properties repositories, Properties modules, String buildDirectory,
+                    String buildOutputDirectory, String buildFinalName, String buildSourceDirectory,
+                    String buildTestOutputDirectory, String buildTestSourceDirectory) {
         this.groupId = groupId;
         this.artifactId = artifactId;
         this.version = version;
@@ -48,6 +50,7 @@ public final class MavenPom {
         this.dependencies = dependencies;
         this.testDependencies = testDependencies;
         this.repositories = repositories;
+        this.modules = modules;
         this.buildDirectory = buildDirectory;
         this.buildOutputDirectory = buildOutputDirectory;
         this.buildFinalName = buildFinalName;
