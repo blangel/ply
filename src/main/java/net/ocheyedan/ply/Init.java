@@ -23,29 +23,60 @@ import java.util.Properties;
  *
  * Sets up a local ply build point within the current working directory.
  */
-public class Init {
+public final class Init {
+
+    // TODO - 1 - make parsepom take a parent MavenPom
+    // TODO - 2 - replace all system-cleanup with exceptions have have static-main catch and cleanup
+    // TODO - 3 - make static set of clean-up dirs which can be cleaned up on exception from above
+
+    /**
+     * Thrown to indicate the directory has already been initialized.
+     */
+    @SuppressWarnings("serial")
+    private static class AlreadyInitialized extends RuntimeException { }
+
+    /**
+     * Thrown to indicate that a specified pom file could not be found.
+     */
+    @SuppressWarnings("serial")
+    private static class PomNotFound extends RuntimeException {
+        final String pom;
+        private PomNotFound(String pom) {
+            super();
+            this.pom = pom;
+        }
+    }
 
     public static void invoke(String[] args) {
         if ((args.length > 1) && "--usage".equals(args[1])) {
             usage();
             return;
         }
-        // check for existing init.
-        File ply = new File("./.ply");
-        if (ply.exists()) {
+        try {
+            init(new File("."), args);
+        } catch (PomNotFound pnf) {
+            Output.print("^ply^ ^error^ Specified maven pom file [ ^b^%s^r^ ] does not exist.", pnf.pom);
+            cleanupAfterFailure(FileUtil.fromParts(".", ".ply"));
+            System.exit(1);
+        } catch (AlreadyInitialized ai) {
             Output.print("^ply^ Current directory is already initialized.");
-            return;
+        }
+    }
+
+    private static void init(File from, String[] args) throws AlreadyInitialized, PomNotFound {
+        // check for existing init.
+        File ply = FileUtil.fromParts(from.getPath(), ".ply");
+        if (ply.exists()) {
+            throw new AlreadyInitialized();
         }
         // now create the .ply/config directories
-        File configDir = new File("./.ply/config");
+        File configDir = FileUtil.fromParts(from.getPath(), ".ply", "config");
         configDir.mkdirs();
         // check for an existing maven project
         File mavenPom;
-        if ((mavenPom = getMavenPom(args)) != null) {
+        if ((mavenPom = getMavenPom(from, args)) != null) {
             if (!mavenPom.exists()) {
-                Output.print("^ply^ ^error^ Specified maven pom file [ ^b^%s^r^ ] does not exist.", mavenPom.getPath());
-                cleanupAfterFailure(ply);
-                System.exit(1);
+                throw new PomNotFound(mavenPom.getPath());
             }
             MavenPomParser parser = new MavenPomParser.Default();
             Map<String, Prop> repos = Props.getProps("repositories");
@@ -76,13 +107,24 @@ public class Init {
                 cleanupAfterFailure(ply);
                 System.exit(1); /* return to appease compiler regarding 'pom' */ return;
             }
-            if ((pom == null) || !createProperties(pom)) {
+            if ((pom == null) || !createProperties(from, pom)) {
                 Output.print("^ply^ ^error^ Could not parse pom.");
                 cleanupAfterFailure(ply);
                 System.exit(1);
             }
+            if ((pom.modules != null) && !pom.modules.isEmpty()) {
+                for (String submodule : pom.modules.stringPropertyNames()) {
+                    try {
+                        init(FileUtil.fromParts(from.getPath(), submodule), new String[] { "init", "--from-pom=pom.xml" });
+                    } catch (AlreadyInitialized ai) {
+                        // ignore, this is fine
+                    } catch (PomNotFound pnf) {
+                        Output.print("^warn^ Could not find ^b^%s^r^'s pom file. For init of sub-modules the pom must be named ^b^pom.xml^r^");
+                    }
+                }
+            }
         } else {
-            if (!createDefaultProperties()) {
+            if (!createDefaultProperties(from)) {
                 Output.print("^ply^ ^error^ Could not initialize project.");
                 cleanupAfterFailure(ply);
                 System.exit(1);
@@ -99,13 +141,13 @@ public class Init {
         Output.print("^ply^ Project ^b^%s^r^ initialized successfully.", projectProps.get("project").get("name").value);
     }
 
-    private static File getMavenPom(String[] args) {
+    private static File getMavenPom(File from, String[] args) {
         if ((args.length > 1) && args[1].startsWith("--from-pom=")) {
-            return new File(args[1].substring("--from-pom=".length()));
+            return FileUtil.fromParts(from.getPath(), args[1].substring("--from-pom=".length()));
         } else if (PlyUtil.isHeadless()) {
             return null;
         }
-        File[] poms = findPomFiles();
+        File[] poms = findPomFiles(from);
         if ((poms != null) && poms.length > 0) {
             String options;
             if (poms.length == 1) {
@@ -146,7 +188,7 @@ public class Init {
                         break;
                     }
                 } catch (IOException ioe) {
-                    cleanupAfterFailure(new File("./.ply"));
+                    cleanupAfterFailure(FileUtil.fromParts(from.getPath(), ".ply"));
                     throw new AssertionError(ioe);
                 }
             }
@@ -166,10 +208,11 @@ public class Init {
      * packaging = {@link MavenPom#packaging}
      * Initializes the {@literal dependencies.properties} file with {@link MavenPom#dependencies}
      * and {@literal repositories.properties} file with {@link MavenPom#repositories}.
+     * @param from directory from which to save property files
      * @param pom which to extract configuration values.
      * @return true is success; false, otherwise
      */
-    private static boolean createProperties(MavenPom pom) {
+    private static boolean createProperties(File from, MavenPom pom) {
         Map<String, Properties> fileToProps = new HashMap<String, Properties>(3);
 
         Properties projectProps = new Properties();
@@ -188,36 +231,40 @@ public class Init {
         if (pom.buildFinalName != null) {
             projectProps.put("artifact.name", pom.buildFinalName);
         }
-        fileToProps.put("./.ply/config/project.properties", projectProps);
+        fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.properties"), projectProps);
 
         if ((pom.dependencies != null) && !pom.dependencies.isEmpty()) {
-            fileToProps.put("./.ply/config/dependencies.properties", pom.dependencies);
+            fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "dependencies.properties"), pom.dependencies);
         }
 
         if ((pom.testDependencies != null) && !pom.testDependencies.isEmpty()) {
-            fileToProps.put("./.ply/config/dependencies.test.properties", pom.testDependencies);
+            fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "dependencies.test.properties"), pom.testDependencies);
         }
 
         if ((pom.repositories != null) && !pom.repositories.isEmpty()) {
-            fileToProps.put("./.ply/config/repositories.properties", pom.repositories);
+            fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "repositories.properties"), pom.repositories);
         }
 
         if (pom.buildOutputDirectory != null) {
             Properties compilerProps = new Properties();
             compilerProps.put("build.path", pom.buildOutputDirectory);
-            fileToProps.put("./.ply/config/compiler.properties", compilerProps);
+            fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "compiler.properties"), compilerProps);
         }
 
         if (pom.buildTestOutputDirectory != null) {
             Properties compilerTestProps = new Properties();
             compilerTestProps.put("build.path", pom.buildTestOutputDirectory);
-            fileToProps.put("./.ply/config/compiler.test.properties", compilerTestProps);
+            fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "compiler.test.properties"), compilerTestProps);
         }
 
         if (pom.buildTestSourceDirectory != null) {
             Properties projectTestProps = new Properties();
             projectTestProps.put("src.dir", pom.buildTestSourceDirectory);
-            fileToProps.put("./.ply/config/project.test.properties", projectTestProps);
+            fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.test.properties"), projectTestProps);
+        }
+
+        if ((pom.modules != null) && !pom.modules.isEmpty()) {
+            fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "submodules.properties"), pom.modules);
         }
 
         return createProperties(fileToProps);
@@ -228,12 +275,13 @@ public class Init {
      * namespace = current working directory
      * name = current working directory
      * version = 1.0
+     * @param from directory from which to save property files
      * @return true on success
      */
-    private static boolean createDefaultProperties() {
+    private static boolean createDefaultProperties(File from) {
         Map<String, Properties> projectMap = new HashMap<String, Properties>(1);
         Properties projectProps = new Properties();
-        projectMap.put("./.ply/config/project.properties", projectProps);
+        projectMap.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.properties"), projectProps);
         try {
             File projectDirectory = new File(".");
             String path = projectDirectory.getCanonicalPath();
@@ -298,11 +346,11 @@ public class Init {
     }
 
     /**
-     * @return all files within the current directory ("./") ending with "pom.xml"
+     * @param from the base directory in which to look for pom files.
+     * @return all files within the {@code from} directory ending with "pom.xml"
      */
-    private static File[] findPomFiles() {
-        File currentDir = new File("./");
-        return currentDir.listFiles(new FilenameFilter() {
+    private static File[] findPomFiles(File from) {
+        return from.listFiles(new FilenameFilter() {
             @Override public boolean accept(File dir, String name) {
                 return name.endsWith("pom.xml");
             }

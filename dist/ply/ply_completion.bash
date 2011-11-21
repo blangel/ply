@@ -30,7 +30,7 @@ _ply_completion() {
     
     # if '-P' is start of cur, print the contexts after the -P
     if [[ ${cur} == -P* ]]; then
-	compopt -o nospace
+	type compopt &>/dev/null && compopt -o nospace
 	# the start of the -P
 	if [[ ${cur} != *.* ]]; then
 	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" -printf "%f\n" | \
@@ -78,7 +78,7 @@ _ply_completion() {
 
     case "${prev}" in 
 	init)
-	    compopt -o nospace
+	    type compopt &>/dev/null && compopt -o nospace
 	    COMPREPLY=( $(compgen -S '=' -W "--from-pom" -- ${cur}) );;
 	config)
 	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" -printf "%f\n" | \
