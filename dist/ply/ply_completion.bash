@@ -1,4 +1,5 @@
 _ply_completion() {
+    local has_compopt=`type -t compopt`
     local cur prev tasks defaultaliases projectaliases aliases configtasks projectdir
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
@@ -30,7 +31,9 @@ _ply_completion() {
     
     # if '-P' is start of cur, print the contexts after the -P
     if [[ ${cur} == -P* ]]; then
-	type compopt &>/dev/null && compopt -o nospace
+	if [ $has_compopt == "builtin" ]; then
+	    compopt -o nospace
+	fi
 	# the start of the -P
 	if [[ ${cur} != *.* ]]; then
 	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" -printf "%f\n" | \
@@ -78,7 +81,9 @@ _ply_completion() {
 
     case "${prev}" in 
 	init)
-	    type compopt &>/dev/null && compopt -o nospace
+	    if [ $has_compopt == "builtin" ]; then
+		compopt -o nospace
+	    fi
 	    COMPREPLY=( $(compgen -S '=' -W "--from-pom" -- ${cur}) );;
 	config)
 	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" -printf "%f\n" | \
