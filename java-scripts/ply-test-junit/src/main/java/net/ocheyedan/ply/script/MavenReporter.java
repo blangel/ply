@@ -243,7 +243,7 @@ public class MavenReporter extends RunListener {
         File reportDir = new File(reportDirProp.value);
         reportDir.mkdirs();
         for (ReportTestSuite testSuite : testSuites.values()) {
-            String fileName = "TEST-" + testSuite.name + ".xml";
+            String fileName = getReportName(testSuite.name);
             String xmlFileContent = testSuite.toXml();
             File file = new File(reportDir.getPath() + File.separator + fileName);
             FileWriter writer = null;
@@ -289,6 +289,14 @@ public class MavenReporter extends RunListener {
             startTestSuiteIfNeeded(description);
             current.ignoreTest(description);
         }
+    }
+
+    /**
+     * @param test is the name of the test class
+     * @return the maven report file name
+     */
+    public static String getReportName(String test) {
+        return "TEST-" + test + ".xml";
     }
 
     private synchronized void startTestSuiteIfNeeded(Description description) {

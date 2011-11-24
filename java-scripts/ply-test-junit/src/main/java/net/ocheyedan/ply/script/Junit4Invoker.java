@@ -1,5 +1,9 @@
 package net.ocheyedan.ply.script;
 
+import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.props.Prop;
+import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.script.print.PrivilegedOutput;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
@@ -84,6 +88,19 @@ public class Junit4Invoker implements Runnable {
                         runCount, (runCount == 1 ? "" : "s"), (result.getRunTime() / 1000.0f),
                         (failCount > 0 ? "^red^^i^" : "^green^"), failCount, (failCount == 1 ? "" : "s"),
                         (result.getIgnoreCount() > 0 ? "^yellow^^i^" : "^b^"), result.getIgnoreCount());
+
+        Prop reportDirProp = Props.get("project", "reports.dir");
+        if ((failCount > 0) && Output.isInfo() && (reportDirProp != null)) {
+            PrivilegedOutput.print("^info^ For %sdetailed test report%s: ", (failCount == 1 ? "a " : ""), (failCount == 1 ? "" : "s"));
+            for (Failure failure : result.getFailures()) {
+                if (Junit4RunListener.isSyntheticDescription(failure.getDescription())) {
+                    continue;
+                }
+                PrivilegedOutput.print("^info^     ^b^less %s^r^", FileUtil.pathFromParts(reportDirProp.value,
+                        MavenReporter.getReportName(failure.getDescription().getClassName())));
+            }
+            PrivilegedOutput.print("");
+        }
 
         if (failCount != 0) {
             System.exit(1);
