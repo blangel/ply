@@ -1,20 +1,17 @@
 package net.ocheyedan.ply;
 
 import net.ocheyedan.ply.dep.DependencyAtom;
-import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.mvn.MavenPom;
 import net.ocheyedan.ply.mvn.MavenPomParser;
-import net.ocheyedan.ply.props.Loader;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.PropsExt;
 
 import java.io.*;
 import java.nio.CharBuffer;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * User: blangel
@@ -25,27 +22,7 @@ import java.util.Properties;
  */
 public final class Init {
 
-    // TODO - 1 - make parsepom take a parent MavenPom
-    // TODO - 2 - replace all system-cleanup with exceptions have have static-main catch and cleanup
-    // TODO - 3 - make static set of clean-up dirs which can be cleaned up on exception from above
-
-    /**
-     * Thrown to indicate the directory has already been initialized.
-     */
-    @SuppressWarnings("serial")
-    private static class AlreadyInitialized extends RuntimeException { }
-
-    /**
-     * Thrown to indicate that a specified pom file could not be found.
-     */
-    @SuppressWarnings("serial")
-    private static class PomNotFound extends RuntimeException {
-        final String pom;
-        private PomNotFound(String pom) {
-            super();
-            this.pom = pom;
-        }
-    }
+    private static final Set<File> CLEANUP_FILES = new HashSet<File>();
 
     public static void invoke(String[] args) {
         if ((args.length > 1) && "--usage".equals(args[1])) {
@@ -56,10 +33,26 @@ public final class Init {
             init(new File("."), args);
         } catch (PomNotFound pnf) {
             Output.print("^ply^ ^error^ Specified maven pom file [ ^b^%s^r^ ] does not exist.", pnf.pom);
-            cleanupAfterFailure(FileUtil.fromParts(".", ".ply"));
+            cleanupAfterFailure();
+            System.exit(1);
+        } catch (NoRepositories nr) {
+            Output.print("^ply^ ^error^ No global repositories.  Reinstall ply or add a repository to the ^b^$PLY_HOME/config/repositories.properties^r^ file.");
+            cleanupAfterFailure();
+            System.exit(1);
+        } catch (PomParseException ppe) {
+            Output.print("^ply^ ^error^ Could not parse pom [ %s ].", ppe.getMessage());
+            cleanupAfterFailure();
+            System.exit(1);
+        } catch (InitException ie) {
+            Output.print("^ply^ ^error^ Could not initialize project [ %s ].", (ie.getCause() != null ? ie.getCause() : ""));
+            cleanupAfterFailure();
             System.exit(1);
         } catch (AlreadyInitialized ai) {
             Output.print("^ply^ Current directory is already initialized.");
+        } catch (Throwable t) {
+            t.printStackTrace(); // exceptional case - print to std-err
+            cleanupAfterFailure();
+            System.exit(1);
         }
     }
 
@@ -69,6 +62,7 @@ public final class Init {
         if (ply.exists()) {
             throw new AlreadyInitialized();
         }
+        CLEANUP_FILES.add(ply);
         // now create the .ply/config directories
         File configDir = FileUtil.fromParts(from.getPath(), ".ply", "config");
         configDir.mkdirs();
@@ -78,56 +72,43 @@ public final class Init {
             if (!mavenPom.exists()) {
                 throw new PomNotFound(mavenPom.getPath());
             }
+            List<RepositoryAtom> repositoryAtoms = getRepositories();
             MavenPomParser parser = new MavenPomParser.Default();
-            Map<String, Prop> repos = Props.getProps("repositories");
-            RepositoryAtom repo;
-            if ((repos == null) || repos.isEmpty()) {
-                repo = RepositoryAtom.parse(Props.getValue("depmngr", "localRepo"));
-            } else {
-                String firstKey = repos.keySet().iterator().next();
-                Prop firstProp = repos.get(firstKey);
-                repo = RepositoryAtom.parse(RepositoryAtom.atomFromProp(firstProp));
-            }
-            if (repo == null) {
-                Output.print("^ply^ ^error^ No global repositories.  Reinstall ply or add a repository to the ^b^$PLY_HOME/config/repositories.properties^r^ file.");
-                cleanupAfterFailure(ply);
-                System.exit(1);
-            }
-            MavenPom pom;
-            PrintStream old = null;
-            try {
-                old = setupTabOutput();
-                pom = parser.parsePom(mavenPom.getPath(), repo); // TODO - first repo fine?
-                revertTabOutput(old);
-            } catch (Exception e) {
-                if (old != null) {
-                    revertTabOutput(old);
+            PrintStream old = setupTabOutput();
+            MavenPom pom = null;
+            for (RepositoryAtom repositoryAtom : repositoryAtoms) {
+                try {
+                    pom = parser.parsePom(mavenPom.getPath(), repositoryAtom);
+                    if (pom != null) {
+                        break;
+                    }
+                } catch (Exception e) {
+                    // try next...
                 }
-                Output.print("^ply^ ^error^ Could not parse pom [ %s ].", e.getMessage());
-                cleanupAfterFailure(ply);
-                System.exit(1); /* return to appease compiler regarding 'pom' */ return;
             }
+            revertTabOutput(old);
             if ((pom == null) || !createProperties(from, pom)) {
-                Output.print("^ply^ ^error^ Could not parse pom.");
-                cleanupAfterFailure(ply);
-                System.exit(1);
+                throw new PomParseException(mavenPom.getPath());
             }
             if ((pom.modules != null) && !pom.modules.isEmpty()) {
                 for (String submodule : pom.modules.stringPropertyNames()) {
+                    File pomFile = FileUtil.fromParts(from.getPath(), submodule);
                     try {
-                        init(FileUtil.fromParts(from.getPath(), submodule), new String[] { "init", "--from-pom=pom.xml" });
+                        if (pomFile.exists()) {
+                            init(pomFile, new String[] { "init", "--from-pom=pom.xml" });
+                        } else {
+                            Output.print("^warn^ Module [ ^b^%s^r^ ] specified in %s but directory not found.", submodule, mavenPom.getPath());
+                        }
                     } catch (AlreadyInitialized ai) {
                         // ignore, this is fine
                     } catch (PomNotFound pnf) {
-                        Output.print("^warn^ Could not find ^b^%s^r^'s pom file. For init of sub-modules the pom must be named ^b^pom.xml^r^");
+                        Output.print("^warn^ Could not find ^b^%s^r^'s pom file. For init of sub-modules the pom must be named ^b^pom.xml^r^", pomFile.getPath());
                     }
                 }
             }
         } else {
             if (!createDefaultProperties(from)) {
-                Output.print("^ply^ ^error^ Could not initialize project.");
-                cleanupAfterFailure(ply);
-                System.exit(1);
+                throw new InitException(null);
             }
         }
         // print out the local properties
@@ -188,16 +169,17 @@ public final class Init {
                         break;
                     }
                 } catch (IOException ioe) {
-                    cleanupAfterFailure(FileUtil.fromParts(from.getPath(), ".ply"));
-                    throw new AssertionError(ioe);
+                    throw new InitException(ioe);
                 }
             }
         }
         return null;
     }
 
-    private static void cleanupAfterFailure(File ply) {
-        FileUtil.delete(ply);
+    private static void cleanupAfterFailure() {
+        for (File file : CLEANUP_FILES) {
+            FileUtil.delete(file);
+        }
     }
 
     /**
@@ -219,7 +201,8 @@ public final class Init {
         projectProps.put("namespace", pom.groupId);
         projectProps.put("name", pom.artifactId);
         projectProps.put("version", pom.version);
-        if (!DependencyAtom.DEFAULT_PACKAGING.equals(pom.packaging)) {
+        // maven's pom packaging will be considered default packaging in ply
+        if (!DependencyAtom.DEFAULT_PACKAGING.equals(pom.packaging) && !"pom".equals(pom.packaging)) {
             projectProps.put("packaging", pom.packaging);
         }
         if (pom.buildDirectory != null) {
@@ -357,10 +340,77 @@ public final class Init {
         });
     }
 
+    /**
+     * @return all repositories available
+     * @throws NoRepositories if there are no repositories
+     */
+    private static List<RepositoryAtom> getRepositories() throws NoRepositories {
+        List<RepositoryAtom> repositories = new ArrayList<RepositoryAtom>();
+        RepositoryAtom local = RepositoryAtom.parse(Props.getValue("depmngr", "localRepo"));
+        if (local != null) {
+            repositories.add(local);
+        }
+        Map<String, Prop> repositoryProperties = Props.getProps("repositories");
+        RepositoryAtom repo;
+        for (String key : repositoryProperties.keySet()) {
+            Prop prop = repositoryProperties.get(key);
+            repo = RepositoryAtom.parse(RepositoryAtom.atomFromProp(prop));
+            if (repo != null) {
+                repositories.add(repo);
+            }
+        }
+        if (repositories.isEmpty()) {
+            throw new NoRepositories();
+        }
+        Collections.sort(repositories, RepositoryAtom.LOCAL_COMPARATOR);
+        return repositories;
+    }
+
     private static void usage() {
         Output.print("ply init [--usage] [--from-pom=<path>] [-PadHocProp...]");
         Output.print("  ^b^--from-pom^r^'s ^b^path^r^ represents a path to a ^b^maven pom^r^ file from which to seed the project's configuration.");
         Output.print("  ^b^-PadHocProp^r^ is zero to many ad-hoc properties prefixed with ^b^-P^r^ in the format ^b^context[#scope].propName=propValue^r^");
     }
+
+    /**
+     * Thrown to indicate the directory has already been initialized.
+     */
+    @SuppressWarnings("serial")
+    private static class AlreadyInitialized extends RuntimeException { }
+
+    /**
+     * Thrown to indicate that a specified pom file could not be found.
+     */
+    @SuppressWarnings("serial")
+    private static class PomNotFound extends RuntimeException {
+        final String pom;
+        private PomNotFound(String pom) {
+            super();
+            this.pom = pom;
+        }
+    }
+
+    /**
+     * Thrown to indicate that a pom could not be parsed
+     */
+    @SuppressWarnings("serial")
+    private static class PomParseException extends RuntimeException {
+        private PomParseException(String message) {
+            super(message);
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static class InitException extends RuntimeException {
+        private InitException(Throwable cause) {
+            super(cause);
+        }
+    }
+
+    /**
+     * Thrown to indicate that no repositories could be found while looking up the pom.
+     */
+    @SuppressWarnings("serial")
+    private static class NoRepositories extends RuntimeException { }
 
 }

@@ -1,5 +1,6 @@
 package net.ocheyedan.ply.mvn;
 
+import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.RepositoryAtom;
@@ -68,10 +69,16 @@ public interface MavenPomParser {
                     this.systemPath = systemPath;
                     this.resolutionOnly = resolutionOnly;
                 }
-                private void complete(Map<String, Map<String, String>> placement) {
+                private void complete(Map<String, Map<String, String>> placement, ParseResult parseResult) {
                     if (resolutionOnly || shouldSkip(scope, systemPath)) {
                         return; // not applicable
-                    } else if ((version == null) || version.isEmpty()) {
+                    }
+                    String projectGroupId = parseResult.mavenProperties.get("project.groupId");
+                    if (((version == null) || version.isEmpty())
+                            && ((projectGroupId != null) && projectGroupId.equals(groupId))) {
+                        version = parseResult.mavenProperties.get("project.version");
+                    }
+                    if ((version == null) || version.isEmpty()) {
                         Output.print("^warn^ Encountered dependency without a version - %s:%s:%s:%s:%s", groupId, artifactId, version, classifier, type);
                     }
                     boolean transientDep = ("provided".equals(scope) || Boolean.valueOf(optional));
@@ -155,9 +162,25 @@ public interface MavenPomParser {
             private Map<String, Map<String, String>> resolveDeps() {
                 Map<String, Map<String, String>> deps = new HashMap<String, Map<String, String>>(mavenIncompleteDeps.size());
                 for (Incomplete incomplete : mavenIncompleteDeps.values()) {
-                    incomplete.complete(deps);
+                    incomplete.complete(deps, this);
                 }
                 return deps;
+            }
+        }
+
+        /**
+         * Encapsulates the pom url, which may be a relative path (if parsing a parent pom) or an absolute
+         * URI.
+         */
+        private static class PomUri {
+            private final String relativeUrl;
+            private final String uri;
+            private final boolean parsingAsParent; // true if parsing as a parent of another project (i.e., ignore modules)
+
+            private PomUri(String relativeUrl, String uri, boolean parsingAsParent) {
+                this.relativeUrl = relativeUrl;
+                this.uri = uri;
+                this.parsingAsParent = parsingAsParent;
             }
         }
 
@@ -210,20 +233,34 @@ public interface MavenPomParser {
         public ParseResult parse(String pomUrlPath, RepositoryAtom repositoryAtom)
                 throws ParserConfigurationException, IOException, SAXException {
             ParseResult parseResult = new ParseResult();
-            parse(pomUrlPath, repositoryAtom, parseResult);
+            PomUri pomUri = new PomUri(null, pomUrlPath, false);
+            parse(pomUri, repositoryAtom, parseResult);
             return parseResult;
         }
 
-        private void parse(String pomUrlPath, RepositoryAtom repositoryAtom, ParseResult parseResult)
+        private void parse(PomUri pomUri, RepositoryAtom repositoryAtom, ParseResult parseResult)
+                throws ParserConfigurationException, IOException, SAXException {
+            if ((pomUri.relativeUrl != null) && !pomUri.relativeUrl.isEmpty()) {
+                try {
+                    parse(pomUri.relativeUrl, pomUri, repositoryAtom, parseResult);
+                    return;
+                } catch (Throwable t) {
+                    // fall through to next parse case
+                }
+            }
+            parse(pomUri.uri, pomUri, repositoryAtom, parseResult);
+        }
+
+        private void parse(String pomUrlPath, PomUri pomUri, RepositoryAtom repositoryAtom, ParseResult parseResult)
                 throws ParserConfigurationException, IOException, SAXException {
             Resource pomResource = Resources.parse(pomUrlPath);
             try {
                 InputStream stream = pomResource.open();
                 Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stream);
                 NodeList pomChildren = document.getDocumentElement().getChildNodes();
-                // store the parent pom url so that recursive processing is down after the entire current pom is analyzed
+                // store the parent pom url so that recursive processing is done after the entire current pom is analyzed
                 // so that any local property filtering (i.e., version) can be done.
-                String parentPomUrlPath = null;
+                PomUri parentPomUri = null;
                 // store the parent version in case the version of the project is not explicitly specified, will use
                 // parent's per maven convention.
                 AtomicReference<String> parentVersion = new AtomicReference<String>("");
@@ -251,10 +288,10 @@ public interface MavenPomParser {
                     } else if ("packaging".equals(nodeName)) {
                         packaging = child.getTextContent();
                     } else if ("parent".equals(nodeName)) { // parent
-                        parentPomUrlPath = parseParentPomUrlPath(child, repositoryAtom, parentGroupId, parentVersion);
+                        parentPomUri = parseParentPomUrlPath(child, repositoryAtom, pomUri, parentGroupId, parentVersion);
                     } else if ("build".equals(nodeName)) {
                         parseBuild(child, parseResult);
-                    } else if ("modules".equals(nodeName)) {
+                    } else if (!pomUri.parsingAsParent && "modules".equals(nodeName)) {
                         parseModules(child, parseResult);
                     }
                 }
@@ -270,10 +307,10 @@ public interface MavenPomParser {
                 if (!parseResult.mavenProperties.containsKey("project.packaging")) {
                     parseResult.mavenProperties.put("project.packaging", packaging);
                 }
-                if (parentPomUrlPath != null) {
+                if (parentPomUri != null) {
                     // filter project.* so that they are not overridden by the recursion on parent
                     filterLocalProjectProperties(parseResult);
-                    parse(parentPomUrlPath, repositoryAtom, parseResult);
+                    parse(parentPomUri, repositoryAtom, parseResult);
                 }
             } finally {
                 pomResource.close();
@@ -454,10 +491,10 @@ public interface MavenPomParser {
             }
         }
 
-        private String parseParentPomUrlPath(Node parent, RepositoryAtom repositoryAtom,
+        private PomUri parseParentPomUrlPath(Node parent, RepositoryAtom repositoryAtom, PomUri self,
                                              AtomicReference<String> parentGroupId, AtomicReference<String> parentVersion) {
             NodeList children = parent.getChildNodes();
-            String groupId = "", artifactId = "", version = "";
+            String groupId = "", artifactId = "", version = "", relativePath = "";
             for (int i = 0; i < children.getLength(); i++) {
                 Node child = children.item(i);
                 if ("groupId".equals(child.getNodeName())) {
@@ -468,6 +505,8 @@ public interface MavenPomParser {
                 } else if ("version".equals(child.getNodeName())) {
                     version = child.getTextContent();
                     parentVersion.set(version);
+                } else if ("relativePath".equals(child.getNodeName())) {
+                    relativePath = child.getTextContent();
                 }
             }
 
@@ -485,7 +524,13 @@ public interface MavenPomParser {
             }
             String pomUrlPath = startPath + endPath;
             parentVersion.set(Version.resolve(parentVersion.get(), getMetadataBaseUrl(pomUrlPath)));
-            return startPath + endPath;
+
+            if (relativePath.isEmpty()) {
+                String currentDir = ((self.relativeUrl == null) || self.relativeUrl.isEmpty()) ? "../" : self.relativeUrl;
+                relativePath = FileUtil.pathFromParts(currentDir, artifactId, "pom.xml");
+            }
+
+            return new PomUri(relativePath, startPath + endPath, true);
         }
 
     }
@@ -493,7 +538,7 @@ public interface MavenPomParser {
     /**
      * Parses the pom file represented by {@code pomUrlPath} positioned at {@code repositoryAtom}.
      * @param pomUrlPath to parse
-     * @param repositoryAtom from which to resolve subsequently found dependencies (TODO - augment as list)
+     * @param repositoryAtom from which to resolve subsequently found dependencies
      * @return the parsed pom file as a {@link MavenPom}
      */
     MavenPom parsePom(String pomUrlPath, RepositoryAtom repositoryAtom);

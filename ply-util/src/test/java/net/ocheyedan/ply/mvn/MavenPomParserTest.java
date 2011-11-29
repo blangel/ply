@@ -103,9 +103,7 @@ public class MavenPomParserTest {
         assertEquals("maven", properties.getProperty("http://repository.apache.org/snapshots"));
 
         properties = pom.modules;
-        assertEquals(7, properties.size());
-        assertEquals("", properties.getProperty("../httpcore"));
-        assertEquals("", properties.getProperty("../httpclient"));
+        assertEquals(5, properties.size());
         assertEquals("", properties.getProperty("httpclient"));
         assertEquals("", properties.getProperty("httpmime"));
         assertEquals("", properties.getProperty("httpclient-cache"));

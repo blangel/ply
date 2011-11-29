@@ -118,15 +118,14 @@ public final class Deps {
 
     /**
      * Resolves {@code dependencyAtom} by ensuring it's present in the local repository.  Resolution means iterating
-     * over {@code repositoryAtoms} and if {@code dependencyAtom} is found downloading or copying it into the first
-     * item within {@code repositoryAtoms} which must be the local repository (downloading/copying only if it is not
-     * already present in the first item in {@code repositoryAtoms}).
-     * The {@code pomSufficient} exists as maven appears to be lax on transitive dependency's transitive dependency.
+     * over the repositories within {@code repositoryRegistry} and if {@code dependencyAtom} is found downloading or
+     * copying it (if not already present) into the {@link RepositoryRegistry#localRepository} of {@code repositoryRegistry}
+     * The {@code pomSufficient} exists as maven appears to be lax on transitive dependencies' transitive dependencies.
      * For instance, depending upon log4j:log4j:1.2.15 will fail b/c it depends upon javax.jms:jms:1.1 for which
      * there is no artifact in maven-central.  But if you depend upon org.apache.zookeeper:zookeeper:3.3.2
      * which depends upon log4j:log4j:1.2.15, resolution completes.  It will download the pom of
      * javax.jms:jms:1.1 but not require the packaged artifact (which is defaulted to jar) be present.  The
-     * pom must be present.
+     * pom must be present however.
      * @param dependencyAtom to resolve
      * @param repositoryRegistry repositories to use when resolving {@code dependencyAtom}
      * @param pomSufficient if true, then only the pom from a maven repository is necessary to have successfully
@@ -134,7 +133,7 @@ public final class Deps {
      * @return a {@link Dep} representation of {@code dependencyAtom} or null if {@code dependencyAtom} could
      *         not be resolved.
      */
-    private static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry,
+    public static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry,
                                          boolean pomSufficient) {
         // determine the local-repository directory for dependencyAtom; as it is needed regardless of where the dependency
         // if found.

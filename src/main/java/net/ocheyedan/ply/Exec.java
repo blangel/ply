@@ -157,7 +157,7 @@ public final class Exec {
         File projectConfigDir = FileUtil.fromParts(projectRoot.getPath(), ".ply", "config");
         execution = resolveExecutable(execution, projectConfigDir);
         execution = handleNonNativeExecutable(execution, projectConfigDir);
-        String script = buildScriptName(execution.scriptArgs); // TODO - only if need be; augment Output to have way of computing values only if the log level is valid
+        String script = Output.isDebug() ? buildScriptName(execution.scriptArgs) : "";
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(execution.scriptArgs).redirectErrorStream(true).directory(projectRoot);
             Map<String, String> environment = processBuilder.environment();
