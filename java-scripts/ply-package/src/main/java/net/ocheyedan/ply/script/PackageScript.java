@@ -28,7 +28,7 @@ public class PackageScript {
         } else if ("war".equals(packaging)) {
             packagingScript = new WarPackageScript();
         } else {
-            Output.print("Packaging type ^b^%s^r^ not supported.");
+            Output.print("Packaging type ^b^%s^r^ not supported.", packaging);
             System.exit(1); return;
         }
         try {
