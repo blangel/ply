@@ -16,7 +16,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -302,7 +301,9 @@ public interface MavenPomParser {
                     parseResult.mavenProperties.put("project.artifactId", localArtifactId);
                 }
                 if (!parseResult.mavenProperties.containsKey("project.version")) {
-                    parseResult.mavenProperties.put("project.version", (localVersion != null ? localVersion : parentVersion.get()));
+                    String version = (localVersion != null ? localVersion : parentVersion.get());
+                    version = filterVersion(version, parseResult);
+                    parseResult.mavenProperties.put("project.version", version);
                 }
                 if (!parseResult.mavenProperties.containsKey("project.packaging")) {
                     parseResult.mavenProperties.put("project.packaging", packaging);
@@ -311,6 +312,9 @@ public interface MavenPomParser {
                     // filter project.* so that they are not overridden by the recursion on parent
                     filterLocalProjectProperties(parseResult);
                     parse(parentPomUri, repositoryAtom, parseResult);
+                    String version = parseResult.mavenProperties.get("project.version");
+                    version = filterVersion(version, parseResult);
+                    parseResult.mavenProperties.put("project.version", version);
                 }
             } finally {
                 pomResource.close();
@@ -478,6 +482,17 @@ public interface MavenPomParser {
                 return toFilter.replaceAll(Pattern.quote("${" + filterValue + "}"), replacementMap.get(filterValue));
             }
             return toFilter;
+        }
+
+        private static String filterVersion(String version, ParseResult parseResult) {
+            // filter as some projects (incorrectly) make the parent version a property
+            if (version.contains("${") && version.endsWith("}")) {
+                String propertyKey = version.substring(2, (version.length() - 1));
+                if (parseResult.mavenProperties.containsKey(propertyKey)) {
+                    version = filter(version, propertyKey, parseResult.mavenProperties);
+                }
+            }
+            return version;
         }
 
         private void parseProperties(Node propertiesNode, ParseResult parseResult) {
