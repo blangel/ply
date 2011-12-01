@@ -201,8 +201,8 @@ public final class Init {
         projectProps.put("namespace", pom.groupId);
         projectProps.put("name", pom.artifactId);
         projectProps.put("version", pom.version);
-        // maven's pom packaging will be considered default packaging in ply
-        if (!DependencyAtom.DEFAULT_PACKAGING.equals(pom.packaging) && !"pom".equals(pom.packaging)) {
+        if ((pom.packaging != null) && !DependencyAtom.DEFAULT_PACKAGING.equals(pom.packaging)
+                && !"pom".equals(pom.packaging)) { // maven's pom packaging will be considered default packaging in ply
             projectProps.put("packaging", pom.packaging);
         }
         if (pom.buildDirectory != null) {
