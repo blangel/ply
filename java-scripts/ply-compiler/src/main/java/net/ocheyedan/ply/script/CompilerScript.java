@@ -259,8 +259,7 @@ public class CompilerScript {
         // load the resolved-deps.properties file from the build directory.
         String scope = Props.getValue("ply", "scope");
         String suffix = (scope.isEmpty() ? "" : scope + ".");
-        File dependenciesFile = new File(buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator)
-                + "resolved-deps." + suffix + "properties");
+        File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
         if (!dependenciesFile.exists()) {
             return new Properties();
         }

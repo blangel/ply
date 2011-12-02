@@ -5,6 +5,7 @@ import net.ocheyedan.ply.props.Props;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,22 +36,29 @@ public final class Output {
     /**
      * Configurable log level variables.
      */
-    private static final AtomicReference<Boolean> warnLevel = new AtomicReference<Boolean>(true);
-    private static final AtomicReference<Boolean> infoLevel = new AtomicReference<Boolean>(true);
-    private static final AtomicReference<Boolean> dbugLevel = new AtomicReference<Boolean>(true);
+    private static final AtomicBoolean warnLevel = new AtomicBoolean(true);
+    private static final AtomicBoolean infoLevel = new AtomicBoolean(true);
+    private static final AtomicBoolean dbugLevel = new AtomicBoolean(true);
+    /**
+     * If true, color will be allowed within output.
+     */
+    private static final AtomicBoolean coloredOutput = new AtomicBoolean(true);
+    /**
+     * If false, no ply output will be applied and scripts' output will be printed as-is without any interpretation.
+     */
+    private static final AtomicBoolean decorated = new AtomicBoolean(true);
 
     /**
      * A mapping of easily identifiable words to a {@link TermCode} object for colored output.
      */
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
     static {
+        init();
         String terminal = System.getenv("TERM");
         boolean withinTerminal = (terminal != null);
         // TODO - what are the range of terminal values and what looks best for each?
         String terminalBold = ("xterm".equals(terminal) ? "1" : "0");
-        Prop colorProp = Props.get("color");
-        boolean colorDisabled = ((colorProp != null) && "false".equalsIgnoreCase(colorProp.value));
-        boolean useColor = withinTerminal && !colorDisabled;
+        boolean useColor = withinTerminal && coloredOutput.get();
         // first place color values (in case call to Config tries to print, at least have something in
         // TERM_CODES with which to strip messages.
         TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), useColor ? "[\u001b[0;33mply\u001b[0m]" : "[ply]"));
@@ -69,13 +77,12 @@ public final class Output {
         TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), useColor ? "\u001b[" + terminalBold + ";34m" : ""));
         TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), useColor ? "\u001b[" + terminalBold + ";35m" : ""));
         TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), useColor ? "\u001b[" + terminalBold + ";36m" : ""));
-        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), useColor ? "\u001b[" + terminalBold + ";37m" : ""));
-        if (Props.get("log.levels") != null) {
-            init(Props.getValue("log.levels"));
-        }
+        TERM_CODES.put("white",
+                new TermCode(Pattern.compile("\\^white\\^"), useColor ? "\u001b[" + terminalBold + ";37m" : ""));
     }
 
-    static void init(String logLevels) {
+    static void init() {
+        String logLevels = Props.getValue("log.levels");
         if (!logLevels.contains("warn")) {
             warnLevel.set(false);
         }
@@ -85,11 +92,19 @@ public final class Output {
         if (!logLevels.contains("debug") && !logLevels.contains("dbug")) {
             dbugLevel.set(false);
         }
+        String decorated = Props.getValue("decorated");
+        if ("false".equalsIgnoreCase(decorated)) {
+            Output.decorated.set(false);
+        }
+        String coloredOutput = Props.getValue("color");
+        if ("false".equalsIgnoreCase(coloredOutput)) {
+            Output.coloredOutput.set(false);
+        }
     }
 
     public static void print(String message, Object ... args) {
         String formatted = resolve(message, args);
-        if (formatted == null) {
+        if ((formatted == null) || (!decorated.get() && isPrintFromPly())) {
             return;
         }
         System.out.println(formatted);
@@ -97,14 +112,30 @@ public final class Output {
 
     public static void printNoLine(String message, Object ... args) {
         String formatted = resolve(message, args);
-        if (formatted == null) {
+        if ((formatted == null) || (!decorated.get() && isPrintFromPly())) {
             return;
         }
         System.out.print(formatted);
     }
+    
+    private static boolean isPrintFromPly() {
+        // skip ply/ply-util print statements
+        StackTraceElement[] stackTrace = new RuntimeException().getStackTrace(); // TODO - better (generic) way?
+        if (stackTrace.length > 2) {
+            String className = stackTrace[2].getClassName();
+            if (className.startsWith("net.ocheyedan.ply") && !className.startsWith("net.ocheyedan.ply.script")) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     static void printFromExec(String message, Object ... args) {
         String scriptArg = (String) args[1];
+        if (!decorated.get()) {
+            System.out.println(scriptArg);
+            return;
+        }
         boolean noLine = scriptArg.contains("^no_line^");
         boolean noPrefix = scriptArg.contains("^no_prefix^");
         if (noPrefix && noLine) {
@@ -135,7 +166,9 @@ public final class Output {
                     // this is a log statement for a disabled log-level, skip.
                     return null;
                 }
-                formatted = matcher.replaceAll(termCode.output);
+                if (decorated.get()) {
+                    formatted = matcher.replaceAll(termCode.output);
+                }
             }
         }
         return formatted;
@@ -160,6 +193,20 @@ public final class Output {
      */
     public static boolean isDebug() {
         return dbugLevel.get();
+    }
+
+    /**
+     * @return true if the client can support colored output.
+     */
+    public static boolean isColoredOutput() {
+        return coloredOutput.get();
+    }
+
+    /**
+     * @return true if ply can print statements and scripts' output should be decorated (i.e., prefixed with script name, etc).
+     */
+    public static boolean isDecorated() {
+        return decorated.get();
     }
 
     /**
