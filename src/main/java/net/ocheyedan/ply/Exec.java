@@ -11,6 +11,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * User: blangel
@@ -42,14 +43,30 @@ public final class Exec {
     private final static StdinProcessPipe STDIN_PROCESS_PIPE = new StdinProcessPipe();
 
     /**
-     * Invokes all scripts associated with {@code unresolved} by resolving it to a list of {@code Execution} objects
-     * and then invoking them.
+     * Resolves all of {@code unresolved} to a list of {@code Execution} objects.
      * @param projectPlyDir the {@literal .ply} directory of the project to invoke
      * @param unresolved to resolve any aliases or script location
+     * @param adHocProps passed in by the user which will override any ad-hoc property captured within an alias
+     * @return the resolved {@link Execution} objects
+     */
+    public static List<Execution> resolve(File projectPlyDir, String[] unresolved,
+                                          Map<String, Map<String, Prop>> adHocProps) {
+        File projectPlyConfigDir = FileUtil.fromParts(projectPlyDir.getPath(), "config");
+        List<Execution> executions = new ArrayList<Execution>(unresolved.length);
+        for (String unresolvedScript : unresolved) {
+            List<Execution> resolvedScriptExecutions = resolveExecutions(unresolvedScript, projectPlyConfigDir, adHocProps);
+            executions.addAll(resolvedScriptExecutions);
+        }
+        return executions;
+    }
+
+    /**
+     * Invokes all {@code executions}.
+     * @param projectPlyDir the {@literal .ply} directory of the project to invoke
+     * @param executions to invoke
      * @return false if any of the invocations of the resolved {@link Execution} objects failed for any reason
      */
-    public static boolean invoke(File projectPlyDir, String unresolved) {
-        List<Execution> executions = resolveExecutions(unresolved, FileUtil.fromParts(projectPlyDir.getPath(), "config"));
+    public static boolean invoke(File projectPlyDir, List<Execution> executions) {
         // all invoked scripts will be started from the parent of the '.ply' directory.
         // this provides a consistent view of execution for all scripts.  if a script wants to actually know
         // which directory from which the 'ply' command was invoked, look at 'original.user.dir' environment property.
@@ -65,14 +82,17 @@ public final class Exec {
     /**
      * @param unresolved the alias/script to resolve into {@link Execution} objects.
      * @param projectConfigDir the ply configuration directory of the project for which to resolve properties
+     * @param adHocProps passed in by the user which will override any ad-hoc property captured within an alias
      * @return the list of {@link Execution} objects resolved by {@code unresolved}
      */
-    private static List<Execution> resolveExecutions(String unresolved, File projectConfigDir) {
-        return resolveExecutions(unresolved, null, "", new ArrayList<Execution>(), new ArrayList<String>(), projectConfigDir);
+    private static List<Execution> resolveExecutions(String unresolved, File projectConfigDir,
+                                                     Map<String, Map<String, Prop>> adHocProps) {
+        return resolveExecutions(unresolved, null, "", new ArrayList<Execution>(), new ArrayList<String>(),
+                                 projectConfigDir, adHocProps);
     }
 
     /**
-     * The recursive variant of {@link #resolveExecutions(String, File)}
+     * The recursive variant of {@link #resolveExecutions(String, File, Map)}
      * @param unresolved the alias/script to resolve into {@link Execution} objects.
      * @param propagatedOriginalScript the original script name before resolution from a previous recursive invocation
      * @param propagatedScope the scope from a previous recursive invocation
@@ -80,11 +100,13 @@ public final class Exec {
      * @param encountered the list of scripts already encountered while resolving {@code unresolved} (used to detect
      *                    circular definitions of aliases).
      * @param projectConfigDir the ply configuration directory of the project for which to resolve properties
+     * @param adHocProps passed in by the user which will override any ad-hoc property captured within an alias
      * @return {@code executions} augmented with any resolved from {@code unresolved}
      */
     private static List<Execution> resolveExecutions(String unresolved, String propagatedOriginalScript,
                                                      String propagatedScope, List<Execution> executions,
-                                                     List<String> encountered, File projectConfigDir) {
+                                                     List<String> encountered, File projectConfigDir,
+                                                     Map<String, Map<String, Prop>> adHocProps) {
         String[] cmdArgs = splitScript(unresolved);
         String script = cmdArgs[0];
         String scope = propagatedScope;
@@ -105,7 +127,7 @@ public final class Exec {
             System.exit(1);
         }
         encountered.add(script);
-        resolveAlias(propagatedOriginalScript, script, cmdArgs, scope, executions, encountered, projectConfigDir);
+        resolveAlias(propagatedOriginalScript, script, cmdArgs, scope, executions, encountered, projectConfigDir, adHocProps);
         return executions;
     }
 
@@ -124,9 +146,11 @@ public final class Exec {
      * @param encountered list of scripts already encountered while resolving {@code cmdArgs[0]}.
      * @param projectConfigDir the ply configuration directory of the project for which to resolve properties for resolving
      *                         aliases
+     * @param adHocProps passed in by the user which will override any ad-hoc property captured within an alias
      */
     private static void resolveAlias(String propagatedScript, String originalScript, String[] cmdArgs, String scope,
-                                     List<Execution> executions, List<String> encountered, File projectConfigDir) {
+                                     List<Execution> executions, List<String> encountered, File projectConfigDir,
+                                     Map<String, Map<String, Prop>> adHocProps) {
         String script = cmdArgs[0];
         String namedScript = (propagatedScript == null ? originalScript : propagatedScript);
         Prop resolved = PropsExt.get(projectConfigDir, "aliases", scope, script);
@@ -138,11 +162,17 @@ public final class Exec {
         String scopeInfo = ((scope == null) || scope.isEmpty() ? "" : String.format(" (with scope ^b^%s^r^)", scope));
         Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^%s", script, resolved.value, scopeInfo);
         String[] splitResolved = splitScript(resolved.value);
+        AtomicReference<String[]> pureResolved = new AtomicReference<String[]>(splitResolved);
+        AtomicReference<Map<String, Map<String, Prop>>> aliasedAdHocProps = new AtomicReference<Map<String, Map<String, Prop>>>();
+        PropsExt.splitArgs(pureResolved, aliasedAdHocProps);
+        splitResolved = pureResolved.get();
+        PropsExt.updateAdHocProps(aliasedAdHocProps.get());
+        PropsExt.updateAdHocProps(adHocProps); // override with user-passed in values
         for (String split : splitResolved) {
             int index = encountered.size() - 1; // mark position to pop after recursive call to resolveExecutions
             cmdArgs[0] = split;
             String unresolved = buildScriptName(cmdArgs); // TODO - how to propagate arguments? passed to each? passed to last?
-            resolveExecutions(unresolved, originalScript, scope, executions, encountered, projectConfigDir);
+            resolveExecutions(unresolved, originalScript, scope, executions, encountered, projectConfigDir, adHocProps);
             encountered = encountered.subList(0, index + 1); // treat like a stack, pop off
         }
     }

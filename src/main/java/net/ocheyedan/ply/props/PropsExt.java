@@ -1,11 +1,15 @@
 package net.ocheyedan.ply.props;
 
 import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.Output;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * User: blangel
@@ -169,10 +173,53 @@ public final class PropsExt {
     }
 
     /**
-     * @param adHocProps to set to {@link Loader#setAdHocProps(java.util.Map)}
+     * Extract all arguments from {@code args} starting with {@literal -P}, parsing them in the format of
+     * {@literal context[#scope].propertyName=propertyValue} into {@link Prop} objects, mapping then by context and
+     * property name.  The extracted ad-hoc property map is stored in {@code props} and the
+     * rest of the arguments are stored in {@code args}.
+     * @param args to parse and will contain the non {@literal -P} arguments after method execution
+     * @param props will contain the ad-hoc properties parsed out of {@code args} after method execution.
      */
-    public static void setAdHocProps(Map<String, Map<String, Prop>> adHocProps) {
-        Loader.setAdHocProps(adHocProps);
+    public static void splitArgs(AtomicReference<String[]> args, AtomicReference<Map<String, Map<String, Prop>>> props) {
+        String[] splitArgs = args.get();
+        List<String> purged = new ArrayList<String>(splitArgs.length);
+        Map<String, Map<String, Prop>> adHocProps = new HashMap<String, Map<String, Prop>>(2);
+        for (String arg : splitArgs) {
+            if (arg.startsWith("-P")) {
+                parse(arg.substring(2), adHocProps);
+            } else {
+                purged.add(arg);
+            }
+        }
+        args.set(purged.toArray(new String[purged.size()]));
+        props.set(adHocProps);
+    }
+
+    /**
+     * Updates values of the map of ad-hoc properties used during script execution to include {@code adHocProps}
+     * (overriding existing values or adding if there are no existing values).
+     * @param adHocProps the properties with which to update the map of ad-hoc properties used during script execution.
+     */
+    public static void updateAdHocProps(Map<String, Map<String, Prop>> adHocProps) {
+        if ((adHocProps != null) && !adHocProps.isEmpty()) {
+            Loader.setAdHocProps(adHocProps);
+        }
+    }
+
+    private static void parse(String propAtom, Map<String, Map<String, Prop>> props) {
+        Prop prop = PropsExt.parse(propAtom);
+        if (prop == null) {
+            Output.print(
+                    "^warn^ Ad hoc property ^b^%s^r^ not of correct format ^b^context[#scope].propName=propValue^r^.",
+                    propAtom);
+            return;
+        }
+        Map<String, Prop> contextProps = props.get(prop.getContextScope());
+        if (contextProps == null) {
+            contextProps = new HashMap<String, Prop>(2);
+            props.put(prop.getContextScope(), contextProps);
+        }
+        contextProps.put(prop.name, prop);
     }
 
     /**

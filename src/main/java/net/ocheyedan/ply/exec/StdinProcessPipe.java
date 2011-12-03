@@ -26,7 +26,7 @@ public final class StdinProcessPipe extends Thread {
         }
 
         @Override public void run() {
-            byte[] buffer = new byte[32]; // optimize for use
+            byte[] buffer = new byte[32]; // optimize for use TODO - fine now but if piping output this should be upped
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     int avail = System.in.available();

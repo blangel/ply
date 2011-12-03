@@ -27,9 +27,11 @@ public final class Output {
     private static final class TermCode {
         private final Pattern pattern;
         private final String output;
-        private TermCode(Pattern pattern, String output) {
+        private final String nonColoredOutput;
+        private TermCode(Pattern pattern, String output, String nonColoredOutput) {
             this.pattern = pattern;
             this.output = output;
+            this.nonColoredOutput = nonColoredOutput;
         }
     }
 
@@ -47,41 +49,40 @@ public final class Output {
      * If false, no ply output will be applied and scripts' output will be printed as-is without any interpretation.
      */
     private static final AtomicBoolean decorated = new AtomicBoolean(true);
+    /**
+     * True if
+     */
+    private static final AtomicBoolean withinTerminal = new AtomicBoolean(true);
 
     /**
      * A mapping of easily identifiable words to a {@link TermCode} object for colored output.
      */
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
     static {
-        init();
         String terminal = System.getenv("TERM");
-        boolean withinTerminal = (terminal != null);
+        init(terminal);
         // TODO - what are the range of terminal values and what looks best for each?
         String terminalBold = ("xterm".equals(terminal) ? "1" : "0");
-        boolean useColor = withinTerminal && coloredOutput.get();
-        // first place color values (in case call to Config tries to print, at least have something in
-        // TERM_CODES with which to strip messages.
-        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), useColor ? "[\u001b[0;33mply\u001b[0m]" : "[ply]"));
-        TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), useColor ? "[\u001b[1;31merr!\u001b[0m]" : "[err!]"));
-        TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), useColor ? "[\u001b[1;33mwarn\u001b[0m]" : "[warn]"));
-        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), useColor ? "[\u001b[1;34minfo\u001b[0m]" : "[info]"));
-        TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), useColor ? "[\u001b[1;30mdbug\u001b[0m]" : "[dbug]"));
-        TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), useColor ? "\u001b[0m" : ""));
-        TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), useColor ? "\u001b[1m" : ""));
-        TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), useColor ? "\u001b[2m" : ""));
-        TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), useColor ? "\u001b[7m" : ""));
-        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), useColor ? "\u001b[" + terminalBold + ";30m" : ""));
-        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"), useColor ? "\u001b[" + terminalBold + ";31m" : ""));
-        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), useColor ? "\u001b[" + terminalBold + ";32m" : ""));
-        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), useColor ? "\u001b[" + terminalBold + ";33m" : ""));
-        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), useColor ? "\u001b[" + terminalBold + ";34m" : ""));
-        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), useColor ? "\u001b[" + terminalBold + ";35m" : ""));
-        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), useColor ? "\u001b[" + terminalBold + ";36m" : ""));
-        TERM_CODES.put("white",
-                new TermCode(Pattern.compile("\\^white\\^"), useColor ? "\u001b[" + terminalBold + ";37m" : ""));
+        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), "[\u001b[0;33mply\u001b[0m]", "[ply]"));
+        TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), "[\u001b[1;31merr!\u001b[0m]", "[err!]"));
+        TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), "[\u001b[1;33mwarn\u001b[0m]", "[warn]"));
+        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), "[\u001b[1;34minfo\u001b[0m]", "[info]"));
+        TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), "[\u001b[1;30mdbug\u001b[0m]", "[dbug]"));
+        TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), "\u001b[0m", ""));
+        TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), "\u001b[1m", ""));
+        TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), "\u001b[2m", ""));
+        TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), "\u001b[7m", ""));
+        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), "\u001b[" + terminalBold + ";30m", ""));
+        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"),  terminalBold + ";31m", ""));
+        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), "\u001b[" + terminalBold + ";32m", ""));
+        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), "\u001b[" + terminalBold + ";33m", ""));
+        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), "\u001b[" + terminalBold + ";34m", ""));
+        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), "\u001b[" + terminalBold + ";35m", ""));
+        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), "\u001b[" + terminalBold + ";36m", ""));
+        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), "\u001b[" + terminalBold + ";37m", ""));
     }
 
-    static void init() {
+    static void init(String terminal) {
         String logLevels = Props.getValue("log.levels");
         if (!logLevels.contains("warn")) {
             warnLevel.set(false);
@@ -96,10 +97,10 @@ public final class Output {
         if ("false".equalsIgnoreCase(decorated)) {
             Output.decorated.set(false);
         }
+        withinTerminal.set(terminal != null);
         String coloredOutput = Props.getValue("color");
-        if ("false".equalsIgnoreCase(coloredOutput)) {
-            Output.coloredOutput.set(false);
-        }
+        boolean useColor = withinTerminal.get() && !"false".equalsIgnoreCase(coloredOutput);
+        Output.coloredOutput.set(useColor);
     }
 
     public static void print(String message, Object ... args) {
@@ -167,7 +168,8 @@ public final class Output {
                     return null;
                 }
                 if (decorated.get()) {
-                    formatted = matcher.replaceAll(termCode.output);
+                    String output = isColoredOutput() ? termCode.output : termCode.nonColoredOutput;
+                    formatted = matcher.replaceAll(output);
                 }
             }
         }
@@ -228,6 +230,18 @@ public final class Output {
      */
     public static void enableDebug() {
         dbugLevel.set(true);
+    }
+
+    public static void handleAdHocProp(Prop prop) {
+        if (!"ply".equals(prop.context)) {
+            return;
+        }
+        if ("decorated".equals(prop.name)) {
+            decorated.set(!"false".equalsIgnoreCase(prop.value));
+        }
+        if ("color".equals(prop.name)) {
+            coloredOutput.set(!"false".equalsIgnoreCase(prop.value));
+        }
     }
 
     private Output() { }

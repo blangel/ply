@@ -19,11 +19,11 @@ _ply_completion() {
 
     defaultaliases=""
     if [ -e $PLY_HOME/config/aliases.properties ]; then
-	defaultaliases=$(less $PLY_HOME/config/aliases.properties | sed 's/^#.*//' | grep -v '^$' | sed 's/\(.*\)=.*/\1/')
+	defaultaliases=$(less $PLY_HOME/config/aliases.properties | sed 's/^#.*//' | grep -v '^$' | sed 's/^\([^=]*\)=.*/\1/')
     fi
     projectaliases=""
     if [ -e ${projectdir}/config/aliases.properties ]; then
-	projectaliases=$(less ${projectdir}/config/aliases.properties | sed 's/^#.*//' | grep -v '^$' | sed 's/\(.*\)=.*/\1/')
+	projectaliases=$(less ${projectdir}/config/aliases.properties | sed 's/^#.*//' | grep -v '^$' | sed 's/^\([^=]*\)=.*/\1/')
     fi
     aliases="${defaultaliases} ${projectaliases}"
     tasks="init config ${aliases}"
@@ -57,21 +57,21 @@ _ply_completion() {
 	    local defaultprops=""
 	    if [ -e $PLY_HOME/config/${context}properties ]; then
 		defaultprops=$(less $PLY_HOME/config/${context}properties | sed 's/^#.*//' | grep -v '^$' \
-		    | sed "s/\(.*\)=.*/$curcontext\1/")
+		    | sed "s/^\([^=]*\)=.*/$curcontext\1/")
 	    fi
 	    if [[ (${#nonscopedcontext} -gt 0) && (-e $PLY_HOME/config/${nonscopedcontext}.properties) ]]; then
 		local nonscopeddefaultprops=$(less $PLY_HOME/config/${nonscopedcontext}.properties | sed 's/^#.*//' | grep -v '^$' \
-		    | sed "s/\(.*\)=.*/$curcontext\1/")
+		    | sed "s/^\([^=]*\)=.*/$curcontext\1/")
 		defaultprops="${defaultprops} ${nonscopeddefaultprops}"
 	    fi
 	    local projectprops=""
 	    if [ -e ${projectdir}/config/${context}properties ]; then
 		projectprops=$(less ${projectdir}/config/${context}properties | sed 's/^#.*//' | grep -v '^$' \
-		    | sed "s/\(.*\)=.*/$curcontext\1/")
+		    | sed "s/^\([^=]*\)=.*/$curcontext\1/")
 	    fi
 	    if [[ (${#nonscopedcontext} -gt 0) && (-e ${projectdir}/config/${nonscopedcontext}.properties) ]]; then
 		local nonscopedprojectprops=$(less ${projectdir}/config/${nonscopedcontext}.properties | sed 's/^#.*//' \
-		    | grep -v '^$' | sed "s/\(.*\)=.*/$curcontext\1/")
+		    | grep -v '^$' | sed "s/^\([^=]*\)=.*/$curcontext\1/")
 		projectprops="${projectprops} ${nonscopedprojectprops}"
 	    fi
 	    COMPREPLY=( $(compgen -S "=" -W "${defaultprops} ${projectprops}" -- ${cur}) )
@@ -117,22 +117,22 @@ _ply_completion() {
 		    local defaultprops=""
 		    if [ -e $PLY_HOME/config/${COMP_WORDS[2]:2}.properties ]; then
 			defaultprops=$(less $PLY_HOME/config/${COMP_WORDS[2]:2}.properties | sed 's/^#.*//' | grep -v '^$' \
-			    | sed 's/\(.*\)=.*/\1/')
+			    | sed 's/^\([^=]*\)=.*/\1/')
 		    fi		    
 		    local nonscopeddefaultprops=""
 		    if [[ (${#nonscopedcontext} -gt 0) && (-e $PLY_HOME/config/${nonscopedcontext:2}.properties) ]]; then
 			nonscopeddefaultprops=$(less $PLY_HOME/config/${nonscopedcontext:2}.properties | sed 's/^#.*//' | grep -v '^$' \
-			    | sed 's/\(.*\)=.*/\1/')			
+			    | sed 's/^\([^=]*\)=.*/\1/')			
 		    fi
 		    local projectprops=""
 		    if [ -e ${projectdir}/config/${COMP_WORDS[2]:2}.properties ]; then
 			projectprops=$(less ${projectdir}/config/${COMP_WORDS[2]:2}.properties | sed 's/^#.*//' | grep -v '^$' \
-			    | sed 's/\(.*\)=.*/\1/')
+			    | sed 's/^\([^=]*\)=.*/\1/')
 		    fi
 		    local nonscopedprojectprops=""
 		    if [[ (${#nonscopedcontext} -gt 0) && (-e ${projectdir}/config/${nonscopedcontext:2}.properties) ]]; then
 			nonscopedprojectprops=$(less ${projectdir}/config/${nonscopedcontext:2}.properties | sed 's/^#.*//' | grep -v '^$' \
-			    | sed 's/\(.*\)=.*/\1/')			
+			    | sed 's/^\([^=]*\)=.*/\1/')			
 		    fi
 		    # if get/remove only print the projectprops
 		    # for set/append/prepend need to also print non-scoped if in scoped context

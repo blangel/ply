@@ -1,11 +1,13 @@
 package net.ocheyedan.ply.props;
 
+import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.PropertiesFileUtil;
 
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -153,7 +155,26 @@ public final class Loader {
      * @param adHocProps to set to {@link Loader#adHocProps}
      */
     static void setAdHocProps(Map<String, Map<String, Prop>> adHocProps) {
-        Loader.adHocProps = adHocProps;
+        if (Loader.adHocProps == null) {
+            Loader.adHocProps = adHocProps;
+        } else {
+            for (String key : adHocProps.keySet()) {
+                if (Loader.adHocProps.containsKey(key)) {
+                    Map<String, Prop> props = Loader.adHocProps.get(key);
+                    props.putAll(adHocProps.get(key));
+                } else {
+                    Loader.adHocProps.put(key, adHocProps.get(key));
+                }
+            }
+        }
+        // TODO - better way to ensure all ad-hoc prop state is re-interpretted by Output.
+        for (String key : adHocProps.keySet()) {
+            Map<String, Prop> adHocPropsByKey = adHocProps.get(key);
+            for (String propName : adHocPropsByKey.keySet()) {
+                Prop adHocProp = adHocPropsByKey.get(propName);
+                Output.handleAdHocProp(adHocProp);
+            }
+        }
     }
 
     /**

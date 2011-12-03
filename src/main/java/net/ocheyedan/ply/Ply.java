@@ -1,5 +1,6 @@
 package net.ocheyedan.ply;
 
+import net.ocheyedan.ply.exec.Execution;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.PropsExt;
@@ -8,6 +9,7 @@ import net.ocheyedan.ply.submodules.Submodules;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * User: blangel
@@ -29,18 +31,24 @@ public class Ply {
             usage();
             System.exit(0);
         }
-        args = handleCommandLineProps(args);
+        AtomicReference<String[]> pureArgs = new AtomicReference<String[]>(args);
+        AtomicReference<Map<String, Map<String, Prop>>> adHocProps = new AtomicReference<Map<String, Map<String, Prop>>>();
+        PropsExt.splitArgs(pureArgs, adHocProps);
+        args = pureArgs.get();
         if ("--usage".equals(args[0])) {
+            PropsExt.updateAdHocProps(adHocProps.get());
             usage();
         } else if ("init".equals(args[0])) {
+            PropsExt.updateAdHocProps(adHocProps.get());
             Init.invoke(args);
         } else if ("config".equals(args[0])) {
             checkAssumptions();
+            PropsExt.updateAdHocProps(adHocProps.get());
             Config.invoke(args);
         } else {
             checkAssumptions();
             if (args.length > 0) {
-                exec(args);
+                exec(args, adHocProps.get());
             } else {
                 Output.print("^dbug^ Nothing to do, only -P arguments given.");
             }
@@ -49,12 +57,17 @@ public class Ply {
     }
 
     /**
-     * For every argument in {@code args} runs {@link Exec#invoke(java.io.File, String)} against the local project.  If
-     * the local project has submodules then each submodule also has {@link Exec#invoke(java.io.File, String)} invoked
-     * for every argument in {@code args}.
+     * For {@code args} runs {@link Exec#resolve(java.io.File, String[], Map)} against the local project.  If
+     * the local project has submodules then each submodule also has {@link Exec#resolve(java.io.File, String[], Map)}
+     * invoked for {@code args}.  Then the resolved {@link Execution} objects are invoked via
+     * {@link Exec#invoke(java.io.File, java.util.List)}
      * @param args are an array of unresolved aliases/scripts to be invoked for the project and all of its submodules
+     * @param adHocProps the mapping of ad-hoc properties passed in by the invoker.
      */
-    private static void exec(String[] args) {
+    private static void exec(String[] args, Map<String, Map<String, Prop>> adHocProps) {
+        // resolve before anything else in case '-Pply.decorated=false` has been set within an alias
+        List<Execution> localExecutions = Exec.resolve(PlyUtil.LOCAL_PROJECT_DIR, args, adHocProps);
+
         long start = System.currentTimeMillis();
         String projectName = Props.getValue("project", "name");
         Output.printNoLine("^ply^ building ^b^%s^r^, %s", projectName, Props.getValue("project", "version"));
@@ -76,10 +89,8 @@ public class Ply {
             Output.print("^ply^");
             Output.print("^ply^ building ^b^%s^r^ itself before its submodules", projectName);
             long projectStart = System.currentTimeMillis();
-            for (String script : args) {
-                if (!Exec.invoke(PlyUtil.LOCAL_PROJECT_DIR, script)) {
-                    System.exit(1);
-                }
+            if (!Exec.invoke(PlyUtil.LOCAL_PROJECT_DIR, localExecutions)) {
+                System.exit(1);
             }
             float seconds = printTime(projectStart, String.format("^b^%s^r^ ", projectName));
             maxSubmoduleTime = seconds;
@@ -103,10 +114,9 @@ public class Ply {
                     Output.print("^ply^");
                     continue;
                 }
-                for (String script : args) {
-                    if (!Exec.invoke(submodulePlyDir, script)) {
-                        System.exit(1);
-                    }
+                List<Execution> submoduleExecutions = Exec.resolve(submodulePlyDir, args, adHocProps);
+                if (!Exec.invoke(submodulePlyDir, submoduleExecutions)) {
+                    System.exit(1);
                 }
                 seconds = printTime(submoduleStart, String.format("^b^%s^r^ ", submodule.name));
                 if (seconds > maxSubmoduleTime) {
@@ -130,10 +140,8 @@ public class Ply {
 
         } else {
             Output.print("");
-            for (String script : args) {
-                if (!Exec.invoke(PlyUtil.LOCAL_PROJECT_DIR, script)) {
-                    System.exit(1);
-                }
+            if (!Exec.invoke(PlyUtil.LOCAL_PROJECT_DIR, localExecutions)) {
+                System.exit(1);
             }
         }
 
@@ -153,43 +161,6 @@ public class Ply {
         long freeMem = Runtime.getRuntime().freeMemory() / 1024 / 1024;
         Output.print("^ply^ Finished %sin ^b^%.3f seconds^r^ using ^b^%d/%d MB^r^.", suppliment, seconds, (totalMem - freeMem), totalMem);
         return seconds;
-    }
-
-    /**
-     * Extract all arguments from {@code args} starting with {@literal -P}, parsing them in the format of
-     * {@literal context[#scope].propertyName=propertyValue} into {@link Prop} objects, mapping then by context and
-     * property name and gives them to the {@link PropsExt#setAdHocProps(Map)} for use in loading properties.
-     * @param args to parse
-     * @return {@code args} stripped of any {@literal -P} argument
-     */
-    private static String[] handleCommandLineProps(String[] args) {
-        List<String> purged = new ArrayList<String>(args.length);
-        Map<String, Map<String, Prop>> adHocProps = new HashMap<String, Map<String, Prop>>(2);
-        for (String arg : args) {
-            if (arg.startsWith("-P")) {
-                parse(arg.substring(2), adHocProps);
-            } else {
-                purged.add(arg);
-            }
-        }
-        if (!adHocProps.isEmpty()) {
-            PropsExt.setAdHocProps(adHocProps);
-        }
-        return purged.toArray(new String[purged.size()]);
-    }
-
-    private static void parse(String propAtom, Map<String, Map<String, Prop>> props) {
-        Prop prop = PropsExt.parse(propAtom);
-        if (prop == null) {
-            Output.print("^warn^ Ad hoc property ^b^%s^r^ not of correct format ^b^context[#scope].propName=propValue^r^.", propAtom);
-            return;
-        }
-        Map<String, Prop> contextProps = props.get(prop.getContextScope());
-        if (contextProps == null) {
-            contextProps = new HashMap<String, Prop>(2);
-            props.put(prop.getContextScope(), contextProps);
-        }
-        contextProps.put(prop.name, prop);
     }
 
     /**
