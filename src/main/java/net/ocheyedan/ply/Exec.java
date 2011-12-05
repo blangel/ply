@@ -160,14 +160,14 @@ public final class Exec {
             return;
         }
         String scopeInfo = ((scope == null) || scope.isEmpty() ? "" : String.format(" (with scope ^b^%s^r^)", scope));
-        Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^%s", script, resolved.value, scopeInfo);
         String[] splitResolved = splitScript(resolved.value);
         AtomicReference<String[]> pureResolved = new AtomicReference<String[]>(splitResolved);
         AtomicReference<Map<String, Map<String, Prop>>> aliasedAdHocProps = new AtomicReference<Map<String, Map<String, Prop>>>();
         PropsExt.splitArgs(pureResolved, aliasedAdHocProps);
         splitResolved = pureResolved.get();
         PropsExt.updateAdHocProps(aliasedAdHocProps.get());
-        PropsExt.updateAdHocProps(adHocProps); // override with user-passed in values
+        PropsExt.updateAdHocProps(adHocProps); // override and aliasedAdHocProps with user-passed in values
+        Output.print("^info^ resolved ^b^%s^r^ to ^b^%s^r^%s", script, resolved.value, scopeInfo);
         for (String split : splitResolved) {
             int index = encountered.size() - 1; // mark position to pop after recursive call to resolveExecutions
             cmdArgs[0] = split;

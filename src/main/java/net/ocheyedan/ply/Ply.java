@@ -35,15 +35,13 @@ public class Ply {
         AtomicReference<Map<String, Map<String, Prop>>> adHocProps = new AtomicReference<Map<String, Map<String, Prop>>>();
         PropsExt.splitArgs(pureArgs, adHocProps);
         args = pureArgs.get();
-        if ("--usage".equals(args[0])) {
-            PropsExt.updateAdHocProps(adHocProps.get());
+        PropsExt.updateAdHocProps(adHocProps.get());
+        if ((args.length < 1) || "--usage".equals(args[0])) {
             usage();
         } else if ("init".equals(args[0])) {
-            PropsExt.updateAdHocProps(adHocProps.get());
             Init.invoke(args);
         } else if ("config".equals(args[0])) {
             checkAssumptions();
-            PropsExt.updateAdHocProps(adHocProps.get());
             Config.invoke(args);
         } else {
             checkAssumptions();

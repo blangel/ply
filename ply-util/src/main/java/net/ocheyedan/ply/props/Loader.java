@@ -107,6 +107,10 @@ public final class Loader {
             return cache.get(cacheKey);
         }
         Map<String, Map<String, Prop>> all = loadProjectProps(projectConfigDir);
+        // override all with the ad-hoc properties (from the command-line), if any.
+        if (adHocProps != null) {
+            overrideMerge(all, adHocProps);
+        }
         Map<String, Map<String, Prop>> scoped = new HashMap<String, Map<String, Prop>>(all.size());
 
         for (String scopedContext : all.keySet()) {
@@ -156,15 +160,17 @@ public final class Loader {
      */
     static void setAdHocProps(Map<String, Map<String, Prop>> adHocProps) {
         if (Loader.adHocProps == null) {
-            Loader.adHocProps = adHocProps;
-        } else {
-            for (String key : adHocProps.keySet()) {
-                if (Loader.adHocProps.containsKey(key)) {
-                    Map<String, Prop> props = Loader.adHocProps.get(key);
-                    props.putAll(adHocProps.get(key));
-                } else {
-                    Loader.adHocProps.put(key, adHocProps.get(key));
-                }
+            Loader.adHocProps = new HashMap<String, Map<String, Prop>>();
+        }
+        for (String key : adHocProps.keySet()) {
+            Map<String, Prop> props = Loader.adHocProps.get(key);
+            if (props == null) {
+                props = new HashMap<String, Prop>();
+                Loader.adHocProps.put(key, props);
+            }
+            Map<String, Prop> adHocPropsMap = adHocProps.get(key);
+            for (String propKey : adHocPropsMap.keySet()) {
+                props.put(propKey, adHocPropsMap.get(propKey));
             }
         }
         // TODO - better way to ensure all ad-hoc prop state is re-interpretted by Output.
