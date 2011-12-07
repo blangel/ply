@@ -82,7 +82,32 @@ public class DirectedAcyclicGraphTest {
             assertEquals(helloVertex, cycle.get(0));
             assertEquals(hello1Vertex, cycle.get(1));
             assertEquals(helloVertex, cycle.get(2));
+            List<Vertex<?>> path = gce.getPath();
+            assertEquals(0, path.size());
         }
+	// test longer path
+	Vertex<String> hello2Vertex = graph.addVertex("hello2");
+	Vertex<String> hello3Vertex = graph.addVertex("hello3");
+        graph.addEdge(hello1Vertex, hello2Vertex);
+        assertTrue(graph.hasEdge(hello1Vertex, hello2Vertex));
+        graph.addEdge(hello2Vertex, hello3Vertex);
+        assertTrue(graph.hasEdge(hello2Vertex, hello3Vertex));
+        try {
+            graph.addEdge(hello3Vertex, hello2Vertex);
+            fail("Expected a Graph.CycleException");
+        } catch (Graph.CycleException gce) {
+            List<Vertex<?>> cycle = gce.getCycle();
+            assertEquals(3, cycle.size());
+            assertEquals(hello2Vertex, cycle.get(0));
+            assertEquals(hello3Vertex, cycle.get(1));
+            assertEquals(hello2Vertex, cycle.get(2));
+            List<Vertex<?>> path = gce.getPath();
+            assertEquals(3, path.size());
+            assertEquals(helloVertex, path.get(0));
+            assertEquals(hello1Vertex, path.get(1));
+            assertEquals(hello2Vertex, path.get(2));
+        }	
+
     }
 
     @Test

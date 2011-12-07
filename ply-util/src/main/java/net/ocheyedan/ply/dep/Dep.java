@@ -28,6 +28,10 @@ public final class Dep {
         return (dependencyAtom == null ? "" : String.format("%s:%s", dependencyAtom.namespace, dependencyAtom.name));
     }
 
+    public String toVersionString() {
+        return (dependencyAtom == null ? "" : String.format("%s:%s:%s", dependencyAtom.namespace, dependencyAtom.name, dependencyAtom.version));
+    }
+
     @Override public boolean equals(Object o) {
         if (this == o) {
             return true;

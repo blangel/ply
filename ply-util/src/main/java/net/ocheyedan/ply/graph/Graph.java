@@ -17,23 +17,21 @@ public interface Graph<T> {
     @SuppressWarnings("serial")
     static class CycleException extends RuntimeException {
         final List<Vertex<?>> cycle;
+        final List<Vertex<?>> path;
         @SuppressWarnings("unchecked")
-        public CycleException(String message, List cycle) {
+        public CycleException(String message, List cycle, List path) {
             super(message);
             this.cycle = (List<Vertex<?>>) cycle;
+            this.path = (List<Vertex<?>>) path;
         }
         public List<Vertex<?>> getCycle() {
             return cycle;
         }
-        public String cycleToString() {
-            StringBuilder buffer = new StringBuilder();
-            for (Vertex vertex : cycle) {
-                if (buffer.length() > 0) {
-                    buffer.append(" -> ");
-                }
-                buffer.append(vertex.getValue().toString());
-            }
-            return buffer.toString();
+        public boolean isEmptyPath() {
+            return ((path == null) || path.isEmpty());
+        }
+        public List<Vertex<?>> getPath() {
+            return path;
         }
     }
 

@@ -36,7 +36,7 @@ public class Ply {
         PropsExt.splitArgs(pureArgs, adHocProps);
         args = pureArgs.get();
         PropsExt.updateAdHocProps(adHocProps.get());
-        if ((args.length < 1) || "--usage".equals(args[0])) {
+        if ((args.length < 1) || "--usage".equals(args[0]) || "-h".equals(args[0]) || "--help".equals(args[0])) {
             usage();
         } else if ("init".equals(args[0])) {
             Init.invoke(args);

@@ -1,9 +1,6 @@
 package net.ocheyedan.ply.graph;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * User: blangel
@@ -42,11 +39,25 @@ public class DirectedAcyclicGraph<T> implements Graph<T> {
         List<Vertex<T>> cycle = CycleDetector.introducesCycle(to);
         if (cycle != null) {
             removeEdge(from, to);
+            List<Vertex<T>> path = getAnyPathToRoot(to); // a path, not necessarily the only or shortest
             String message = String.format("Edge between '%s' and '%s' would introduce a cycle into the graph.",
-                                           from.getValue().toString(),
-                                           to.getValue().toString());
-            throw new CycleException(message, cycle);
+                    from.getValue().toString(),
+                    to.getValue().toString());
+            throw new CycleException(message, cycle, path);
         }
+    }
+
+    protected List<Vertex<T>> getAnyPathToRoot(Vertex<T> from) {
+        List<Vertex<T>> path = new ArrayList<Vertex<T>>();
+        while ((from != null) && !from.isRoot()) {
+            path.add(from);
+            from = from.getAnyParent();
+        }
+        if ((from != null) && from.isRoot() && !path.isEmpty()) {
+            path.add(from);
+        }
+        Collections.reverse(path);
+        return path;
     }
 
     @Override public void removeEdge(Vertex<T> from, Vertex<T> to) {

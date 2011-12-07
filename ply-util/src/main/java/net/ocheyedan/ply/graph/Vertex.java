@@ -62,6 +62,10 @@ public final class Vertex<T> {
         return parents.isEmpty();
     }
 
+    public Vertex<T> getAnyParent() {
+        return (parents.isEmpty() ? null : parents.get(0));
+    }
+
     public T getValue() {
         return value;
     }

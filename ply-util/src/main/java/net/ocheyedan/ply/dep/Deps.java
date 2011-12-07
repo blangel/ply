@@ -16,11 +16,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.lang.StringBuilder;
 
 /**
  * User: blangel
@@ -101,6 +99,10 @@ public final class Deps {
         for (DependencyAtom dependencyAtom : dependencyAtoms) {
             Dep resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, pomSufficient);
             if (resolvedDep == null) {
+                String path = getPathAsString(parentVertex, dependencyAtom);
+                if (path != null) {
+                    Output.print("^error^ path to missing dependency [ %s ].", path);
+                }
                 System.exit(1);
             }
             Vertex<Dep> vertex = graph.addVertex(resolvedDep);
@@ -108,12 +110,66 @@ public final class Deps {
                 try {
                     graph.addEdge(parentVertex, vertex);
                 } catch (Graph.CycleException gce) {
-                    Output.print("^error^ circular dependency [ %s ].", gce.cycleToString());
+                    Output.print("^error^ circular dependency [ %s ].", getCycleAsString(gce));
                     System.exit(1);
                 }
             }
             fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, true);
         }
+    }
+
+    /**
+     *@param gce the cycle exception to print
+     *@return a string which includes the cycle and path information from {@code gce}
+     */
+    @SuppressWarnings("unchecked")
+    private static String getCycleAsString(Graph.CycleException gce) {
+        StringBuilder buffer = new StringBuilder();
+        List<Vertex<?>> cycle = gce.getCycle();
+        List<Vertex<?>> path = gce.getPath();
+        for (int i = 0; i < (path.size() - 1); i++) {
+            Vertex<Dep> vertex = (Vertex<Dep>) path.get(i);
+            if (buffer.length() > 0) {
+                buffer.append(" -> ");
+            }
+            buffer.append(vertex.getValue().toVersionString());
+        }
+        for (int i = 0; i < cycle.size(); i++) {
+            if (buffer.length() > 0) {
+                buffer.append(" -> ");
+            }
+            boolean decorate = (i == 0 ) || (i == (cycle.size() - 1));
+            if (decorate) {
+                buffer.append("^red^");
+            }
+            buffer.append(((Vertex<Dep>) cycle.get(i)).getValue().toVersionString());
+            if (decorate) {
+                buffer.append("^r^");
+            }
+        }
+        return buffer.toString();
+    }
+
+    private static String getPathAsString(Vertex<Dep> vertex, DependencyAtom dependencyAtom) {
+        if (vertex == null) {
+            return null;
+        }
+        StringBuilder buffer = new StringBuilder();
+        List<String> vertices = new ArrayList<String>();
+        while (vertex != null) {
+            vertices.add(vertex.getValue().toString());
+            vertex = vertex.getAnyParent();
+        }
+        Collections.reverse(vertices);
+        for (String vertexAsString : vertices) {
+            if (buffer.length() > 0) {
+                buffer.append(" -> ");
+            }
+            buffer.append(vertexAsString);
+        }
+        buffer.append(String.format(" -> ^b^%s:%s^r^", dependencyAtom.namespace, dependencyAtom.name));
+
+        return buffer.toString();
     }
 
     /**
@@ -134,7 +190,7 @@ public final class Deps {
      *         not be resolved.
      */
     public static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry,
-                                         boolean pomSufficient) {
+                                        boolean pomSufficient) {
         // determine the local-repository directory for dependencyAtom; as it is needed regardless of where the dependency
         // if found.
         RepositoryAtom localRepo = repositoryRegistry.localRepository;
@@ -207,7 +263,7 @@ public final class Deps {
                 // this is fine, check next repo
                 continue;
             } catch (IOException ioe) {
-                Output.print(ioe);
+                Output.print(ioe); // TODO - parse exception and more gracefully handle http-errors.
                 continue;
             }
             Output.print("^info^ Downloading %s from %s...", dependencyAtom.toString(), remoteRepo.toString());
