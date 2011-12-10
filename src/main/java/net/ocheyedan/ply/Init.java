@@ -346,11 +346,12 @@ public final class Init {
      */
     private static List<RepositoryAtom> getRepositories() throws NoRepositories {
         List<RepositoryAtom> repositories = new ArrayList<RepositoryAtom>();
-        RepositoryAtom local = RepositoryAtom.parse(Props.getValue("depmngr", "localRepo"));
+        String localRepoPath = PropsExt.filterForPly(PlyUtil.SYSTEM_CONFIG_DIR, Props.get("depmngr", "localRepo"), "");
+        RepositoryAtom local = RepositoryAtom.parse(localRepoPath);
         if (local != null) {
             repositories.add(local);
         }
-        Map<String, Prop> repositoryProperties = Props.getProps("repositories");
+        Map<String, Prop> repositoryProperties = Props.getProps("repositories"); // TODO - filter all?
         RepositoryAtom repo;
         for (String key : repositoryProperties.keySet()) {
             Prop prop = repositoryProperties.get(key);
