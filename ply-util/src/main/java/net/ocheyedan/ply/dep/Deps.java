@@ -97,7 +97,11 @@ public final class Deps {
             throw new IllegalArgumentException("Need at least one repository!");
         }
         for (DependencyAtom dependencyAtom : dependencyAtoms) {
-            Dep resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, pomSufficient);
+            if ((parentVertex != null) && dependencyAtom.transientDep) {
+                continue; // non-direct (transitive) transient dependencies should be skipped
+            }
+            // pom is sufficient for resolution if this is a transient dependency
+            Dep resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep));
             if (resolvedDep == null) {
                 String path = getPathAsString(parentVertex, dependencyAtom);
                 if (path != null) {
@@ -114,7 +118,9 @@ public final class Deps {
                     System.exit(1);
                 }
             }
-            fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, true);
+            if (!dependencyAtom.transientDep) { // direct transient dependencies are not recurred upon
+                fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, true);
+            }
         }
     }
 
@@ -194,10 +200,10 @@ public final class Deps {
         // determine the local-repository directory for dependencyAtom; as it is needed regardless of where the dependency
         // if found.
         RepositoryAtom localRepo = repositoryRegistry.localRepository;
-        LocalPaths localPaths = LocalPaths.get(dependencyAtom, localRepo);
 
         // first consult the synthetic repository.
         if (repositoryRegistry.syntheticRepository != null && repositoryRegistry.syntheticRepository.containsKey(dependencyAtom)) {
+            LocalPaths localPaths = LocalPaths.get(dependencyAtom, localRepo);
             return new Dep(dependencyAtom, repositoryRegistry.syntheticRepository.get(dependencyAtom), localPaths.localDirPath);
         }
         // not present within the synthetic, check the local and other (likely remote) repositories

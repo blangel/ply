@@ -41,6 +41,10 @@ public class FileResource implements Resource {
         return ref.get();
     }
 
+    @Override public Ontology getOntology() {
+        return (file.exists() ? Ontology.Exists : Ontology.DoesNotExist);
+    }
+
     @Override public void close() {
         InputStream stream = ref.get();
         if (stream != null) {

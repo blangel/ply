@@ -34,6 +34,10 @@ public class UrlResource implements Resource {
         return ref.get();
     }
 
+    @Override public Ontology getOntology() {
+        return Ontology.Unknown;
+    }
+
     @Override public void close() {
         InputStream stream = ref.get();
         if (stream != null) {

@@ -14,6 +14,14 @@ import java.io.InputStream;
 public interface Resource {
 
     /**
+     * Represents information known about a resource.  Certain types of resources may not be able to determine
+     * their existence until their stream is opened, in which case their {@link Ontology} would be {@link Ontology#Unknown}
+     */
+    static enum Ontology {
+        Unknown, Exists, DoesNotExist
+    }
+
+    /**
      * @return a name for this resource
      */
     String name();
@@ -23,6 +31,11 @@ public interface Resource {
      * @throws IOException if opening the stream results in an exception
      */
     InputStream open() throws IOException;
+
+    /**
+     * @return the {@link Ontology} of the {@link Resource}
+     */
+    Ontology getOntology();
 
     /**
      * Close the open opened by calling {@link #open()}

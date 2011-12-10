@@ -78,7 +78,9 @@ public interface MavenPomParser {
                         version = parseResult.mavenProperties.get("project.version");
                     }
                     if ((version == null) || version.isEmpty()) {
-                        Output.print("^warn^ Encountered dependency without a version - %s:%s:%s:%s:%s", groupId, artifactId, version, classifier, type);
+                        Output.print("^warn^ Encountered dependency without a version - %s:%s%s", groupId, artifactId,
+                                     String.format("%s%s", (((classifier != null) && !classifier.isEmpty()) ? ":" + classifier : ""),
+                                                           (((type != null) && !type.isEmpty()) ? ":" + type : "")));
                     }
                     boolean transientDep = ("provided".equals(scope) || Boolean.valueOf(optional));
                     DependencyAtom atom;

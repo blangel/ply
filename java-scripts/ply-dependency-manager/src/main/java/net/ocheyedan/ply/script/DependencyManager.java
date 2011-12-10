@@ -123,8 +123,14 @@ public class DependencyManager {
             } else {
                 DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(dependencies, createRepositoryList(null, null));
                 int size = dependencies.size();
-                Output.print("Project ^b^%s^r^ has ^b^%d^r^ direct %sdependenc%s: ", Props.getValue("project", "name"), size,
-                        scope.forPrint, (size == 1 ? "y" : "ies"));
+                int graphSize = depGraph.getRootVertices().size();
+                if (graphSize > size) {
+                    throw new AssertionError("Dependency graph's root-vertices should not be greater than the specified dependencies.");
+                }
+                String sizeExplanation = (size != graphSize) ?
+                        String.format(" [ actually %d; %d of which are pulled in transitively ]", size, (size - graphSize)) : "";
+                Output.print("Project ^b^%s^r^ has ^b^%d^r^ direct %sdependenc%s%s: ", Props.getValue("project", "name"), graphSize,
+                        scope.forPrint, (size == 1 ? "y" : "ies"), sizeExplanation);
                 printDependencyGraph(depGraph.getRootVertices(), String.format("%s ", PlyUtil.isUnicodeSupported() ? "\u26AC" : "+"), new HashSet<Vertex<Dep>>());
             }
         } else if ((args.length > 1) && "add-repo".equals(args[0])) {
@@ -361,7 +367,7 @@ public class DependencyManager {
             String version = dep.dependencyAtom.getPropertyValueWithoutTransient();
             Output.print("%s^b^%s:%s^r^%s%s", indent, name, version, (dep.dependencyAtom.transientDep ? TRANSIENT_PRINT : ""),
                     (enc ? " (already printed)" : ""));
-            if (!enc && (!dep.dependencyAtom.transientDep || vertex.isRoot())) {
+            if (!enc && !dep.dependencyAtom.transientDep) {
                 printDependencyGraph(vertex.getChildren(), String.format("  %s %s", PlyUtil.isUnicodeSupported() ? "\u2937" : "\\", indent), encountered);
             }
         }

@@ -27,6 +27,10 @@ public class ClasspathResource implements Resource {
         return stream;
     }
 
+    @Override public Ontology getOntology() {
+        return Ontology.Unknown;
+    }
+
     @Override public void close() {
         if (stream != null) {
             try {
