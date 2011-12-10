@@ -298,14 +298,17 @@ public interface MavenPomParser {
                 }
                 if (!parseResult.mavenProperties.containsKey("project.groupId")) {
                     parseResult.mavenProperties.put("project.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));
+                    parseResult.mavenProperties.put("pom.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));
                 }
                 if (!parseResult.mavenProperties.containsKey("project.artifactId")) { // don't override artifactId with parent.artifactId
                     parseResult.mavenProperties.put("project.artifactId", localArtifactId);
+                    parseResult.mavenProperties.put("pom.artifactId", localArtifactId);
                 }
                 if (!parseResult.mavenProperties.containsKey("project.version")) {
                     String version = (localVersion != null ? localVersion : parentVersion.get());
                     version = filterVersion(version, parseResult);
                     parseResult.mavenProperties.put("project.version", version);
+                    parseResult.mavenProperties.put("pom.version", version);
                 }
                 if (!parseResult.mavenProperties.containsKey("project.packaging")) {
                     parseResult.mavenProperties.put("project.packaging", packaging);
@@ -468,8 +471,11 @@ public interface MavenPomParser {
                 String filteredDependencyKey = dependencyKey;
                 ParseResult.Incomplete incomplete = parseResult.mavenIncompleteDeps.get(dependencyKey);
                 filteredDependencyKey = filter(filteredDependencyKey, "project.groupId", parseResult.mavenProperties);
+                filteredDependencyKey = filter(filteredDependencyKey, "pom.groupId", parseResult.mavenProperties);
                 incomplete.groupId = filter(incomplete.groupId, "project.groupId", parseResult.mavenProperties);
+                incomplete.groupId = filter(incomplete.groupId, "pom.groupId", parseResult.mavenProperties);
                 incomplete.version = filter(incomplete.version, "project.version", parseResult.mavenProperties);
+                incomplete.version = filter(incomplete.version, "pom.version", parseResult.mavenProperties);
                 filteredDeps.put(filteredDependencyKey, incomplete);
             }
             parseResult.mavenIncompleteDeps.clear();
