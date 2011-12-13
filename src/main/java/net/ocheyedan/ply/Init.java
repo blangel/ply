@@ -73,7 +73,7 @@ public final class Init {
                 throw new PomNotFound(mavenPom.getPath());
             }
             List<RepositoryAtom> repositoryAtoms = getRepositories();
-            MavenPomParser parser = new MavenPomParser.Default();
+            MavenPomParser parser = new MavenPomParser();
             PrintStream old = setupTabOutput();
             MavenPom pom = null;
             for (RepositoryAtom repositoryAtom : repositoryAtoms) {

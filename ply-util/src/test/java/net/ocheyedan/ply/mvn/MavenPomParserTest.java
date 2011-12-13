@@ -20,7 +20,7 @@ public class MavenPomParserTest {
 
     @Test
     public void parsePom() throws URISyntaxException {
-        MavenPomParser parser = new MavenPomParser.Default();
+        MavenPomParser parser = new MavenPomParser();
         RepositoryAtom mockRepo = new RepositoryAtom(new URI("classpath:mock-mvn-repo/"));
         MavenPom pom = parser.parsePom("classpath:mock-mvn-repo/log4j/log4j/1.2.16/log4j-1.2.16.pom", mockRepo);
         assertEquals("log4j", pom.groupId);

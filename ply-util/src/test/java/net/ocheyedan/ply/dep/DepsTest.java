@@ -27,7 +27,7 @@ public class DepsTest {
     @Test
     public void getDependencyGraph() throws URISyntaxException {
 
-        MavenPomParser parser = new MavenPomParser.Default();
+        MavenPomParser parser = new MavenPomParser();
         String plyUtilPath = FileUtil.pathFromParts(PlyUtil.LOCAL_PROJECT_DIR.getAbsolutePath(), "..");
         if (!plyUtilPath.contains("ply-util")) {
             plyUtilPath = plyUtilPath.replace(".ply", FileUtil.pathFromParts("ply-util", ".ply"));

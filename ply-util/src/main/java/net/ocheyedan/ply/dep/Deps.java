@@ -468,7 +468,7 @@ public final class Deps {
     }
 
     private static Properties getDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
-        MavenPomParser mavenPomParser = new MavenPomParser.Default();
+        MavenPomParser mavenPomParser = new MavenPomParser();
         MavenPom mavenPom = mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
         return (mavenPom == null ? new Properties() : mavenPom.dependencies);
     }
