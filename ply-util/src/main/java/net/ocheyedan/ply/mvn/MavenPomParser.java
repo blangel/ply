@@ -426,7 +426,7 @@ public interface MavenPomParser {
             for (int i = 0; i < build.getLength(); i++) {
                 Node child = build.item(i);
                 String nodeName = child.getNodeName();
-                // TODO - all the following need to be filtered.
+                // TODO - all the following need to be filtered (but should be after all other parsing).
                 if ("directory".equals(nodeName)) {
                     parseResult.mavenProperties.put("project.build.directory", child.getTextContent());
                 } else if ("outputDirectory".equals(nodeName)) {
@@ -487,7 +487,13 @@ public interface MavenPomParser {
                 return toFilter;
             }
             if (toFilter.contains("${" + filterValue + "}")) {
-                return toFilter.replaceAll(Pattern.quote("${" + filterValue + "}"), replacementMap.get(filterValue));
+                try {
+                    return toFilter.replaceAll(Pattern.quote("${" + filterValue + "}"), replacementMap.get(filterValue));
+                } catch (IllegalArgumentException iae) {
+                    Output.print("^error^ Error filtering '^b^%s^r^' with '^b^%s^r^'.", filterValue,
+                                                                            replacementMap.get(filterValue));
+                    Output.print(iae);
+                }
             }
             return toFilter;
         }

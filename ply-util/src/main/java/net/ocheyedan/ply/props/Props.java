@@ -222,8 +222,14 @@ public class Props {
                 }
                 for (String enivronmentProperty : System.getenv().keySet()) {
                     if (filtered.contains("${" + enivronmentProperty + "}")) {
-                        filtered = filtered.replaceAll(Pattern.quote("${" + enivronmentProperty + "}"),
-                                System.getenv(enivronmentProperty));
+                        try {
+                            filtered = filtered.replaceAll(Pattern.quote("${" + enivronmentProperty + "}"),
+                                    System.getenv(enivronmentProperty));
+                        } catch (IllegalArgumentException iae) {
+                            Output.print("^error^ Error filtering '^b^%s^r^' with '^b^%s^r^'.", enivronmentProperty,
+                                                                            System.getenv(enivronmentProperty));
+                            Output.print(iae);
+                        }
                     }
                     if (!value.value.contains("${")) {
                         break filtering;
@@ -251,8 +257,13 @@ public class Props {
             for (String name : props.keySet()) {
                 String toFind = prefix + name;
                 if (value.contains("${" + toFind + "}")) {
-                    value = value.replaceAll(Pattern.quote("${" + toFind + "}"),
-                            filter(localDir, props.get(name), all));
+                    String replacement = filter(localDir, props.get(name), all);
+                    try {
+                        value = value.replaceAll(Pattern.quote("${" + toFind + "}"), replacement);
+                    } catch (IllegalArgumentException iae) {
+                        Output.print("^error^ Error filtering '^b^%s^r^' with '^b^%s^r^'.", toFind, replacement);
+                        Output.print(iae);
+                    }
                 }
             }
             return value;
