@@ -14,7 +14,7 @@ public class MavenMetadataParserTest {
 
     @Test
     public void parseMetadata() {
-        MavenMetadataParser.Default parser = new MavenMetadataParser.Default();
+        MavenMetadataParser parser = new MavenMetadataParser();
         assertNull(parser.parseMetadata(null));
 
         MavenMetadataParser.Metadata metadata = parser.parseMetadata("classpath:mock-mvn-repo/log4j/log4j");

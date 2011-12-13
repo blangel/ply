@@ -157,7 +157,7 @@ public final class Version {
             return upper;
         }
         // need to go looking for available versions...
-        MavenMetadataParser parser = new MavenMetadataParser.Default();
+        MavenMetadataParser parser = new MavenMetadataParser();
         MavenMetadataParser.Metadata metadata = parser.parseMetadata(baseResource);
         if ((metadata == null) || ((metadata.latest == null) && (metadata.versions == null))) {
             Output.print("^warn^ Could not resolve the 'maven-metadata.xml' file from the repository at %s", baseResource);

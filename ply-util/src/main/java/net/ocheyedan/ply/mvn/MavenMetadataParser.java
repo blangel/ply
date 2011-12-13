@@ -21,9 +21,9 @@ import java.util.List;
  *
  * Responsible for parsing {@literal Maven} metadata files.
  */
-public interface MavenMetadataParser {
+public class MavenMetadataParser {
 
-    static class Metadata {
+    public static final class Metadata {
 
         public final String latest;
 
@@ -35,85 +35,76 @@ public interface MavenMetadataParser {
         }
     }
 
-    /**
-     * Default implementation of the {@link MavenMetadataParser}.
-     */
-    static class Default implements MavenMetadataParser {
-
-        @Override public Metadata parseMetadata(String baseUrl) {
-            if (baseUrl == null) {
-                return null;
-            }
-            if (!baseUrl.endsWith("/")) {
-                baseUrl = baseUrl + "/";
-            }
+    public Metadata parseMetadata(String baseUrl) {
+        if (baseUrl == null) {
+            return null;
+        }
+        if (!baseUrl.endsWith("/")) {
+            baseUrl = baseUrl + "/";
+        }
+        try {
+            return parse(baseUrl + "maven-metadata.xml");
+        } catch (IOException ioe) {
             try {
-                return parse(baseUrl + "maven-metadata.xml");
-            } catch (IOException ioe) {
-                try {
-                    return parse(baseUrl + "metadata.xml");
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return parse(baseUrl + "metadata.xml");
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }
-
-        private Metadata parse(String metadataXmlUrl) throws IOException, ParserConfigurationException, SAXException {
-            Resource resource = Resources.parse(metadataXmlUrl);
-            try {
-                return parse(resource);
-            } finally {
-                resource.close();
-            }
-        }
-
-        private Metadata parse(Resource resource) throws IOException, ParserConfigurationException, SAXException {
-            Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(resource.open());
-            NodeList metadataChildren = document.getDocumentElement().getChildNodes();
-            for (int i = 0; i < metadataChildren.getLength(); i++) {
-                Node child = metadataChildren.item(i);
-                String nodeName = child.getNodeName();
-                if ("versioning".equals(nodeName)) {
-                    return parseVersioning(child);
-                }
-            }
-            throw new AssertionError(String.format("Could not parse metadata file %s.", resource.name()));
-        }
-
-        private Metadata parseVersioning(Node versioning) {
-            String latest = null;
-            List<String> versions = null;
-
-            NodeList versioningChildren = versioning.getChildNodes();
-            for (int i = 0; i < versioningChildren.getLength(); i++) {
-                Node child = versioningChildren.item(i);
-                if ("latest".equals(child.getNodeName())) {
-                    latest = child.getTextContent();
-                } else if ("versions".equals(child.getNodeName())) {
-                    versions = parseVersions(child);
-                }
-            }
-
-            return new Metadata(latest, versions);
-        }
-
-        private List<String> parseVersions(Node versionsNode) {
-            NodeList versionsChildren = versionsNode.getChildNodes();
-            List<String> versions = new ArrayList<String>(versionsChildren.getLength());
-            for (int i = 0; i < versionsChildren.getLength(); i++) {
-                Node version = versionsChildren.item(i);
-                if (!"version".equals(version.getNodeName())) {
-                    continue;
-                }
-                versions.add(version.getTextContent());
-            }
-            Collections.sort(versions, Version.MAVEN_VERSION_COMPARATOR);
-            return versions;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
-    Metadata parseMetadata(String baseUrl);
+    private Metadata parse(String metadataXmlUrl) throws IOException, ParserConfigurationException, SAXException {
+        Resource resource = Resources.parse(metadataXmlUrl);
+        try {
+            return parse(resource);
+        } finally {
+            resource.close();
+        }
+    }
 
+    private Metadata parse(Resource resource) throws IOException, ParserConfigurationException, SAXException {
+        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(resource.open());
+        NodeList metadataChildren = document.getDocumentElement().getChildNodes();
+        for (int i = 0; i < metadataChildren.getLength(); i++) {
+            Node child = metadataChildren.item(i);
+            String nodeName = child.getNodeName();
+            if ("versioning".equals(nodeName)) {
+                return parseVersioning(child);
+            }
+        }
+        throw new AssertionError(String.format("Could not parse metadata file %s.", resource.name()));
+    }
+
+    private Metadata parseVersioning(Node versioning) {
+        String latest = null;
+        List<String> versions = null;
+
+        NodeList versioningChildren = versioning.getChildNodes();
+        for (int i = 0; i < versioningChildren.getLength(); i++) {
+            Node child = versioningChildren.item(i);
+            if ("latest".equals(child.getNodeName())) {
+                latest = child.getTextContent();
+            } else if ("versions".equals(child.getNodeName())) {
+                versions = parseVersions(child);
+            }
+        }
+
+        return new Metadata(latest, versions);
+    }
+
+    private List<String> parseVersions(Node versionsNode) {
+        NodeList versionsChildren = versionsNode.getChildNodes();
+        List<String> versions = new ArrayList<String>(versionsChildren.getLength());
+        for (int i = 0; i < versionsChildren.getLength(); i++) {
+            Node version = versionsChildren.item(i);
+            if (!"version".equals(version.getNodeName())) {
+                continue;
+            }
+            versions.add(version.getTextContent());
+        }
+        Collections.sort(versions, Version.MAVEN_VERSION_COMPARATOR);
+        return versions;
+    }
 }
