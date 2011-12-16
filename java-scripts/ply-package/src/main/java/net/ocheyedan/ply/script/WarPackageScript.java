@@ -99,4 +99,7 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
         }
     }
 
+    @Override protected int postprocess(int exitCode) {
+        return exitCode; // do nothing, war files already include-deps which is all super does if necessary
+    }
 }

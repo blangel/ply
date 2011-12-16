@@ -2,16 +2,15 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
+import net.ocheyedan.ply.jna.JnaAccessor;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -136,7 +135,11 @@ public class ZipPackageScript implements PackagingScript {
         File compileDirFile = new File(compileDir);
         File resourceDirFile = new File(resourceDir);
         if (compileDirFile.exists() && resourceDirFile.exists()) {
-            return new String[] { "-C", compileDir, ".", "-C", resourceDir, "." };
+            if (subdirectoriesIntersect(compileDirFile, resourceDirFile)) {
+                return getIntersectedDirectories(compileDirFile, compileDir, resourceDirFile);
+            } else {
+                return new String[] { "-C", compileDir, ".", "-C", resourceDir, "." };
+            }
         } else if (compileDirFile.exists()) {
             return new String[] { "-C", compileDir, "." };
         } else {
@@ -218,6 +221,70 @@ public class ZipPackageScript implements PackagingScript {
 
     static boolean getBoolean(String value) {
         return "true".equalsIgnoreCase(value);
+    }
+
+    /**
+     * A {@link FilenameFilter} which only accepts directories.
+     */
+    private static final FilenameFilter DIRECTORY_FILTER = new FilenameFilter() {
+        @Override public boolean accept(File dir, String name) {
+            return (FileUtil.fromParts(dir.getPath(), name)).isDirectory();
+        }
+    };
+
+    /**
+     * @param first directory to compare to {@code second}
+     * @param second directory to compare with {@code first}
+     * @return true if {@code first} and {@code second} have overlapping sub-directory structures.
+     */
+    static boolean subdirectoriesIntersect(File first, File second) {
+        String[] firstSubfileNames = first.list(DIRECTORY_FILTER);
+        String[] secondSubfileNames = second.list(DIRECTORY_FILTER);
+        Arrays.sort(firstSubfileNames);
+        Arrays.sort(secondSubfileNames);
+        for (String firstSubfileName : firstSubfileNames) {
+            if (Arrays.binarySearch(secondSubfileNames, firstSubfileName) >= 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param first into which to link files from {@code second}
+     * @param firstPath the pre-computed path of {@code first}
+     * @param second from which to link all files into {@code first}
+     * @return jar command arguments for {@code first} (note, all files within {@code second} are first linked into {@code first}).
+     */
+    static String[] getIntersectedDirectories(File first, String firstPath, File second) {
+        // TODO - either do programmatically (create package via java-api not jar command or at least
+        // TODO - link the files into an independent directory so as to not pollute classes/resources dirs).
+        linkIntersectedDirectories(first, second);
+        return new String[] { "-C", firstPath, "." };
+    }
+
+    /**
+     * Links all files within {@code from} to {@code to}
+     * @param to directory into which to link all files within {@code from}
+     * @param from directory from which to link all files into {@code to}
+     */
+    private static void linkIntersectedDirectories(File to, File from) {
+        for (File secondFile : from.listFiles()) {
+            File firstFile = FileUtil.fromParts(to.getPath(), secondFile.getName());
+            if (firstFile.exists()) {
+                if (secondFile.isDirectory()) {
+                    linkIntersectedDirectories(firstFile, secondFile);
+                } else {
+                    Output.print("^warn^ Found a duplicate entry [ ^b^%s^r^ ], skipping inclusion of ^i^^yellow^%s^r^.", firstFile.getPath(), secondFile.getPath());
+                }
+            } else {
+                if (JnaAccessor.getCUnixLibrary() != null) {
+                    JnaAccessor.getCUnixLibrary().symlink(secondFile.getAbsolutePath(), firstFile.getAbsolutePath());
+                } else {
+                    FileUtil.copy(secondFile, firstFile);
+                }
+            }
+        }
     }
 
 }
