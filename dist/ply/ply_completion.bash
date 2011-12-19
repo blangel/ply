@@ -31,25 +31,25 @@ _ply_completion() {
     
     # if '-P' is start of cur, print the contexts after the -P
     if [[ ${cur} == -P* ]]; then
-	if [ $has_compopt == "builtin" ]; then
+	if [ "$has_compopt" == "builtin" ]; then
 	    compopt -o nospace
 	fi
 	# the start of the -P
 	if [[ ${cur} != *.* ]]; then
-	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" -printf "%f\n" | \
-		sed 's/\(.*\)\.properties/-P\1/' | sed 's/\./#/')
-	    local projectcontexts=$(find ${projectdir}/config/ -type f -name "*.properties" -printf "%f\n" | \
-		sed 's/\(.*\)\.properties/-P\1/' | sed 's/\./#/')
+	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" | \
+		sed 's/\(\/.*\/\)\(.*\)\.properties/-P\2/' | sed 's/\./#/')
+	    local projectcontexts=$(find ${projectdir}/config/ -type f -name "*.properties" | \
+		sed 's/\(\/.*\/\)\(.*\)\.properties/-P\2/' | sed 's/\./#/')
 	    COMPREPLY=( $(compgen -W "${defaultcontexts} ${projectcontexts}" -- ${cur}) )
 	# the -P has a complete context, complete with the context's property-names
 	elif [[ ${cur} == *.* ]]; then
-	    local index=`expr index "$cur" "."`
+	    local index=`echo "$cur" | sed -n 's/[\.].*//p' | wc -c`
 	    local len=$(($index - 2))
 	    local curcontext=${cur:0:$index}
 	    local context=${cur:2:$len}
 	    local nonscopedcontext=""
 	    if [[ ${context} == *#* ]]; then
-		index=`expr index "$context" "#"`
+		index=`echo "$context" | sed -n 's/[#].*//p' | wc -c`
 		len=$(($index - 1))
 		nonscopedcontext=${context:0:$len}
 	    fi
@@ -81,15 +81,15 @@ _ply_completion() {
 
     case "${prev}" in 
 	init)
-	    if [ $has_compopt == "builtin" ]; then
+	    if [ "$has_compopt" == "builtin" ]; then
 		compopt -o nospace
 	    fi
 	    COMPREPLY=( $(compgen -S '=' -W "--from-pom" -- ${cur}) );;
 	config)
-	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" -printf "%f\n" | \
-		sed 's/\(.*\)\.properties/--\1/')
-	    local projectcontexts=$(find ${projectdir}/config/ -type f -name "*.properties" -printf "%f\n" | \
-		sed 's/\(.*\)\.properties/--\1/')
+	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" | \
+		sed 's/\(\/.*\/\)\(.*\)\.properties/--\2/')
+	    local projectcontexts=$(find ${projectdir}/config/ -type f -name "*.properties" | \
+		sed 's/\(\/.*\/\)\(.*\)\.properties/--\2/')
 	    COMPREPLY=( $(compgen -W "${configtasks} ${defaultcontexts} ${projectcontexts}" -- ${cur}) );;
 	dep)
 	    local deptasks="add remove repo-add repo-remove list tree"
@@ -110,7 +110,7 @@ _ply_completion() {
 	        elif [[ (${configtasks} == *${prev}*) && (${COMP_WORDS[2]} == --*) ]]; then
 		    local nonscopedcontext=""
 		    if [[ ${COMP_WORDS[2]} == *.* ]]; then
-			local index=`expr index "${COMP_WORDS[2]}" "."`
+			local index=`echo "${COMP_WORDS[2]}" | sed -n 's/[\.].*//p' | wc -c`
 			local len=$(($index - 1))
 			nonscopedcontext=${COMP_WORDS[2]:0:$len}
 		    fi
