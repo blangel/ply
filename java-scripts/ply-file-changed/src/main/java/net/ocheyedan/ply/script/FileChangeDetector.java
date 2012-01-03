@@ -74,11 +74,11 @@ public class FileChangeDetector {
                 try {
                     AtomicReference<String> sha1HashRef = new AtomicReference<String>();
                     String path = file.getCanonicalPath();
-                    if (hasChanged(file, existing, sha1HashRef, scope)) {
+                    if (hasChanged(file, existing, sha1HashRef, scope) && file.exists()) {
                         String sha1Hash = (sha1HashRef.get() == null ? computeSha1Hash(file) : sha1HashRef.get());
                         into.setProperty(path, epochTime + "," + sha1Hash);
                         changedList.setProperty(path, "");
-                    } else {
+                    } else if (file.exists()) {
                         into.setProperty(path, existing.getProperty(path));
                     }
                 } catch (IOException ioe) {
