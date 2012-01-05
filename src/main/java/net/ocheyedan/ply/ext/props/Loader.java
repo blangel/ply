@@ -93,7 +93,7 @@ final class Loader {
         }
     }
 
-    private static void loadAdHoc(List<Prop.All> props) {
+    static void loadAdHoc(List<Prop.All> props) {
         for (Prop.All prop : AdHoc.get()) {
             if (props.contains(prop)) {
                 Prop.All existing = props.get(props.indexOf(prop));

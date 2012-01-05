@@ -2,15 +2,14 @@ package net.ocheyedan.ply.ext.cmd.build;
 
 import net.ocheyedan.ply.ext.props.Context;
 import net.ocheyedan.ply.ext.props.Prop;
+import net.ocheyedan.ply.ext.props.Props;
 import net.ocheyedan.ply.ext.props.Scope;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import org.junit.Test;
 
 import java.util.*;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertTrue;
-import static junit.framework.Assert.fail;
+import static junit.framework.Assert.*;
 
 /**
  * User: blangel
@@ -288,6 +287,23 @@ public class AliasTest {
         assertEquals("compiler.jar", alias.scripts.get(2).name);
         assertEquals(Scope.Default, alias.scripts.get(2).scope);
         assertTrue(alias.scripts.get(2).getClass() == Script.class);
+
+        // test that ad-hoc props defined within an alias are recognized.
+        String scope = String.valueOf(System.currentTimeMillis());
+        assertTrue(Props.get(new Context("ply"), new Scope(scope)).isEmpty());
+        name = "clean";
+        value = "\"rm -rf target\" -Pply#" + scope + ".test=hello";
+        unparsedAliases.clear();
+        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        alias = Alias.parseAlias(Scope.Default, name, value, unparsedAliases, new DirectedAcyclicGraph<String>());
+        assertEquals("clean", alias.name);
+        assertEquals(1, alias.scripts.size());
+        assertEquals("rm -rf target", alias.scripts.get(0).name);
+        Collection<Prop> props = Props.get(new Context("ply"), new Scope(scope));
+        assertEquals(1, props.size());
+        Prop testProp = props.iterator().next();
+        assertEquals("test", testProp.name);
+        assertEquals("hello", testProp.value);
     }
 
 }

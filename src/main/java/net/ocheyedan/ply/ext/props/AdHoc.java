@@ -1,7 +1,9 @@
 package net.ocheyedan.ply.ext.props;
 
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PlyUtil;
 
+import java.io.File;
 import java.util.*;
 
 /**
@@ -35,6 +37,9 @@ public final class AdHoc {
      * @param adHocProps to parse and add to the set of ad-hoc properties
      */
     public static void add(List<String> adHocProps) {
+        if (adHocProps == null) {
+            return;
+        }
         for (String adHocProp : adHocProps) {
             parseAndAdd(adHocProp);
         }
@@ -45,6 +50,23 @@ public final class AdHoc {
      */
     public static Collection<Prop.All> get() {
         return Collections.unmodifiableList(adHocProps);
+    }
+
+    public static void merge() { // TODO - can this be shielded from external scripts and only accessible to ply itself
+        merge(PlyUtil.LOCAL_CONFIG_DIR);
+    }
+
+    @SuppressWarnings("unchecked")
+    static void merge(File configDirectory) {
+        if (!Cache.contains(configDirectory)) {
+            return; // let it be loaded on-demand
+        }
+        Collection<Prop.All> propsCol = Cache.get(configDirectory);
+        if (!(propsCol instanceof List)) {
+            throw new AssertionError("Expecting Cache.get internal representation to be a List<Prop.All>");
+        }
+        List<Prop.All> props = (List<Prop.All>) propsCol;
+        Loader.loadAdHoc(props);
     }
 
     /**

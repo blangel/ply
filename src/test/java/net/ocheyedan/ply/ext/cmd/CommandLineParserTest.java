@@ -1,5 +1,6 @@
 package net.ocheyedan.ply.ext.cmd;
 
+import net.ocheyedan.ply.Iter;
 import net.ocheyedan.ply.ext.cmd.build.Build;
 import net.ocheyedan.ply.ext.cmd.config.Get;
 import net.ocheyedan.ply.ext.cmd.config.GetAll;
@@ -135,19 +136,19 @@ public class CommandLineParserTest {
     @Test
     public void parseArgs() {
         String[] rawArgs = null;
-        Args args = CommandLineParser.parseArgs(rawArgs);
+        Args args = CommandLineParser.parseArgs(Iter.sized(rawArgs));
         assertNotNull(args);
         assertEquals(0, args.args.size());
         assertEquals(0, args.adHocProps.size());
 
         rawArgs = new String[] {};
-        args = CommandLineParser.parseArgs(rawArgs);
+        args = CommandLineParser.parseArgs(Iter.sized(rawArgs));
         assertNotNull(args);
         assertEquals(0, args.args.size());
         assertEquals(0, args.adHocProps.size());
 
         rawArgs = new String[] { "-Pcompiler.src.dir=src", "clean" };
-        args = CommandLineParser.parseArgs(rawArgs);
+        args = CommandLineParser.parseArgs(Iter.sized(rawArgs));
         assertNotNull(args);
         assertEquals(1, args.args.size());
         assertEquals("clean", args.args.get(0));
@@ -155,7 +156,7 @@ public class CommandLineParserTest {
         assertEquals("compiler.src.dir=src", args.adHocProps.get(0));
 
         rawArgs = new String[] { "-Pcompiler.build.dir=target", "-Pproject.name=ply", "-Pproject#test.name=ply-test" };
-        args = CommandLineParser.parseArgs(rawArgs);
+        args = CommandLineParser.parseArgs(Iter.sized(rawArgs));
         assertNotNull(args);
         assertEquals(0, args.args.size());
         assertEquals(3, args.adHocProps.size());
@@ -164,7 +165,7 @@ public class CommandLineParserTest {
         assertEquals("project#test.name=ply-test", args.adHocProps.get(2));
 
         rawArgs = new String[] { "clean", "compile", "package" };
-        args = CommandLineParser.parseArgs(rawArgs);
+        args = CommandLineParser.parseArgs(Iter.sized(rawArgs));
         assertNotNull(args);
         assertEquals(3, args.args.size());
         assertEquals("clean", args.args.get(0));

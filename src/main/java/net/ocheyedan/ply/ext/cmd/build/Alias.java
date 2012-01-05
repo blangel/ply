@@ -1,13 +1,14 @@
 package net.ocheyedan.ply.ext.cmd.build;
 
+import net.ocheyedan.ply.Iter;
 import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.ext.props.Context;
-import net.ocheyedan.ply.ext.props.Prop;
-import net.ocheyedan.ply.ext.props.Props;
-import net.ocheyedan.ply.ext.props.Scope;
+import net.ocheyedan.ply.ext.cmd.Args;
+import net.ocheyedan.ply.ext.cmd.CommandLineParser;
+import net.ocheyedan.ply.ext.props.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Graph;
 import net.ocheyedan.ply.graph.Vertex;
+import net.ocheyedan.ply.props.Loader;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -81,7 +82,10 @@ final class Alias extends Script {
 
     private static List<Script> parse(Scope originalScope, Scope scope, String name, String value,
                                       Map<String, Prop> unparsedAliases, DirectedAcyclicGraph<String> cycleDetector) {
-        List<String> scripts = splitScript(value);
+        Args args = CommandLineParser.parseArgs(Iter.sized(splitScript(value)));
+        AdHoc.add(args.adHocProps);
+        AdHoc.merge();
+        List<String> scripts = args.args;
         List<Script> parsedScripts = new ArrayList<Script>(scripts.size());
         Vertex<String> aliasVertex = cycleDetector.getVertex(name);
         for (String script : scripts) {
@@ -123,7 +127,11 @@ final class Alias extends Script {
         return map;
     }
 
+    /**
+     * @see #splitScript(String)
+     */
     static final Pattern SPLIT_REG_EX = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
+
     /**
      * Splits {@code script} by ' ', ignoring ' ' characters within quotation marks.
      * @param script to split
