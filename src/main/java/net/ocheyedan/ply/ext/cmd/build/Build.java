@@ -34,15 +34,14 @@ public final class Build extends Command {
     private void print(List<Script> scripts, String prefix) {
         for (Script script : scripts) {
             if (script instanceof Alias) {
-                Output.print("%sscripts from alias ^b^%s^r^:", prefix, script.name);
+                Output.print("%sscripts from alias ^b^%s^r^ (scope = %s):", prefix, script.name, script.scope.name);
                 print(((Alias) script).scripts, prefix + "  ");
             } else {
-                Output.print("%s^b^%s^r^", prefix, script.name);
+                Output.print("%s^b^%s^r^ (scope = %s)", prefix, script.name, script.scope.name);
             }
         }
     }
 
-    // TODO - figure out caching policy for alias resolution
     protected List<Script> convertArgsToScripts() {
         File scriptDir = getScriptDir();
         File systemScriptDir = FileUtil.fromParts(PlyUtil.INSTALL_DIRECTORY, "scripts");
@@ -51,10 +50,9 @@ public final class Build extends Command {
             // extract scope, if any
             String arg = args.args.get(i);
             Scope scope = Scope.Default;
-            if (arg.contains(":")) {
-                scope = new Scope(arg.substring(0, arg.indexOf(":")));
-                arg = arg.substring(arg.indexOf(":") + 1);
-            }
+            Script parse = Script.parse(arg, scope);
+            arg = parse.name;
+            scope = parse.scope;
             // resolve alias, if necessary; otherwise, add as script
             Alias alias = Alias.getAlias(scope, arg);
             if (alias != null) {
@@ -66,7 +64,7 @@ public final class Build extends Command {
                     System.exit(1);
                 }
             } else {
-                Script script = new Script(arg);
+                Script script = new Script(arg, scope);
                 if (doesScriptExist(script, scriptDir, systemScriptDir) == null) {
                     scripts.add(script);
                 } else {

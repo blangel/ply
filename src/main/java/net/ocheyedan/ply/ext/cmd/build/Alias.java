@@ -5,8 +5,13 @@ import net.ocheyedan.ply.ext.props.Context;
 import net.ocheyedan.ply.ext.props.Prop;
 import net.ocheyedan.ply.ext.props.Props;
 import net.ocheyedan.ply.ext.props.Scope;
+import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
+import net.ocheyedan.ply.graph.Graph;
+import net.ocheyedan.ply.graph.Vertex;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * User: blangel
@@ -27,9 +32,14 @@ final class Alias extends Script {
     }
 
     /**
+     * Cache of resolved aliases for a particular scope.
+     */
+    static final Map<Scope, Map<String, Alias>> cache = new HashMap<Scope, Map<String, Alias>>();
+
+    /**
      * @param scope from which to find alias {@code named}
      * @param named the name of the alias to find within {@code scope}
-     * @return the {@link Alias} named {@code named} from {@code scope}
+     * @return the {@link Alias} named {@code named} defined from {@code scope}
      */
     static Alias getAlias(Scope scope, String named) {
         Map<String, Alias> aliases = getAliases(scope);
@@ -41,41 +51,64 @@ final class Alias extends Script {
      * @return all aliases defined within {@code scope}
      */
     static Map<String, Alias> getAliases(Scope scope) {
+        if (cache.containsKey(scope)) {
+            return cache.get(scope);
+        }
         Map<String, Prop> unparsedAliases = getUnparsedAliases(scope);
         Map<String, Alias> map = new HashMap<String, Alias>(unparsedAliases.size());
         for (Prop prop : unparsedAliases.values()) {
             try {
-                parseAlias(prop.name, prop.value, unparsedAliases, map, new HashSet<String>());
+                Alias alias = parseAlias(scope, prop.name, prop.value, unparsedAliases, new DirectedAcyclicGraph<String>());
+                map.put(alias.name, alias);
             } catch (CircularReference cr) {
                 Output.print("^error^ Alias (^b^%s^r^) contains a circular reference (run '^b^ply get %s from aliases^r^' to analyze).", cr.alias, cr.alias);
                 System.exit(1);
             }
         }
+        cache.put(scope, map);
         return map;
     }
 
-    static Alias parseAlias(String name, String value, Map<String, Prop> unparsedAliases, Map<String, Alias> aliases, Set<String> encountered) {
-        encountered.add(name);
-        List<Script> scripts = parse(value, aliases, unparsedAliases, encountered);
-        Alias alias = new Alias(name, scripts);
-        aliases.put(name, alias);
-        return alias;
+    static Alias parseAlias(Scope scope, String name, String value, Map<String, Prop> unparsedAliases,
+                            DirectedAcyclicGraph<String> cycleDetector) {
+        Script parsed = Script.parse(name, scope);
+        name = parsed.name;
+        Scope aliasScope = parsed.scope;
+        cycleDetector.addVertex(name);
+        List<Script> scripts = parse(scope, aliasScope, name, value, unparsedAliases, cycleDetector);
+        return new Alias(name, aliasScope, scripts);
     }
 
-    private static List<Script> parse(String value, Map<String, Alias> aliases, Map<String, Prop> unparsedAliases,
-                                      Set<String> encountered) {
+    private static List<Script> parse(Scope originalScope, Scope scope, String name, String value,
+                                      Map<String, Prop> unparsedAliases, DirectedAcyclicGraph<String> cycleDetector) {
         List<String> scripts = splitScript(value);
         List<Script> parsedScripts = new ArrayList<Script>(scripts.size());
+        Vertex<String> aliasVertex = cycleDetector.getVertex(name);
         for (String script : scripts) {
-            if (encountered.contains(script)) {
+            Script parsed = Script.parse(script, scope);
+            Scope scriptScope = parsed.scope;
+            script = parsed.name;
+            Vertex<String> scriptVertex = cycleDetector.addVertex(script);
+            try {
+                cycleDetector.addEdge(aliasVertex, scriptVertex);
+            } catch (Graph.CycleException gce) {
                 throw new CircularReference(script);
             }
-            if (aliases.containsKey(script)) {
-                parsedScripts.add(aliases.get(script));
-            } else if (unparsedAliases.containsKey(script)) {
-                parsedScripts.add(parseAlias(script, unparsedAliases.get(script).value, unparsedAliases, aliases, encountered));
+            if (!scriptScope.equals(originalScope)) {
+                Map<String, Alias> scopedAliases = getAliases(scriptScope);
+                if (scopedAliases.containsKey(script)) {
+                    parsedScripts.add(scopedAliases.get(script));
+                } else {
+                    parsedScripts.add(new Script(script, scriptScope));
+                }
             } else {
-                parsedScripts.add(new Script(script));
+                if (unparsedAliases.containsKey(script)) {
+                    Alias alias = parseAlias(scriptScope, script, unparsedAliases.get(script).value, unparsedAliases,
+                                             cycleDetector);
+                    parsedScripts.add(alias);
+                } else {
+                    parsedScripts.add(new Script(script, scriptScope));
+                }
             }
         }
         return parsedScripts;
@@ -90,32 +123,37 @@ final class Alias extends Script {
         return map;
     }
 
-    private static List<String> splitScript(String script) {
+    static final Pattern SPLIT_REG_EX = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
+    /**
+     * Splits {@code script} by ' ', ignoring ' ' characters within quotation marks.
+     * @param script to split
+     * @return the split list of {@code script}
+     */
+    static List<String> splitScript(String script) {
+        if (script == null) {
+            return Collections.emptyList();
+        }
         List<String> matchList = new ArrayList<String>();
-        StringBuilder buffer = new StringBuilder();
-        boolean withinQuotations = false;
-        char[] characters = script.toCharArray();
-        // split by spaces, ignoring spaces within quotation marks
-        for (int i = 0; i < characters.length; i++) {
-            char cur = characters[i];
-            if ((' ' == cur) && !withinQuotations) {
-                matchList.add(buffer.toString());
-                buffer = new StringBuilder();
-            } else if (('"' == cur)
-                    && ((buffer.length() == 0) || ((i == (characters.length - 1)) || (' ' == characters[i + 1])))) {
-                withinQuotations = (buffer.length() == 0);
+        Matcher regexMatcher = SPLIT_REG_EX.matcher(script);
+        while (regexMatcher.find()) {
+            if (regexMatcher.group(1) != null) {
+                // Add double-quoted string without the quotes
+                matchList.add(regexMatcher.group(1));
+            } else if (regexMatcher.group(2) != null) {
+                // Add single-quoted string without the quotes
+                matchList.add(regexMatcher.group(2));
             } else {
-                buffer.append(cur);
+                // Add unquoted word
+                matchList.add(regexMatcher.group());
             }
         }
-        matchList.add(buffer.toString());
         return matchList;
     }
 
     final List<Script> scripts;
 
-    Alias(String name, List<Script> scripts) {
-        super(name);
+    Alias(String name, Scope scope, List<Script> scripts) {
+        super(name, scope);
         this.scripts = scripts;
     }
 
