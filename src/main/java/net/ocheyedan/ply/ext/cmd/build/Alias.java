@@ -127,37 +127,6 @@ final class Alias extends Script {
         return map;
     }
 
-    /**
-     * @see #splitScript(String)
-     */
-    static final Pattern SPLIT_REG_EX = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
-
-    /**
-     * Splits {@code script} by ' ', ignoring ' ' characters within quotation marks.
-     * @param script to split
-     * @return the split list of {@code script}
-     */
-    static List<String> splitScript(String script) {
-        if (script == null) {
-            return Collections.emptyList();
-        }
-        List<String> matchList = new ArrayList<String>();
-        Matcher regexMatcher = SPLIT_REG_EX.matcher(script);
-        while (regexMatcher.find()) {
-            if (regexMatcher.group(1) != null) {
-                // Add double-quoted string without the quotes
-                matchList.add(regexMatcher.group(1));
-            } else if (regexMatcher.group(2) != null) {
-                // Add single-quoted string without the quotes
-                matchList.add(regexMatcher.group(2));
-            } else {
-                // Add unquoted word
-                matchList.add(regexMatcher.group());
-            }
-        }
-        return matchList;
-    }
-
     final List<Script> scripts;
 
     Alias(String name, Scope scope, List<Script> scripts) {

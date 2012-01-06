@@ -47,28 +47,26 @@ public final class Build extends Command {
         File systemScriptDir = FileUtil.fromParts(PlyUtil.INSTALL_DIRECTORY, "scripts");
         List<Script> scripts = new ArrayList<Script>(args.args.size());
         for (int i = 1; i < args.args.size(); i++) { // skip the build switch for now : TODO - remove the build switch
-            // extract scope, if any
+            // extract scope and arguments to script/alias, if any
             String arg = args.args.get(i);
-            Scope scope = Scope.Default;
-            Script parse = Script.parse(arg, scope);
-            arg = parse.name;
-            scope = parse.scope;
+            Script parse = Script.parse(arg, Scope.Default);
             // resolve alias, if necessary; otherwise, add as script
-            Alias alias = Alias.getAlias(scope, arg);
+            Alias alias = Alias.getAlias(parse.scope, parse.name);
             if (alias != null) {
                 String exists;
                 if ((exists = doesAliasExist(alias, scriptDir, systemScriptDir)) == null) {
                     scripts.add(alias);
                 } else {
-                    Output.print("^error^ Could not find scripts defined by ^b^%s^r^.", exists);
+                    Output.print("^error^ Could not find scripts defined by ^b^%s^r^%s.", exists,
+                            Scope.Default.equals(parse.scope) ? "" : String.format(" (in scope ^b^%s^r^)", parse.scope));
                     System.exit(1);
                 }
             } else {
-                Script script = new Script(arg, scope);
-                if (doesScriptExist(script, scriptDir, systemScriptDir) == null) {
-                    scripts.add(script);
+                if (doesScriptExist(parse, scriptDir, systemScriptDir) == null) {
+                    scripts.add(parse);
                 } else {
-                    Output.print("^error^ Could not find script ^b^%s^r^.", script.name);
+                    Output.print("^error^ Could not find script ^b^%s^r^%s.", parse.name,
+                            Scope.Default.equals(parse.scope) ? "" : String.format(" (in scope ^b^%s^r^)", parse.scope));
                     System.exit(1);
                 }
             }

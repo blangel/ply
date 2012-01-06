@@ -1,5 +1,6 @@
 package net.ocheyedan.ply.ext.cmd.build;
 
+import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.ext.props.Scope;
 
 import java.util.ArrayList;
@@ -16,13 +17,44 @@ import java.util.regex.Pattern;
 class Script {
 
     /**
-     * @param script to parse which is in the form: [scope:]scriptName
+     * @see #splitScript(String)
+     */
+    static final Pattern SPLIT_REG_EX = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
+
+    /**
+     * Splits {@code script} by ' ', ignoring space characters within quotation marks.
+     * @param script to split
+     * @return the split list of {@code script}
+     */
+    static List<String> splitScript(String script) {
+        if (script == null) {
+            return Collections.emptyList();
+        }
+        List<String> matchList = new ArrayList<String>();
+        Matcher regexMatcher = SPLIT_REG_EX.matcher(script);
+        while (regexMatcher.find()) {
+            if (regexMatcher.group(1) != null) {
+                // Add double-quoted string without the quotes
+                matchList.add(regexMatcher.group(1));
+            } else if (regexMatcher.group(2) != null) {
+                // Add single-quoted string without the quotes
+                matchList.add(regexMatcher.group(2));
+            } else {
+                // Add unquoted word
+                matchList.add(regexMatcher.group());
+            }
+        }
+        return matchList;
+    }
+
+    /**
+     * @param script to parse which is in the form: [scope:]scriptName [arg0...argn]
      * @param defaultScope to be used if {@code script} does not contain scope information
      * @return the parsed {@code script} which may have been prefixed with a scope (in the form 'scope:script').
      */
     static Script parse(String script, Scope defaultScope) {
         if ((script == null) || !script.contains(":")) {
-            return new Script(script, defaultScope);
+            return parseArgs(script, defaultScope);
         }
         // script contains ':' only use if it occurs before a break-char (' ', '\'', '"')
         int scopeIndex = -1;
@@ -38,12 +70,30 @@ class Script {
                     break loop;
             }
         }
+        Scope scope;
         if (scopeIndex == -1) {
-            return new Script(script, defaultScope);
+            scope = defaultScope;
         } else if (scopeIndex == 0) {
-            return new Script(script, Scope.Default);
+            scope = Scope.Default; // user explicitly asked for default; ':scriptName'
         } else {
-            return new Script(script.substring(scopeIndex + 1), new Scope(script.substring(0, scopeIndex)));
+            scope = new Scope(script.substring(0, scopeIndex));
+            script = script.substring(scopeIndex + 1);
+        }
+        return parseArgs(script, scope);
+    }
+
+    static Script parseArgs(String script, Scope scope) {
+        // if there are spaces within the script then everything after the first result is considered to be
+        // explicit arguments passed to the script/alias; i.e., script=compile arg1 arg2 means the user
+        // typed "compile arg1 arg2" on the command line
+        List<String> scripts = splitScript(script);
+        if ((scripts == null) || scripts.isEmpty()) {
+            throw new AssertionError(String.format("Parsing %s should have created at least one script.", script));
+        } else if (scripts.size() == 1) {
+            return new Script(scripts.get(0), scope);
+        } else {
+            script = scripts.remove(0);
+            return new Script(script, scope, scripts);
         }
     }
 
@@ -51,9 +101,16 @@ class Script {
 
     final Scope scope;
 
+    final List<String> arguments;
+
     Script(String name, Scope scope) {
+        this(name, scope, Collections.<String>emptyList());
+    }
+
+    Script(String name, Scope scope, List<String> arguments) {
         this.name = name;
         this.scope = scope;
+        this.arguments = new ArrayList<String>(arguments); // copy, so as to allow append
     }
 
     @Override public boolean equals(Object o) {
