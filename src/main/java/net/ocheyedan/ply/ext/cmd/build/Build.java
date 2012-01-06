@@ -19,6 +19,8 @@ import java.util.*;
  * Time: 2:50 PM
  *
  * A {@link net.ocheyedan.ply.ext.cmd.Command} to handle running build scripts.
+ * This is where arguments are translated to scripts and resolved against aliases.  After this translation,
+ * the scripts are turned into executions and invoked.
  */
 public final class Build extends Command {
 
@@ -34,10 +36,12 @@ public final class Build extends Command {
     private void print(List<Script> scripts, String prefix) {
         for (Script script : scripts) {
             if (script instanceof Alias) {
-                Output.print("%sscripts from alias ^b^%s^r^ (scope = %s):", prefix, script.name, script.scope.name);
+                Output.print("%sscripts from alias ^b^%s^r^ (scope = %s)%s:", prefix, script.name, script.scope.name,
+                        script.arguments.isEmpty() ? "" : String.format(" (args = %s)", script.arguments.toString()));
                 print(((Alias) script).scripts, prefix + "  ");
             } else {
-                Output.print("%s^b^%s^r^ (scope = %s)", prefix, script.name, script.scope.name);
+                Output.print("%s^b^%s^r^ (scope = %s)%s", prefix, script.name, script.scope.name,
+                        script.arguments.isEmpty() ? "" : String.format(" (args = %s)", script.arguments.toString()));
             }
         }
     }
@@ -53,25 +57,58 @@ public final class Build extends Command {
             // resolve alias, if necessary; otherwise, add as script
             Alias alias = Alias.getAlias(parse.scope, parse.name);
             if (alias != null) {
-                String exists;
-                if ((exists = doesAliasExist(alias, scriptDir, systemScriptDir)) == null) {
-                    scripts.add(alias);
-                } else {
-                    Output.print("^error^ Could not find scripts defined by ^b^%s^r^%s.", exists,
-                            Scope.Default.equals(parse.scope) ? "" : String.format(" (in scope ^b^%s^r^)", parse.scope));
-                    System.exit(1);
-                }
+                processAlias(alias, scriptDir, systemScriptDir, scripts);
             } else {
-                if (doesScriptExist(parse, scriptDir, systemScriptDir) == null) {
-                    scripts.add(parse);
-                } else {
-                    Output.print("^error^ Could not find script ^b^%s^r^%s.", parse.name,
-                            Scope.Default.equals(parse.scope) ? "" : String.format(" (in scope ^b^%s^r^)", parse.scope));
-                    System.exit(1);
-                }
+                processScript(parse, scriptDir, systemScriptDir, scripts, arg);
             }
         }
         return scripts;
+    }
+
+    /**
+     * Determines if {@code script} exists (@see {@link #doesScriptExist(Script, java.io.File, java.io.File)}) and
+     * if it does adds it to {@code scripts}.  If it doesn't exist and {@code scripts} is not empty, the {@code unparsed}
+     * value is added as an argument to the last script in {@code scripts}.  If {@code script} does not exist
+     * and {@code scripts} is empty then an error is printed and execution is halted.
+     * @param script to process for existence
+     * @param projectScriptDir used in checking existence of {@code script}
+     * @param systemScriptDir used in checking existence of {@code script}
+     * @param scripts the list of resolved scripts to add {@code script} to if it exists
+     * @param unparsed is the un-parsed argument (which created {@code script}) to be used as an argument to the last
+     *                 script value within {@code scripts} if it is determined that {@code script} does not exist.
+     */
+    protected void processScript(Script script, File projectScriptDir, File systemScriptDir, List<Script> scripts,
+                                 String unparsed) {
+        if (doesScriptExist(script, projectScriptDir, systemScriptDir) == null) {
+            scripts.add(script);
+        } else if (!scripts.isEmpty()) {
+            scripts.get(scripts.size() - 1).arguments.add(unparsed); // add un-parsed as argument to last script
+        } else {
+            Output.print("^error^ Could not find script ^b^%s^r^%s.", script.name,
+                    Scope.Default.equals(script.scope) ? "" : String.format(" (in scope ^b^%s^r^)", script.scope));
+            System.exit(1);
+        }
+    }
+
+    /**
+     * For all scripts within {@code alias} calls {@link #processScript(Script, java.io.File, java.io.File, java.util.List, String)}
+     * to determine if the resolved script for {@code alias} exists or is an argument to the previous
+     * script within {@code alias}'s scripts.
+     * @param alias to process
+     * @param projectScriptDir used in checking script existence
+     * @param systemScriptDir used in checking script existence
+     * @param scripts the list of resolved scripts to add {@code alias} to once its scripts are processed.
+     */
+    protected void processAlias(Alias alias, File projectScriptDir, File systemScriptDir, List<Script> scripts) {
+        List<Script> aliasesProcessedScripts = new ArrayList<Script>(alias.scripts.size());
+        for (Script script : alias.scripts) {
+            if (script instanceof Alias) {
+                processAlias((Alias) script, projectScriptDir, systemScriptDir, aliasesProcessedScripts);
+            } else {
+                processScript(script, projectScriptDir, systemScriptDir, aliasesProcessedScripts, script.unparsedName);
+            }
+        }
+        scripts.add(alias.with(aliasesProcessedScripts));
     }
 
     /**
@@ -88,27 +125,6 @@ public final class Build extends Command {
             return null;
         } // TODO - handle unix shell scripts (i.e., those surrounded with quotation marks)
         return script.name;
-    }
-
-    /**
-     * @param alias to check if all of its scripts exist
-     * @param projectScriptDir the local scripts directory
-     * @param systemScriptDir the system defined scripts directory
-     * @return null if all of {@code alias}'s scripts exists in either {@code projectScriptDir} or
-     *         {@code systemScriptDir} or are accessible from the unix shell; otherwise the offending alias name is
-     *         returned.
-     */
-    protected String doesAliasExist(Alias alias, File projectScriptDir, File systemScriptDir) {
-        for (Script script : alias.scripts) {
-            if (script instanceof Alias) {
-                if (doesAliasExist((Alias) script, projectScriptDir, systemScriptDir) != null) {
-                    return script.name;
-                }
-            } else if (doesScriptExist(script, projectScriptDir, systemScriptDir) != null) {
-                return alias.name;
-            }
-        }
-        return null;
     }
 
     protected File getScriptDir() {

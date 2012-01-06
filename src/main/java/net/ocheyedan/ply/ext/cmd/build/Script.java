@@ -54,8 +54,9 @@ class Script {
      */
     static Script parse(String script, Scope defaultScope) {
         if ((script == null) || !script.contains(":")) {
-            return parseArgs(script, defaultScope);
+            return ((script == null) || script.isEmpty() ? null : parseArgs(script, defaultScope, script));
         }
+        String unparsedName = script;
         // script contains ':' only use if it occurs before a break-char (' ', '\'', '"')
         int scopeIndex = -1;
         loop:for (char character : script.toCharArray()) {
@@ -79,10 +80,10 @@ class Script {
             scope = new Scope(script.substring(0, scopeIndex));
             script = script.substring(scopeIndex + 1);
         }
-        return parseArgs(script, scope);
+        return parseArgs(script, scope, unparsedName);
     }
 
-    static Script parseArgs(String script, Scope scope) {
+    static Script parseArgs(String script, Scope scope, String unparsedName) {
         // if there are spaces within the script then everything after the first result is considered to be
         // explicit arguments passed to the script/alias; i.e., script=compile arg1 arg2 means the user
         // typed "compile arg1 arg2" on the command line
@@ -90,27 +91,30 @@ class Script {
         if ((scripts == null) || scripts.isEmpty()) {
             throw new AssertionError(String.format("Parsing %s should have created at least one script.", script));
         } else if (scripts.size() == 1) {
-            return new Script(scripts.get(0), scope);
+            return new Script(scripts.get(0), scope, unparsedName);
         } else {
             script = scripts.remove(0);
-            return new Script(script, scope, scripts);
+            return new Script(script, scope, scripts, unparsedName);
         }
     }
 
     final String name;
 
+    final String unparsedName;
+
     final Scope scope;
 
     final List<String> arguments;
 
-    Script(String name, Scope scope) {
-        this(name, scope, Collections.<String>emptyList());
+    Script(String name, Scope scope, String unparsedName) {
+        this(name, scope, Collections.<String>emptyList(), unparsedName);
     }
 
-    Script(String name, Scope scope, List<String> arguments) {
+    Script(String name, Scope scope, List<String> arguments, String unparsedName) {
         this.name = name;
         this.scope = scope;
         this.arguments = new ArrayList<String>(arguments); // copy, so as to allow append
+        this.unparsedName = unparsedName;
     }
 
     @Override public boolean equals(Object o) {

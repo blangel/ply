@@ -8,11 +8,8 @@ import net.ocheyedan.ply.ext.props.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Graph;
 import net.ocheyedan.ply.graph.Vertex;
-import net.ocheyedan.ply.props.Loader;
 
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * User: blangel
@@ -36,6 +33,7 @@ final class Alias extends Script {
      * Cache of resolved aliases for a particular scope.
      */
     static final Map<Scope, Map<String, Alias>> cache = new HashMap<Scope, Map<String, Alias>>();
+    static final Map<Scope, Map<String, Prop>> mappedPropCache = new HashMap<Scope, Map<String, Prop>>();
 
     /**
      * @param scope from which to find alias {@code named}
@@ -59,8 +57,8 @@ final class Alias extends Script {
         Map<String, Alias> map = new HashMap<String, Alias>(unparsedAliases.size());
         for (Prop prop : unparsedAliases.values()) {
             try {
-                Alias alias = parseAlias(scope, prop.name, prop.value, unparsedAliases, new DirectedAcyclicGraph<String>());
-                map.put(alias.name, alias);
+                Script parsed = Script.parse(prop.name, scope);
+                parseAlias(scope, parsed, prop.value, unparsedAliases, new DirectedAcyclicGraph<String>(), map);
             } catch (CircularReference cr) {
                 Output.print("^error^ Alias (^b^%s^r^) contains a circular reference (run '^b^ply get %s from aliases^r^' to analyze).", cr.alias, cr.alias);
                 System.exit(1);
@@ -70,18 +68,18 @@ final class Alias extends Script {
         return map;
     }
 
-    static Alias parseAlias(Scope scope, String name, String value, Map<String, Prop> unparsedAliases,
-                            DirectedAcyclicGraph<String> cycleDetector) {
-        Script parsed = Script.parse(name, scope);
-        name = parsed.name;
-        Scope aliasScope = parsed.scope;
-        cycleDetector.addVertex(name);
-        List<Script> scripts = parse(scope, aliasScope, name, value, unparsedAliases, cycleDetector);
-        return new Alias(name, aliasScope, scripts);
+    static Alias parseAlias(Scope scope, Script parsed, String value, Map<String, Prop> unparsedAliases,
+                            DirectedAcyclicGraph<String> cycleDetector, Map<String, Alias> parsedAliases) {
+        cycleDetector.addVertex(parsed.name);
+        List<Script> scripts = parse(scope, parsed.scope, parsed.name, value, unparsedAliases, cycleDetector, parsedAliases);
+        Alias alias = new Alias(parsed.name, parsed.scope, scripts, parsed.arguments, parsed.unparsedName);
+        parsedAliases.put(parsed.name, alias);
+        return alias;
     }
 
     private static List<Script> parse(Scope originalScope, Scope scope, String name, String value,
-                                      Map<String, Prop> unparsedAliases, DirectedAcyclicGraph<String> cycleDetector) {
+                                      Map<String, Prop> unparsedAliases, DirectedAcyclicGraph<String> cycleDetector,
+                                      Map<String, Alias> parsedAliases) {
         Args args = CommandLineParser.parseArgs(Iter.sized(splitScript(value)));
         AdHoc.add(args.adHocProps);
         AdHoc.merge();
@@ -90,28 +88,30 @@ final class Alias extends Script {
         Vertex<String> aliasVertex = cycleDetector.getVertex(name);
         for (String script : scripts) {
             Script parsed = Script.parse(script, scope);
-            Scope scriptScope = parsed.scope;
-            script = parsed.name;
-            Vertex<String> scriptVertex = cycleDetector.addVertex(script);
+            Vertex<String> scriptVertex = cycleDetector.addVertex(parsed.name);
             try {
                 cycleDetector.addEdge(aliasVertex, scriptVertex);
             } catch (Graph.CycleException gce) {
-                throw new CircularReference(script);
+                throw new CircularReference(parsed.name);
             }
-            if (!scriptScope.equals(originalScope)) {
-                Map<String, Alias> scopedAliases = getAliases(scriptScope);
-                if (scopedAliases.containsKey(script)) {
-                    parsedScripts.add(scopedAliases.get(script));
+            if (!parsed.scope.equals(originalScope)) {
+                Map<String, Prop> scopedUnparsedAliases = getUnparsedAliases(parsed.scope);
+                if (scopedUnparsedAliases.containsKey(parsed.name)) {
+                    Alias alias = parseAlias(parsed.scope, parsed, scopedUnparsedAliases.get(parsed.name).value,
+                               scopedUnparsedAliases, new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                    parsedScripts.add(alias.augment(parsed.arguments, parsed.unparsedName));
                 } else {
-                    parsedScripts.add(new Script(script, scriptScope));
+                    parsedScripts.add(parsed);
                 }
             } else {
-                if (unparsedAliases.containsKey(script)) {
-                    Alias alias = parseAlias(scriptScope, script, unparsedAliases.get(script).value, unparsedAliases,
-                                             cycleDetector);
-                    parsedScripts.add(alias);
+                if (parsedAliases.containsKey(parsed.name)) {
+                    parsedScripts.add(parsedAliases.get(parsed.name).augment(parsed.arguments, parsed.unparsedName));
+                } else if (unparsedAliases.containsKey(parsed.name)) {
+                    Alias alias = parseAlias(parsed.scope, parsed, unparsedAliases.get(parsed.name).value,
+                                             unparsedAliases, cycleDetector, parsedAliases);
+                    parsedScripts.add(alias.augment(parsed.arguments, parsed.unparsedName));
                 } else {
-                    parsedScripts.add(new Script(script, scriptScope));
+                    parsedScripts.add(parsed);
                 }
             }
         }
@@ -119,20 +119,33 @@ final class Alias extends Script {
     }
 
     private static Map<String, Prop> getUnparsedAliases(Scope scope) {
+        if (mappedPropCache.containsKey(scope)) {
+            return mappedPropCache.get(scope);
+        }
         Collection<Prop> props = Props.get(new Context("aliases"), scope);
         Map<String, Prop> map = new HashMap<String, Prop>(props.size());
         for (Prop prop : props) {
             map.put(prop.name, prop);
         }
+        mappedPropCache.put(scope, map);
         return map;
     }
 
     final List<Script> scripts;
 
-    Alias(String name, Scope scope, List<Script> scripts) {
-        super(name, scope);
+    Alias(String name, Scope scope, List<Script> scripts, List<String> arguments, String unparsed) {
+        super(name, scope, arguments, unparsed);
         this.scripts = scripts;
     }
 
+    Alias with(List<Script> scripts) {
+        return new Alias(this.name, this.scope, scripts, this.arguments, this.unparsedName);
+    }
+
+    Alias augment(List<String> arguments, String unparsedName) {
+        List<String> copiedArguments = new ArrayList<String>(this.arguments); // add this.arguments first
+        copiedArguments.addAll(arguments);
+        return new Alias(this.name, this.scope, this.scripts, copiedArguments, unparsedName);
+    }
 
 }

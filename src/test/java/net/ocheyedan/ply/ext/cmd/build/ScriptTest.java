@@ -139,14 +139,14 @@ public class ScriptTest {
         String scriptName = null;
         Script script;
         try {
-            script = Script.parseArgs(scriptName, scope);
+            script = Script.parseArgs(scriptName, scope, scriptName);
             fail("Expecting an AssertionError because of the null scriptName.");
         } catch (AssertionError ae) {
             // expected
         }
         scriptName = "";
         try {
-            script = Script.parseArgs(scriptName, scope);
+            script = Script.parseArgs(scriptName, scope, scriptName);
             fail("Expecting an AssertionError because of the empty scriptName.");
         } catch (AssertionError ae) {
             // expected
@@ -154,12 +154,14 @@ public class ScriptTest {
         scriptName = "clean";
         script = Script.parse(scriptName, scope);
         assertEquals("clean", script.name);
+        assertEquals("clean", script.unparsedName);
         assertEquals(scope, script.scope);
         assertEquals(0, script.arguments.size());
 
         scriptName = "clean arg1";
         script = Script.parse(scriptName, scope);
         assertEquals("clean", script.name);
+        assertEquals("clean arg1", script.unparsedName);
         assertEquals(scope, script.scope);
         assertEquals(1, script.arguments.size());
         assertEquals("arg1", script.arguments.get(0));
@@ -167,6 +169,7 @@ public class ScriptTest {
         scriptName = "clean arg1 arg2";
         script = Script.parse(scriptName, scope);
         assertEquals("clean", script.name);
+        assertEquals("clean arg1 arg2", script.unparsedName);
         assertEquals(scope, script.scope);
         assertEquals(2, script.arguments.size());
         assertEquals("arg1", script.arguments.get(0));
@@ -175,12 +178,14 @@ public class ScriptTest {
         scriptName = "\"clean arg1\"";
         script = Script.parse(scriptName, scope);
         assertEquals("clean arg1", script.name);
+        assertEquals("\"clean arg1\"", script.unparsedName);
         assertEquals(scope, script.scope);
         assertEquals(0, script.arguments.size());
 
         scriptName = "'clean arg1'";
         script = Script.parse(scriptName, scope);
         assertEquals("clean arg1", script.name);
+        assertEquals("'clean arg1'", script.unparsedName);
         assertEquals(scope, script.scope);
         assertEquals(0, script.arguments.size());
     }
@@ -189,13 +194,11 @@ public class ScriptTest {
         Scope scope = Scope.Default;
         String scriptName = null;
         Script script = Script.parse(scriptName, scope);
-        assertNull(script.name);
-        assertEquals(scope, script.scope);
+        assertNull(script);
 
         scriptName = "";
         script = Script.parse(scriptName, scope);
-        assertEquals("", script.name);
-        assertEquals(scope, script.scope);
+        assertNull(script);
 
         scriptName = "clean";
         script = Script.parse(scriptName, scope);

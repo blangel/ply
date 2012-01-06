@@ -58,7 +58,7 @@ public final class Iter {
     }
 
     /**
-     * Converts {@code array} into an {@link Sized} without copying the array.
+     * Converts {@code array} into an {@link Sized} object without copying the array into a collection.
      * @param array to convert
      * @param <T> type of the elements within {@code array}
      * @return an {@link Sized} over the elements of {@code collection}
@@ -68,7 +68,7 @@ public final class Iter {
     }
 
     /**
-     * Converts {@code collection} into an {@link Sized} without copying the collection.
+     * Converts {@code collection} into an {@link Sized} object without copying the collection.
      * @param collection to convert
      * @param <T> type of the elements within {@code collection}
      * @return an {@link Sized} over the elements of {@code collection}
