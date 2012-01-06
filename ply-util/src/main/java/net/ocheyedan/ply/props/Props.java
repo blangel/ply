@@ -52,7 +52,7 @@ public class Props {
          * Delegates loading of properties from the file system to the {@link Loader#loadProjectProps()}
          */
         static void initPropsbyFileSystem() {
-           PROPS.putAll(Loader.loadProjectProps());
+            PROPS.putAll(Loader.loadProjectProps());
         }
 
         /**
@@ -227,7 +227,7 @@ public class Props {
                                     System.getenv(enivronmentProperty));
                         } catch (IllegalArgumentException iae) {
                             Output.print("^error^ Error filtering '^b^%s^r^' with '^b^%s^r^'.", enivronmentProperty,
-                                                                            System.getenv(enivronmentProperty));
+                                    System.getenv(enivronmentProperty));
                             Output.print(iae);
                         }
                     }
@@ -237,14 +237,14 @@ public class Props {
                 }
             }
             // don't output large values in their entirety
-	    String outputFiltered = filtered, outputValue = value.value;
-	    if (filtered.length() > 99) { 
-		outputFiltered = filtered.substring(0, 99) + " [truncated]";
-	    } 
-	    if (value.value.length() > 99) {
-		outputValue = value.value.substring(0, 99) + " [truncated]";
-	    }
-	    Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", outputValue, outputFiltered, value.context);
+            String outputFiltered = filtered, outputValue = value.value;
+            if (filtered.length() > 99) {
+                outputFiltered = filtered.substring(0, 99) + " [truncated]";
+            }
+            if (value.value.length() > 99) {
+                outputValue = value.value.substring(0, 99) + " [truncated]";
+            }
+            Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", outputValue, outputFiltered, value.context);
             FILTER_CACHE.put(cacheKey, filtered);
             return filtered;
         }
