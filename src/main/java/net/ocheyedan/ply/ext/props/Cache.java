@@ -1,5 +1,7 @@
 package net.ocheyedan.ply.ext.props;
 
+import net.ocheyedan.ply.FileUtil;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
@@ -31,15 +33,7 @@ final class Cache {
     }
 
     static String getKey(File configDirectory) {
-        return getCanonicalPath(configDirectory);
-    }
-
-    private static String getCanonicalPath(File dir) {
-        try {
-            return dir.getCanonicalPath();
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
-        }
+        return FileUtil.getCanonicalPath(configDirectory);
     }
 
 }

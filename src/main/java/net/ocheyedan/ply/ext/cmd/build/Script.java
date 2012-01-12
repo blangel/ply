@@ -1,8 +1,10 @@
 package net.ocheyedan.ply.ext.cmd.build;
 
+import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.ext.props.Scope;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -106,16 +108,63 @@ class Script {
 
     final List<String> arguments;
 
+    /**
+     * The location of the actual script (from the local project or the system defaults)
+     */
+    final File location;
+
     Script(String name, Scope scope, String unparsedName) {
-        this(name, scope, Collections.<String>emptyList(), unparsedName);
+        this(name, scope, Collections.<String>emptyList(), unparsedName, null);
     }
 
     Script(String name, Scope scope, List<String> arguments, String unparsedName) {
+        this(name, scope, arguments, unparsedName, null);
+    }
+
+    Script(String name, Scope scope, List<String> arguments, String unparsedName, File location) {
         this.name = name;
         this.scope = scope;
         this.arguments = new ArrayList<String>(arguments); // copy, so as to allow append
         this.unparsedName = unparsedName;
+        this.location = location;
     }
+
+    Script with(File location) {
+        return new Script(this.name, this.scope, this.arguments, this.unparsedName, location);
+    }
+
+    /**
+     * @return this script converted into an {@link Execution} (the list is one-sized).
+     */
+    List<Execution> convert() {
+        return convert(this);
+    }
+
+    /**
+     * Allows subclasses to specify a different {@link Script} for the converted {@link Execution}.  This is useful
+     * for {@link Alias} objects as the {@link Execution} will use the {@link #name} property when printing what
+     * is being executed and for an {@link Alias} it should be it and not the resolved scripts (i.e., print out
+     * that 'clean' is being run even though 'rm -rf ${target}' is being run).
+     * @param overriddenScript to use in the converted {@link Execution} objects' {@link Execution#script} values.
+     * @return the script converted into an {@link Execution}.
+     */
+    protected List<Execution> convert(Script overriddenScript) {
+        // ensure a location has been specified and that it is executable
+        if ((location == null) || !location.canExecute()) {
+            Output.print("^error^ Found script ^b^%s^r^%s but it is not executable.", name,
+                    Scope.Default.equals(scope) ? "" : String.format(" (in scope ^b^%s^r^)", scope));
+            System.exit(1);
+        }
+        String[] executableArgs = new String[arguments.size() + 1];
+        executableArgs[0] = FileUtil.getCanonicalPath(location);
+        for (int i = 1; i < executableArgs.length; i++) {
+            executableArgs[i] = arguments.get(i - 1);
+        }
+        List<Execution> executions = new ArrayList<Execution>(1);
+        executions.add(new Execution(overriddenScript, executableArgs));
+        return executions;
+    }
+
 
     @Override public boolean equals(Object o) {
         if (this == o) {

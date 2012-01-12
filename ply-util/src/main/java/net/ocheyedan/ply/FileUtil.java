@@ -190,6 +190,18 @@ public final class FileUtil {
         }
     }
 
+    /**
+     * @param file of which to get the canonical path
+     * @return the result of calling {@link java.io.File#getCanonicalPath()}
+     */
+    public static String getCanonicalPath(File file) {
+        try {
+            return file.getCanonicalPath();
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+    }
+
     private FileUtil() { }
 
 }
