@@ -5,6 +5,7 @@ import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.ext.cmd.Args;
 import net.ocheyedan.ply.ext.cmd.Command;
+import net.ocheyedan.ply.ext.cmd.ReliantCommand;
 import net.ocheyedan.ply.ext.cmd.Usage;
 import net.ocheyedan.ply.ext.props.Context;
 
@@ -17,7 +18,7 @@ import java.util.Properties;
  *
  * A {@link net.ocheyedan.ply.ext.cmd.Command} to set a property value within the project's configuration.
  */
-public final class Set extends Command {
+public final class Set extends ReliantCommand {
 
     static class Opts {
         final Context context;
@@ -35,7 +36,8 @@ public final class Set extends Command {
         super(args);
     }
 
-    public void run() {
+    @Override public void run() {
+        super.run();
         Opts opts = parse(args);
         if (opts == null) {
             new Usage(args).run();

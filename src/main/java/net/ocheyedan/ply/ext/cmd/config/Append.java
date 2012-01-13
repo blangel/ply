@@ -5,6 +5,7 @@ import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.ext.cmd.Args;
 import net.ocheyedan.ply.ext.cmd.Command;
+import net.ocheyedan.ply.ext.cmd.ReliantCommand;
 import net.ocheyedan.ply.ext.cmd.Usage;
 import net.ocheyedan.ply.ext.props.Context;
 import net.ocheyedan.ply.ext.props.Prop;
@@ -20,7 +21,7 @@ import java.util.Properties;
  *
  * A {@link net.ocheyedan.ply.ext.cmd.Command} to append a value to a property value within the project's configuration.
  */
-public class Append extends Command {
+public class Append extends ReliantCommand {
 
     static class Opts {
         final Context context;
@@ -38,7 +39,8 @@ public class Append extends Command {
         super(args);
     }
 
-    public void run() {
+    @Override public void run() {
+        super.run();
         Opts opts = parse(args);
         if (opts == null) {
             new Usage(args).run();

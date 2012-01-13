@@ -1,5 +1,8 @@
 package net.ocheyedan.ply.ext.props;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * User: blangel
  * Date: 12/29/11
@@ -9,8 +12,15 @@ package net.ocheyedan.ply.ext.props;
  */
 public final class Context implements Comparable<Context> {
 
+    private static final Map<String, Context> interned = new HashMap<String, Context>();
+
     public static Context named(String name) {
-        return new Context(name);
+        if (interned.containsKey(name)) {
+            return interned.get(name);
+        }
+        Context context = new Context(name);
+        interned.put(name, context);
+        return context;
     }
 
     public final String name;

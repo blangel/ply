@@ -3,6 +3,7 @@ package net.ocheyedan.ply.ext.cmd.config;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.ext.cmd.Args;
 import net.ocheyedan.ply.ext.cmd.Command;
+import net.ocheyedan.ply.ext.cmd.ReliantCommand;
 import net.ocheyedan.ply.ext.cmd.Usage;
 import net.ocheyedan.ply.ext.props.Context;
 import net.ocheyedan.ply.ext.props.Prop;
@@ -17,7 +18,7 @@ import java.util.*;
  *
  * A {@link net.ocheyedan.ply.ext.cmd.Command} to print property values from the project's configuration.
  */
-public class Get extends Command {
+public class Get extends ReliantCommand {
 
     static class Opts {
         final Context context;
@@ -35,7 +36,8 @@ public class Get extends Command {
         super(args);
     }
 
-    public void run() {
+    @Override public void run() {
+        super.run();
         Opts opts = parse(args);
         if (opts == null) {
             new Usage(args).run();

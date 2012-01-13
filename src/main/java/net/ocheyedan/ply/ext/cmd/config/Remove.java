@@ -5,6 +5,7 @@ import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.ext.cmd.Args;
 import net.ocheyedan.ply.ext.cmd.Command;
+import net.ocheyedan.ply.ext.cmd.ReliantCommand;
 import net.ocheyedan.ply.ext.cmd.Usage;
 import net.ocheyedan.ply.ext.props.Context;
 
@@ -17,7 +18,7 @@ import java.util.Properties;
  *
  * A {@link net.ocheyedan.ply.ext.cmd.Command} to remove a property from a project's configuration.
  */
-public final class Remove extends Command {
+public final class Remove extends ReliantCommand {
 
     static class Opts {
         final Context context;
@@ -33,7 +34,8 @@ public final class Remove extends Command {
         super(args);
     }
 
-    public void run() {
+    @Override public void run() {
+        super.run();
         Opts opts = parse(args);
         if (opts == null) {
             new Usage(args).run();
