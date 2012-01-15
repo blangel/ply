@@ -196,7 +196,7 @@ public final class Alias extends Script {
     @Override List<Execution> convert() {
         List<Execution> executions = new ArrayList<Execution>(scripts.size()); // size is approx. as scripts may contain aliases
         for (Script script : scripts) {
-            executions.addAll(script.convert(this));
+            executions.addAll(script.convert(name));
         }
         // TODO - set alias's arguments via policy. currently only the last script gets the alias's arguments, policy
         // TODO - could dictate all scripts get alias's arguments
@@ -212,11 +212,11 @@ public final class Alias extends Script {
      * Converts each {@link #scripts} into {@link Execution} objects with this object as the {@link Execution#script}
      * value.  Note, if an entry within {@link #scripts} is itself an {@link Alias} object the converted
      * {@link Execution} objects' {@link Execution#script} will be that {@link Alias} and not this object.
-     * @param overriddenScript is ignored as {@link Alias} objects cannot have their generated {@link Execution#script}
-     *        values overridden, that value will always be the {@link Alias} itself.
+     * @param overriddenExecutionName is ignored as {@link Alias} objects cannot have their generated {@link Execution#name}
+     *        values overridden, that value will always be the {@link Alias#name} itself.
      * @return the converted execution objects.
      */
-    @Override protected List<Execution> convert(Script overriddenScript) {
+    @Override protected List<Execution> convert(String overriddenExecutionName) {
         return convert();
     }
 

@@ -16,6 +16,11 @@ import java.util.Arrays;
 public final class Execution {
 
     /**
+     * A name to use when identifying this exeuction.
+     */
+    public final String name;
+
+    /**
      * The underlying script for this execution.
      */
     public final Script script;
@@ -27,7 +32,8 @@ public final class Execution {
      */
     public final String[] executionArgs;
 
-    public Execution(Script script, String[] executionArgs) {
+    public Execution(String name, Script script, String[] executionArgs) {
+        this.name = name;
         this.script = script;
         this.executionArgs = executionArgs;
     }
@@ -36,18 +42,22 @@ public final class Execution {
         String[] args = new String[this.executionArgs.length + with.length];
         System.arraycopy(this.executionArgs, 0, args, 0, this.executionArgs.length);
         System.arraycopy(with, 0, args, this.executionArgs.length, with.length);
-        return new Execution(script, args);
+        return new Execution(name, script, args);
     }
 
     public Execution with(String executable) {
         String[] args = new String[this.executionArgs.length];
         System.arraycopy(this.executionArgs, 1, args, 1, this.executionArgs.length - 1);
         args[0] = executable;
-        return new Execution(this.script, args);
+        return new Execution(name, this.script, args);
     }
 
     public Execution with(String[] args) {
-        return new Execution(this.script, args);
+        return new Execution(name, this.script, args);
+    }
+
+    public Execution with(String executionName, String[] args) {
+        return new Execution(executionName, this.script, args);
     }
 
     @Override public boolean equals(Object o) {

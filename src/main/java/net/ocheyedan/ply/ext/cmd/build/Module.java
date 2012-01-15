@@ -138,7 +138,9 @@ final class Module {
             return script.with(location);
         } else if ((location = FileUtil.fromParts(systemScriptPath, script.name)).exists()) {
             return script.with(location);
-        } // TODO - handle unix shell scripts (i.e., those surrounded with quotation marks)
+        } else if (script.name.startsWith("`") && script.name.endsWith("`")) {
+            return new ShellScript(script);
+        }
         return null;
     }
 

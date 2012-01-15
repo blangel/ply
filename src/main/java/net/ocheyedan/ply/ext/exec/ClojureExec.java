@@ -22,7 +22,7 @@ public final class ClojureExec {
      * @param configDirectory the ply configuration directory from which to resolve properties
      * @return the translated execution
      */
-    public static Execution createClojureExecutable(Execution execution, File configDirectory) {
+    static Execution createClojureExecutable(Execution execution, File configDirectory) {
         String clojureJar = Props.getValue(Context.named("scripts-clj"), "clojure.home", configDirectory, execution.script.scope);
         if (clojureJar.isEmpty()) {
             Output.print("^error^ Cannot execute clojure script ^b^%s^r^ as the ^b^clojure.home^r^ property was not set within the ^b^scripts-clj^r^ context.", execution.executionArgs[0]);

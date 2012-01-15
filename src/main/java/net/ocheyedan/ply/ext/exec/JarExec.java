@@ -33,7 +33,7 @@ public final class JarExec {
      * @param configDirectory the ply configuration directory from which to resolve properties
      * @return the translated execution
      */
-    public static Execution createJarExecutable(Execution execution, File configDirectory) {
+    static Execution createJarExecutable(Execution execution, File configDirectory) {
         String classpath = null;
         AtomicReference<String> mainClass = new AtomicReference<String>();
         AtomicBoolean staticClasspath = new AtomicBoolean(false);

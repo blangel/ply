@@ -35,26 +35,30 @@ public class Script {
     /**
      * @see #splitScript(String)
      */
-    static final Pattern SPLIT_REG_EX = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
+    static final Pattern SPLIT_REG_EX = Pattern.compile("[^\\s\"'`]+|(`[^`]*`)|\"([^\"]*)\"|'([^']*)'");
 
     /**
-     * Splits {@code script} by ' ', ignoring space characters within quotation marks.
+     * Splits {@code script} by ' ', ignoring space characters within quotation or tick marks.
      * @param script to split
      * @return the split list of {@code script}
      */
-    static List<String> splitScript(String script) {
+    public static List<String> splitScript(String script) {
         if (script == null) {
             return Collections.emptyList();
         }
         List<String> matchList = new ArrayList<String>();
         Matcher regexMatcher = SPLIT_REG_EX.matcher(script);
         while (regexMatcher.find()) {
-            if (regexMatcher.group(1) != null) {
+            String match = regexMatcher.group(1);
+            if (match != null) {
+                // Add tick string with the ticks
+                matchList.add(match);
+            } else if ((match = regexMatcher.group(2)) != null) {
                 // Add double-quoted string without the quotes
-                matchList.add(regexMatcher.group(1));
-            } else if (regexMatcher.group(2) != null) {
+                matchList.add(match);
+            } else if ((match = regexMatcher.group(3)) != null) {
                 // Add single-quoted string without the quotes
-                matchList.add(regexMatcher.group(2));
+                matchList.add(match);
             } else {
                 // Add unquoted word
                 matchList.add(regexMatcher.group());
@@ -73,7 +77,7 @@ public class Script {
             return ((script == null) || script.isEmpty() ? null : parseArgs(script, defaultScope, script));
         }
         String unparsedName = script;
-        // script contains ':' only use if it occurs before a break-char (' ', '\'', '"')
+        // script contains ':' only use if it occurs before a break-char (' ', '\'', '"', '`')
         int scopeIndex = -1;
         loop:for (char character : script.toCharArray()) {
             scopeIndex++;
@@ -83,6 +87,7 @@ public class Script {
                 case ' ':
                 case '\'':
                 case '"':
+                case '`':
                     scopeIndex = -1;
                     break loop;
             }
@@ -151,18 +156,18 @@ public class Script {
      * @return this script converted into an {@link Execution} (the list is one-sized).
      */
     List<Execution> convert() {
-        return convert(this);
+        return convert(name);
     }
 
     /**
-     * Allows subclasses to specify a different {@link Script} for the converted {@link Execution}.  This is useful
-     * for {@link Alias} objects as the {@link Execution} will use the {@link #name} property when printing what
+     * Allows subclasses to specify a different execution name for the converted {@link Execution}.  This is useful
+     * for {@link Alias} objects as the {@link Execution} will use the {@link Execution#name} property when printing what
      * is being executed and for an {@link Alias} it should be it and not the resolved scripts (i.e., print out
      * that 'clean' is being run even though 'rm -rf ${target}' is being run).
-     * @param overriddenScript to use in the converted {@link Execution} objects' {@link Execution#script} values.
+     * @param overriddenExecutionName to use in the converted {@link Execution} objects' {@link Execution#name} values.
      * @return the script converted into an {@link Execution}.
      */
-    protected List<Execution> convert(Script overriddenScript) {
+    protected List<Execution> convert(String overriddenExecutionName) {
         // ensure a location has been specified and that it is executable
         if ((location == null) || !location.canExecute()) {
             Output.print("^error^ Found script ^b^%s^r^%s but it is not executable.", name,
@@ -175,7 +180,7 @@ public class Script {
             executableArgs[i] = arguments.get(i - 1);
         }
         List<Execution> executions = new ArrayList<Execution>(1);
-        executions.add(new Execution(overriddenScript, executableArgs));
+        executions.add(new Execution(overriddenExecutionName, this, executableArgs));
         return executions;
     }
 

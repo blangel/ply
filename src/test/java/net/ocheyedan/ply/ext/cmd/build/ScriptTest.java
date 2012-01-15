@@ -132,6 +132,51 @@ public class ScriptTest {
         assertEquals("\"another and\" more", scripts.get(0));
         assertEquals("test", scripts.get(1));
         assertEquals("\"diff and\" more", scripts.get(2));
+
+        // test tick marks
+        script = "`something`";
+        scripts = Script.splitScript(script);
+        assertEquals(1, scripts.size());
+        assertEquals("`something`", scripts.get(0));
+
+        script = "`some thing`";
+        scripts = Script.splitScript(script);
+        assertEquals(1, scripts.size());
+        assertEquals("`some thing`", scripts.get(0));
+
+        script = "`some thing` more";
+        scripts = Script.splitScript(script);
+        assertEquals(2, scripts.size());
+        assertEquals("`some thing`", scripts.get(0));
+        assertEquals("more", scripts.get(1));
+
+        script = "`some thing` more \"and more\"";
+        scripts = Script.splitScript(script);
+        assertEquals(3, scripts.size());
+        assertEquals("`some thing`", scripts.get(0));
+        assertEquals("more", scripts.get(1));
+        assertEquals("and more", scripts.get(2));
+
+        script = "`some 'another' thing` more \"and more\"";
+        scripts = Script.splitScript(script);
+        assertEquals(3, scripts.size());
+        assertEquals("`some 'another' thing`", scripts.get(0));
+        assertEquals("more", scripts.get(1));
+        assertEquals("and more", scripts.get(2));
+
+        script = "`some \"more\" thing` more \"and more\"";
+        scripts = Script.splitScript(script);
+        assertEquals(3, scripts.size());
+        assertEquals("`some \"more\" thing`", scripts.get(0));
+        assertEquals("more", scripts.get(1));
+        assertEquals("and more", scripts.get(2));
+
+        script = "`some \"more\" thing` more \"and `diff diff` more\"";
+        scripts = Script.splitScript(script);
+        assertEquals(3, scripts.size());
+        assertEquals("`some \"more\" thing`", scripts.get(0));
+        assertEquals("more", scripts.get(1));
+        assertEquals("and `diff diff` more", scripts.get(2));
     }
 
     @Test public void parseArgs() {
@@ -188,6 +233,13 @@ public class ScriptTest {
         assertEquals("'clean arg1'", script.unparsedName);
         assertEquals(scope, script.scope);
         assertEquals(0, script.arguments.size());
+
+        scriptName = "`clean arg1`";
+        script = Script.parse(scriptName, scope);
+        assertEquals("`clean arg1`", script.name);
+        assertEquals("`clean arg1`", script.unparsedName);
+        assertEquals(scope, script.scope);
+        assertEquals(0, script.arguments.size());
     }
 
     @Test public void parse() {
@@ -221,6 +273,12 @@ public class ScriptTest {
         assertEquals(scope, script.scope);
         assertEquals(1, script.arguments.size());
         assertEquals("clean:test", script.arguments.get(0));
+        
+        scriptName = "`java clean:test`";
+        script = Script.parse(scriptName, scope);
+        assertEquals("`java clean:test`", script.name);
+        assertEquals(scope, script.scope);
+        assertEquals(0, script.arguments.size());
     }
     
 }

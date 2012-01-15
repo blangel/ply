@@ -3,6 +3,11 @@ package net.ocheyedan.ply.ext.exec;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.OutputExt;
+import net.ocheyedan.ply.ext.cmd.build.Alias;
+import net.ocheyedan.ply.ext.cmd.build.Script;
+import net.ocheyedan.ply.ext.cmd.build.ShellScript;
+import net.ocheyedan.ply.ext.props.Context;
+import net.ocheyedan.ply.ext.props.Props;
 import net.ocheyedan.ply.ext.props.PropsExt;
 
 import java.io.BufferedReader;
@@ -67,7 +72,7 @@ public final class Exec {
             BufferedReader processStdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String processStdoutLine;
             while ((processStdoutLine = processStdout.readLine()) != null) {
-                OutputExt.printFromExec("[^green^%s^r^] %s", execution.script.name, processStdoutLine);
+                OutputExt.printFromExec("[^green^%s^r^] %s", execution.name, processStdoutLine);
             }
             int result = process.waitFor();
             STDIN_PROCESS_PIPE.pausePipe();
@@ -95,19 +100,21 @@ public final class Exec {
     }
 
     /**
-     * Translates {@code execution#scriptArgs} into an executable statement if it needs an invoker like a VM.
-     * The whole command array needs to be processed as parameters to the VM may need to be inserted
+     * Translates {@code execution#scriptArgs} into an executable statement if it needs an invoker like a shell or VM.
+     * The whole command array needs to be processed as parameters to the shell/VM may need to be inserted
      * into the command array.
      * @param execution to invoke
-     * @param projectConfigDir the ply configuration directory from which to resolve properties
+     * @param configDirectory the ply configuration directory from which to resolve properties
      * @return the translated execution.
      */
-    private static Execution handleNonNativeExecutable(Execution execution, File projectConfigDir) {
+    private static Execution handleNonNativeExecutable(Execution execution, File configDirectory) {
         String executable = execution.executionArgs[0];
-        if (executable.endsWith(".jar")) {
-            return JarExec.createJarExecutable(execution, projectConfigDir);
+        if (execution.script instanceof ShellScript) {
+            return ShellExec.createShellExecutable(execution, configDirectory);
+        } else if (executable.endsWith(".jar")) {
+            return JarExec.createJarExecutable(execution, configDirectory);
         } else if (executable.endsWith(".clj")) {
-            return ClojureExec.createClojureExecutable(execution, projectConfigDir);
+            return ClojureExec.createClojureExecutable(execution, configDirectory);
         }
         return execution;
     }
