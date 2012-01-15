@@ -1,6 +1,5 @@
 package net.ocheyedan.ply.props;
 
-import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.PropertiesFileUtil;
@@ -8,7 +7,6 @@ import net.ocheyedan.ply.PropertiesFileUtil;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;

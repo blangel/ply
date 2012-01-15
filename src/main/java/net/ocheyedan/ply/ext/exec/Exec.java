@@ -3,11 +3,7 @@ package net.ocheyedan.ply.ext.exec;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.OutputExt;
-import net.ocheyedan.ply.ext.cmd.build.Alias;
-import net.ocheyedan.ply.ext.cmd.build.Script;
 import net.ocheyedan.ply.ext.cmd.build.ShellScript;
-import net.ocheyedan.ply.ext.props.Context;
-import net.ocheyedan.ply.ext.props.Props;
 import net.ocheyedan.ply.ext.props.PropsExt;
 
 import java.io.BufferedReader;

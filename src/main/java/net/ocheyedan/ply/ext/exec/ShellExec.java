@@ -1,12 +1,10 @@
 package net.ocheyedan.ply.ext.exec;
 
 import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.ext.cmd.build.Script;
 import net.ocheyedan.ply.ext.props.Context;
 import net.ocheyedan.ply.ext.props.Props;
 
 import java.io.File;
-import java.util.List;
 
 /**
  * User: blangel
@@ -26,7 +24,7 @@ public final class ShellExec {
         String executable = execution.executionArgs[0];
         String shell = Props.getValue(Context.named("ply"), "shell", configDirectory, execution.script.scope);
         if (shell.isEmpty()) {
-            Output.print("^error^ No ^b^shell^r^ property defined in context ^b^ply^r^. Define to run ^b^%s^r^",
+            Output.print("^error^ Cannot run '^b^%s^r^'. No ^b^shell^r^ property defined (^b^ply set shell=xxxx in ply^r^).",
                     executable);
             System.exit(1);
         }

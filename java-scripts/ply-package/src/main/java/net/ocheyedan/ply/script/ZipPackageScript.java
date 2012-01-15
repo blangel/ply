@@ -2,16 +2,16 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.PlyUtil;
-import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.jna.JnaAccessor;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
-import java.util.*;
-import java.util.zip.ZipFile;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Properties;
+import java.util.Set;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 

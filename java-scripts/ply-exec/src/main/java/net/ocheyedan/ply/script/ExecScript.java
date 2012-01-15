@@ -2,12 +2,10 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
-import java.util.Arrays;
 import java.util.Properties;
 
 /**

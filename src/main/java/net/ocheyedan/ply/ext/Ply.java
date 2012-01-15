@@ -1,6 +1,5 @@
 package net.ocheyedan.ply.ext;
 
-import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.ext.cmd.Command;
 import net.ocheyedan.ply.ext.cmd.CommandLineParser;
 import net.ocheyedan.ply.ext.props.AdHoc;

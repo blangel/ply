@@ -1,6 +1,5 @@
 package net.ocheyedan.ply.script;
 
-import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.script.print.PrivilegedOutput;
 import net.ocheyedan.ply.script.print.PrivilegedPrintStream;

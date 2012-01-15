@@ -3,7 +3,10 @@ package net.ocheyedan.ply.ext.props;
 import net.ocheyedan.ply.PlyUtil;
 
 import java.io.File;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 
 /**
  * User: blangel

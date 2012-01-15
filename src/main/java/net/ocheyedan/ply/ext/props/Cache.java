@@ -3,7 +3,6 @@ package net.ocheyedan.ply.ext.props;
 import net.ocheyedan.ply.FileUtil;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

@@ -10,11 +10,7 @@ import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;

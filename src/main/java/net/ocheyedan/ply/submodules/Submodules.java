@@ -2,12 +2,8 @@ package net.ocheyedan.ply.submodules;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.ListUtil;
-import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
-import net.ocheyedan.ply.dep.*;
-import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
-import net.ocheyedan.ply.graph.Graph;
-import net.ocheyedan.ply.graph.Vertex;
+import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.PropsExt;
 

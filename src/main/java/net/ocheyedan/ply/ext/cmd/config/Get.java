@@ -2,7 +2,6 @@ package net.ocheyedan.ply.ext.cmd.config;
 
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.ext.cmd.Args;
-import net.ocheyedan.ply.ext.cmd.Command;
 import net.ocheyedan.ply.ext.cmd.ReliantCommand;
 import net.ocheyedan.ply.ext.cmd.Usage;
 import net.ocheyedan.ply.ext.props.Context;

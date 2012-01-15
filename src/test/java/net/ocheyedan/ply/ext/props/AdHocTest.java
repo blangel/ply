@@ -3,8 +3,6 @@ package net.ocheyedan.ply.ext.props;
 import org.junit.Test;
 
 import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertNotNull;
-import static junit.framework.Assert.assertNull;
 
 /**
  * User: blangel

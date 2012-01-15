@@ -1,7 +1,6 @@
 package net.ocheyedan.ply.ext.props;
 
 import net.ocheyedan.ply.FileUtil;
-import net.ocheyedan.ply.Output;
 
 import java.io.File;
 import java.util.Collection;

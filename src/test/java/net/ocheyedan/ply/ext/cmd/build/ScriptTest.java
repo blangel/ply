@@ -5,9 +5,7 @@ import org.junit.Test;
 
 import java.util.List;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertNull;
-import static junit.framework.Assert.fail;
+import static junit.framework.Assert.*;
 
 /**
  * User: blangel

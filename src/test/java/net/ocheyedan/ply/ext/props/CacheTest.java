@@ -3,7 +3,8 @@ package net.ocheyedan.ply.ext.props;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
 
 import static junit.framework.Assert.*;
 

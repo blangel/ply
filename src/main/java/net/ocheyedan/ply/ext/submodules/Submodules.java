@@ -2,7 +2,6 @@ package net.ocheyedan.ply.ext.submodules;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.ListUtil;
-import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.ext.props.Context;
 import net.ocheyedan.ply.ext.props.Prop;
