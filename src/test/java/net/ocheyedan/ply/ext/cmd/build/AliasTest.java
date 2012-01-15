@@ -26,7 +26,7 @@ public class AliasTest {
         Map<String, Prop> unparsedAliases = new HashMap<String, Prop>();
         unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
         Alias alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
-                                       new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                                       new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("clean", alias.name);
         assertEquals("clean", alias.unparsedName);
         assertEquals(1, alias.scripts.size());
@@ -41,7 +41,7 @@ public class AliasTest {
         unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
         try {
             resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
-                    new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                    new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
             fail("Expected a circular reference exception");
         } catch (Alias.CircularReference cr) {
             // expected
@@ -55,7 +55,7 @@ public class AliasTest {
         value = "clean compiler.jar";
         unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
-                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("compile", alias.name);
         assertEquals("compile", alias.unparsedName);
         assertEquals(2, alias.scripts.size());
@@ -81,7 +81,7 @@ public class AliasTest {
         name = "compile";
         value = "clean compiler.jar";
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
-                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("compile", alias.name);
         assertEquals("compile", alias.unparsedName);
         assertEquals(2, alias.scripts.size());
@@ -113,7 +113,7 @@ public class AliasTest {
         value = "clean compiler.jar";
         try {
             resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
-                             new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                             new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
             fail("Expected a circular reference exception");
         } catch (Alias.CircularReference cr) {
             // expected
@@ -134,7 +134,7 @@ public class AliasTest {
         value = "clean test:compiler.jar";
         unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
-                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("compile", alias.name);
         assertEquals("compile", alias.unparsedName);
         assertEquals(Scope.Default, alias.scope);
@@ -177,7 +177,7 @@ public class AliasTest {
         value = "clean resolve compiler.jar";
         unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
-                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("compile", alias.name);
         assertEquals("compile", alias.unparsedName);
         assertEquals(Scope.Default, alias.scope);
@@ -218,11 +218,13 @@ public class AliasTest {
         String scope = String.valueOf(System.currentTimeMillis());
         assertTrue(Props.get(new Context("ply"), new Scope(scope)).isEmpty());
         name = "clean";
-        value = "\"rm -rf target\" -Pply#" + scope + ".test=hello";
+        value = "\"rm -rf target\"";
         unparsedAliases.clear();
+        List<String> adHocProps = new ArrayList<String>(1);
+        adHocProps.add("ply#" + scope + ".test=hello");
         unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
-                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), adHocProps);
         assertEquals("clean", alias.name);
         assertEquals("clean", alias.unparsedName);
         assertEquals(1, alias.scripts.size());
@@ -231,11 +233,9 @@ public class AliasTest {
         assertEquals("-rf", alias.scripts.get(0).arguments.get(0));
         assertEquals("target", alias.scripts.get(0).arguments.get(1));
         assertEquals("rm -rf target", alias.scripts.get(0).unparsedName);
-        Collection<Prop> props = Props.get(new Context("ply"), new Scope(scope));
-        assertEquals(1, props.size());
-        Prop testProp = props.iterator().next();
-        assertEquals("test", testProp.name);
-        assertEquals("hello", testProp.value);
+        assertEquals(1, alias.adHocProps.size());
+        String testProp = alias.adHocProps.get(0);
+        assertEquals("ply#" + scope + ".test=hello", testProp);
 
         // test multiple scopes processed in one run (can lead to stack-overflows if not coded correctly)
         name = "example";
@@ -243,7 +243,7 @@ public class AliasTest {
         unparsedAliases.clear();
         unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
-                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                                 new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("example", alias.name);
         assertEquals("example", alias.unparsedName);
         assertEquals(3, alias.scripts.size());

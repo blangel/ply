@@ -219,7 +219,8 @@ public class ScriptTest {
         script = Script.parse(scriptName, scope);
         assertEquals("java", script.name);
         assertEquals(scope, script.scope);
-        // TODO - test args == clean:test
+        assertEquals(1, script.arguments.size());
+        assertEquals("clean:test", script.arguments.get(0));
     }
     
 }
