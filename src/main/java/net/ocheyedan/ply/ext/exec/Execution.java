@@ -1,4 +1,6 @@
-package net.ocheyedan.ply.ext.cmd.build;
+package net.ocheyedan.ply.ext.exec;
+
+import net.ocheyedan.ply.ext.cmd.build.Script;
 
 import java.util.Arrays;
 
@@ -7,34 +9,45 @@ import java.util.Arrays;
  * Date: 1/12/12
  * Time: 9:42 AM
  *
- * Represents a concrete execution.  Unlike, {@link Script}, this class represents something which can be executed
- * via a process.  To make a {@link Script} executable it is necessary to resolve its invoking mechanism; say direct,
- * via a JVM, etc.
+ * Represents a concrete execution.  Unlike, {@link net.ocheyedan.ply.ext.cmd.build.Script}, this class represents something which can be executed
+ * via a {@link Process}.  To make a {@link net.ocheyedan.ply.ext.cmd.build.Script} executable it is necessary to resolve its invoking mechanism;
+ * say direct, via a JVM, etc.
  */
-final class Execution {
+public final class Execution {
 
     /**
      * The underlying script for this execution.
      */
-    final Script script;
+    public final Script script;
 
     /**
      * The arguments to the execution for the script.  By convention of {@link Process} the
      * first item is the execution itself (i.e., 'java').  So for an execution without args this
      * array has one value, the execution itself.
      */
-    final String[] executionArgs;
+    public final String[] executionArgs;
 
-    Execution(Script script, String[] executionArgs) {
+    public Execution(Script script, String[] executionArgs) {
         this.script = script;
         this.executionArgs = executionArgs;
     }
 
-    Execution augment(String[] with) {
+    public Execution augment(String[] with) {
         String[] args = new String[this.executionArgs.length + with.length];
         System.arraycopy(this.executionArgs, 0, args, 0, this.executionArgs.length);
         System.arraycopy(with, 0, args, this.executionArgs.length, with.length);
         return new Execution(script, args);
+    }
+
+    public Execution with(String executable) {
+        String[] args = new String[this.executionArgs.length];
+        System.arraycopy(this.executionArgs, 1, args, 1, this.executionArgs.length - 1);
+        args[0] = executable;
+        return new Execution(this.script, args);
+    }
+
+    public Execution with(String[] args) {
+        return new Execution(this.script, args);
     }
 
     @Override public boolean equals(Object o) {

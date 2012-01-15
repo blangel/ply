@@ -4,10 +4,8 @@ import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.ext.cmd.Args;
-import net.ocheyedan.ply.ext.props.Context;
-import net.ocheyedan.ply.ext.props.Prop;
-import net.ocheyedan.ply.ext.props.Props;
-import net.ocheyedan.ply.ext.props.Scope;
+import net.ocheyedan.ply.ext.exec.Execution;
+import net.ocheyedan.ply.ext.props.*;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -112,6 +110,9 @@ final class Module {
      */
     void processAlias(Alias alias, List<Script> scripts) {
         List<Script> aliasesProcessedScripts = new ArrayList<Script>(alias.scripts.size());
+        // merge this alias's ad-hoc properties if any
+        AdHoc.add(alias.adHocProps);
+        AdHoc.merge();
         for (Script script : alias.scripts) {
             if (script instanceof Alias) {
                 processAlias((Alias) script, aliasesProcessedScripts);

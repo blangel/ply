@@ -93,7 +93,8 @@ public final class Deps {
                                             RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph,
                                             boolean pomSufficient) {
         if (repositoryRegistry.isEmpty()) {
-            throw new IllegalArgumentException("Need at least one repository!");
+            Output.print("^error^ No repositories found, cannot resolve dependencies.");
+            System.exit(1);
         }
         for (DependencyAtom dependencyAtom : dependencyAtoms) {
             if ((parentVertex != null) && dependencyAtom.transientDep) {

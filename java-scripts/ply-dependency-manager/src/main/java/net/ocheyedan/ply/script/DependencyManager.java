@@ -278,8 +278,8 @@ public class DependencyManager {
 
         DependencyAtom self = Deps.getProjectDep();
         List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
-        DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms,
-                createRepositoryList(self, dependencyAtoms));
+        RepositoryRegistry repositoryRegistry = createRepositoryList(self, dependencyAtoms);
+        DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry);
         Properties deps = Deps.convertToResolvedPropertiesFile(dependencyGraph);
 
         if (printThread != null) {

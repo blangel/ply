@@ -2,6 +2,7 @@ package net.ocheyedan.ply.ext.cmd.build;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.ext.exec.Execution;
 import net.ocheyedan.ply.ext.props.Scope;
 
 import java.io.File;
@@ -15,8 +16,21 @@ import java.util.regex.Pattern;
  * User: blangel
  * Date: 1/2/12
  * Time: 12:41 PM
+ * 
+ * Note, any script or alias can be prefixed with a scope via 'scope_name:'.  This scope will determine the
+ * set of resolved properties to pass to the execution.  If nothing is specified, it is the default scope and
+ * so the default scoped properties are used (i.e., for context 'compiler' with default scope the properties are
+ * resolved from the config dir from file 'compiler.properties').  If a scope is specified then that scope's properties
+ * (inheriting from default if not overridden explicitly by the scope) are used (i.e., for context 'compiler' with
+ * scope 'test' then the properties are resolved from the config dir from file 'compiler.test.properties' and if there
+ * are any properties within the default, 'compiler.properties' which are not present in the scoped
+ * 'compiler.test.properties' then they are also included).
+ * For an alias with a scope then every script defined by the alias also has the scope.  For instance, say there exists
+ * an alias 'install' which resolves to scripts 'file-changed compile package'.  If 'test:install' is invoked, in other
+ * words the install alias is invoked with 'test' scope, then the resolved scripts to be invoked would be
+ * 'test:file-changed test:compile test:package'.
  */
-class Script {
+public class Script {
 
     /**
      * @see #splitScript(String)
@@ -100,11 +114,11 @@ class Script {
         }
     }
 
-    final String name;
+    public final String name;
 
-    final String unparsedName;
+    public final String unparsedName;
 
-    final Scope scope;
+    public final Scope scope;
 
     final List<String> arguments;
 

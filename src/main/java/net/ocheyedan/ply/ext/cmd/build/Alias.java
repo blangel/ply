@@ -5,6 +5,7 @@ import net.ocheyedan.ply.Iter;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.ext.cmd.Args;
 import net.ocheyedan.ply.ext.cmd.CommandLineParser;
+import net.ocheyedan.ply.ext.exec.Execution;
 import net.ocheyedan.ply.ext.props.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Graph;
@@ -18,7 +19,7 @@ import java.util.*;
  * Date: 1/2/12
  * Time: 12:41 PM
  */
-final class Alias extends Script {
+public final class Alias extends Script {
 
     /**
      * Thrown to indicate an alias has been defined to include itself.
@@ -64,7 +65,7 @@ final class Alias extends Script {
             for (Prop prop : unparsedAliases.values()) {
                 try {
                     Script parsed = Script.parse(prop.name, scope);
-                    parseAlias(scope, parsed, prop.value, unparsedAliases, new DirectedAcyclicGraph<String>(), map);
+                    parseAlias(scope, parsed, prop.value, unparsedAliases, new DirectedAcyclicGraph<String>(), map, Collections.<String>emptyList());
                 } catch (CircularReference cr) {
                     Output.print("^error^ Alias (^b^%s^r^) contains a circular reference (run '^b^ply get %s from aliases^r^' to analyze).", cr.alias, cr.alias);
                     System.exit(1);
@@ -75,10 +76,10 @@ final class Alias extends Script {
         }
 
         Alias parseAlias(Scope scope, Script parsed, String value, Map<String, Prop> unparsedAliases,
-                         DirectedAcyclicGraph<String> cycleDetector, Map<String, Alias> parsedAliases) {
+                         DirectedAcyclicGraph<String> cycleDetector, Map<String, Alias> parsedAliases, List<String> adHocProps) {
             cycleDetector.addVertex(parsed.name);
             List<Script> scripts = parse(scope, parsed.scope, parsed.name, value, unparsedAliases, cycleDetector, parsedAliases);
-            Alias alias = new Alias(parsed.name, parsed.scope, scripts, parsed.arguments, parsed.unparsedName);
+            Alias alias = new Alias(parsed.name, parsed.scope, scripts, parsed.arguments, adHocProps, parsed.unparsedName);
             parsedAliases.put(parsed.name, alias);
             return alias;
         }
@@ -87,8 +88,6 @@ final class Alias extends Script {
                                    Map<String, Prop> unparsedAliases, DirectedAcyclicGraph<String> cycleDetector,
                                    Map<String, Alias> parsedAliases) {
             Args args = CommandLineParser.parseArgs(Iter.sized(splitScript(value)));
-            AdHoc.add(args.adHocProps);
-            AdHoc.merge();
             List<String> scripts = args.args;
             List<Script> parsedScripts = new ArrayList<Script>(scripts.size());
             Vertex<String> aliasVertex = cycleDetector.getVertex(name);
@@ -104,7 +103,8 @@ final class Alias extends Script {
                     Map<String, Prop> scopedUnparsedAliases = getUnparsedAliases(parsed.scope);
                     if (scopedUnparsedAliases.containsKey(parsed.name)) {
                         Alias alias = parseAlias(parsed.scope, parsed, scopedUnparsedAliases.get(parsed.name).value,
-                                scopedUnparsedAliases, new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>());
+                                scopedUnparsedAliases, new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(),
+                                args.adHocProps);
                         parsedScripts.add(alias.augment(parsed.arguments, parsed.unparsedName));
                     } else {
                         parsedScripts.add(parsed);
@@ -114,7 +114,7 @@ final class Alias extends Script {
                         parsedScripts.add(parsedAliases.get(parsed.name).augment(parsed.arguments, parsed.unparsedName));
                     } else if (unparsedAliases.containsKey(parsed.name)) {
                         Alias alias = parseAlias(parsed.scope, parsed, unparsedAliases.get(parsed.name).value,
-                                unparsedAliases, cycleDetector, parsedAliases);
+                                unparsedAliases, cycleDetector, parsedAliases, args.adHocProps);
                         parsedScripts.add(alias.augment(parsed.arguments, parsed.unparsedName));
                     } else {
                         parsedScripts.add(parsed);
@@ -172,9 +172,15 @@ final class Alias extends Script {
 
     final List<Script> scripts;
 
-    Alias(String name, Scope scope, List<Script> scripts, List<String> arguments, String unparsed) {
+    /**
+     * Alias can be defined with ad-hoc properties.
+     */
+    final List<String> adHocProps;
+
+    Alias(String name, Scope scope, List<Script> scripts, List<String> arguments, List<String> adHocProps, String unparsed) {
         super(name, scope, arguments, unparsed);
         this.scripts = scripts;
+        this.adHocProps = new ArrayList<String>(adHocProps);
     }
 
     @Override Script with(File location) {
@@ -215,13 +221,13 @@ final class Alias extends Script {
     }
 
     Alias with(List<Script> scripts) {
-        return new Alias(this.name, this.scope, scripts, this.arguments, this.unparsedName);
+        return new Alias(this.name, this.scope, scripts, this.arguments, this.adHocProps, this.unparsedName);
     }
 
     Alias augment(List<String> arguments, String unparsedName) {
         List<String> copiedArguments = new ArrayList<String>(this.arguments); // add this.arguments first
         copiedArguments.addAll(arguments);
-        return new Alias(this.name, this.scope, this.scripts, copiedArguments, unparsedName);
+        return new Alias(this.name, this.scope, this.scripts, copiedArguments, this.adHocProps, unparsedName);
     }
 
 }

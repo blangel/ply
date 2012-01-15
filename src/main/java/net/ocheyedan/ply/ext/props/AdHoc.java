@@ -18,19 +18,7 @@ public final class AdHoc {
     /**
      * List of ad-hoc properties added via the command line.
      */
-    static final List<Prop.All> adHocProps;
-    static {
-        adHocProps = new ArrayList<Prop.All>();
-        // parse those passed in as environment variables from the ply runtime, if any.
-        Map<String, String> env = System.getenv();
-        for (String key : env.keySet()) {
-            if (!key.startsWith("ply$adHoc$")) {
-                continue; // not a ply-ad-hoc property, skip
-            }
-            String adHocProp = key.substring(10) + "=" + env.get(key);
-            parseAndAdd(adHocProp);
-        }
-    }
+    static final List<Prop.All> adHocProps = new ArrayList<Prop.All>();
 
     /**
      * Parses {@code adHocProps} and adds them to the set of ad-hoc properties.
@@ -67,21 +55,6 @@ public final class AdHoc {
         }
         List<Prop.All> props = (List<Prop.All>) propsCol;
         Loader.loadAdHoc(props);
-    }
-
-    /**
-     * Note, the properties are un-filtered as they will be filtered via the {@link Loader} class.
-     * @param scope of the environment properties to retrieve.
-     * @return the ad-hoc properties as a mapping to be placed as environment variables
-     */
-    public static Map<String, String> getEnvProps(Scope scope) {
-        Map<String, String> envProps = new HashMap<String, String>(adHocProps.size() * 5); // assume ~5 per scope
-        for (Prop.All prop : adHocProps) {
-            Prop.Val val = prop.get(scope);
-            envProps.put("ply$adHoc$" + prop.context + (Scope.Default.equals(scope) ? "" : "#" + scope.name)
-                    + "." + prop.name, (val == null ? "" : val.value));
-        }
-        return envProps;
     }
 
     /**

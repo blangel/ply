@@ -414,7 +414,7 @@ public class Props {
      *         variable is not set.
      */
     public static Scope getScope() {
-        String scope = System.getProperty("ply$scope");
+        String scope = System.getenv("ply$ply.scope");
         return (scope == null ? Scope.Default : new Scope(scope));
     }
 

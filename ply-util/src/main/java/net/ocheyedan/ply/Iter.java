@@ -8,7 +8,7 @@ import java.util.Iterator;
  * Date: 1/5/12
  * Time: 2:49 PM
  *
- * Provides utility methods when interacting with iterable object in java.
+ * Provides utility methods when interacting with {@link Iterable} object in java.
  */
 public final class Iter {
 

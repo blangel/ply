@@ -76,7 +76,7 @@ public class RepositoryAtom {
     }
 
     public static RepositoryAtom parse(String atom) {
-        if (atom == null) {
+        if ((atom == null) || atom.isEmpty()) {
             return null;
         }
         Type type = null;

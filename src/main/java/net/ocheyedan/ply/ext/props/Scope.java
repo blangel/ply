@@ -1,5 +1,8 @@
 package net.ocheyedan.ply.ext.props;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * User: blangel
  * Date: 12/29/11
@@ -11,8 +14,18 @@ public final class Scope {
 
     public static final Scope Default = new Scope("");
 
+    private static final Map<String, Scope> interned = new HashMap<String, Scope>();
+
     public static Scope named(String name) {
-        return new Scope(name);
+        if ((name == null) || name.isEmpty()) {
+            return Default;
+        }
+        if (interned.containsKey(name)) {
+            return interned.get(name);
+        }
+        Scope scope = new Scope(name);
+        interned.put(name, scope);
+        return scope;
     }
 
     public final String name;
