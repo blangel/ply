@@ -221,7 +221,7 @@ public class AliasTest {
         String scope = String.valueOf(System.currentTimeMillis());
         assertTrue(Props.get(new Context("ply"), new File("./ply/config"), new Scope(scope)).isEmpty());
         name = "clean";
-        value = "\"rm -rf target\"";
+        value = "\"rm -rf target\" -Pply.color=false";
         unparsedAliases.clear();
         List<String> adHocProps = new ArrayList<String>(1);
         adHocProps.add("ply#" + scope + ".test=hello");
@@ -236,9 +236,11 @@ public class AliasTest {
         assertEquals("-rf", alias.scripts.get(0).arguments.get(0));
         assertEquals("target", alias.scripts.get(0).arguments.get(1));
         assertEquals("rm -rf target", alias.scripts.get(0).unparsedName);
-        assertEquals(1, alias.adHocProps.size());
+        assertEquals(2, alias.adHocProps.size());
         String testProp = alias.adHocProps.get(0);
         assertEquals("ply#" + scope + ".test=hello", testProp);
+        String colorProp = alias.adHocProps.get(1);
+        assertEquals("ply.color=false", colorProp);
 
         // test multiple scopes processed in one run (can lead to stack-overflows if not coded correctly)
         name = "example";
