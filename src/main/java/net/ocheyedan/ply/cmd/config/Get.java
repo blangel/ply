@@ -56,10 +56,14 @@ public class Get extends ReliantCommand {
             }
             if (printed) {
                 printAppendix();
+            } else {
+                printNothingMessage(opts);
             }
         } else {
             if (printContext(opts.context, contextMap.get(opts.context), opts.propName, opts.unfiltered)) {
                 printAppendix();
+            } else {
+                printNothingMessage(opts);
             }
         }
     }
@@ -120,14 +124,12 @@ public class Get extends ReliantCommand {
 
     protected boolean printContext(Context context, Collection<Prop> props, String likePropName, boolean unfiltered) {
         if ((props == null) || props.isEmpty()) {
-            if (props == null) {
-                Output.print("No context ^b^%s^r^ found%s.", context.name, getNoContextSuffix());
-            }
             return false;
         }
         List<Prop> properties = new ArrayList<Prop>(props);
         Collections.sort(properties);
         boolean printedHeader = false;
+        boolean printedSomething = false;
         for (Prop prop : properties) {
             if ((likePropName == null) || matches(prop, likePropName)) {
                 if (!printedHeader) {
@@ -135,9 +137,10 @@ public class Get extends ReliantCommand {
                     printedHeader = true;
                 }
                 Output.print("   ^b^%s^r^ = ^cyan^%s^r^%s", prop.name, (unfiltered ? prop.unfilteredValue : prop.value), getSuffix(prop));
+                printedSomething = true;
             }
         }
-        return true;
+        return printedSomething;
     }
 
     protected boolean matches(Prop prop, String likePropName) {
@@ -159,10 +162,24 @@ public class Get extends ReliantCommand {
         return "";
     }
 
-    protected String getNoContextSuffix() {
+    protected String getNothingMessageSuffix() {
         return " locally (try ^b^get-all^r^)";
     }
 
     protected void printAppendix() { }
+
+    protected void printNothingMessage(Opts opts) {
+        if (opts.context == null) {
+            if (opts.propName == null) {
+                Output.print("No properties in any context found %s.", getNothingMessageSuffix());
+            } else {
+                Output.print("No property like ^b^%s^r^ found in any context%s.", opts.propName, getNothingMessageSuffix());
+            }
+        } else if (opts.propName == null) {
+            Output.print("No context ^b^%s^r^ found%s.", opts.context, getNothingMessageSuffix());
+        } else {
+            Output.print("No property like ^b^%s^r^ found in context ^b^%s^r^%s.", opts.propName, opts.context, getNothingMessageSuffix());
+        }
+    }
 
 }

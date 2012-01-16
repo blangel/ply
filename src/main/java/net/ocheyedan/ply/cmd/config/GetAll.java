@@ -33,7 +33,7 @@ public class GetAll extends Get {
         return super.getSuffix(prop);
     }
 
-    @Override protected String getNoContextSuffix() {
+    @Override protected String getNothingMessageSuffix() {
         return "";
     }
 
