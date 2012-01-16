@@ -8,6 +8,7 @@ import net.ocheyedan.ply.cmd.Args;
 import net.ocheyedan.ply.cmd.ReliantCommand;
 import net.ocheyedan.ply.cmd.Usage;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.Scope;
 
 import java.util.Properties;
 
@@ -21,10 +22,12 @@ import java.util.Properties;
 public final class Remove extends ReliantCommand {
 
     static class Opts {
+        final Scope scope;
         final Context context;
         final String propName;
 
-        Opts(Context context, String propName) {
+        Opts(Scope scope, Context context, String propName) {
+            this.scope = scope;
             this.context = context;
             this.propName = propName;
         }
@@ -42,7 +45,8 @@ public final class Remove extends ReliantCommand {
             new Usage(args).run();
             return;
         }
-        String path = FileUtil.pathFromParts(PlyUtil.LOCAL_CONFIG_DIR.getPath(), opts.context.name + ".properties");
+        String path = FileUtil.pathFromParts(PlyUtil.LOCAL_CONFIG_DIR.getPath(),
+                opts.context.name + opts.scope.getFileSuffix() + ".properties");
         Properties properties = PropertiesFileUtil.load(path, true);
         properties.remove(opts.propName);
         if (properties.isEmpty()) {
@@ -54,11 +58,16 @@ public final class Remove extends ReliantCommand {
 
     @SuppressWarnings("fallthrough")
     Opts parse(Args args) {
+        Scope scope = Scope.Default;
+        int scopeIndex = args.args.get(0).indexOf(":");
+        if (scopeIndex != -1) {
+            scope = Scope.named(args.args.get(0).substring(0, scopeIndex));
+        }
         switch (args.args.size()) {
             case 4:
                 if ("from".equals(args.args.get(2))) {
                     String propName = args.args.get(1);
-                    return new Opts(new Context(args.args.get(3)), propName);
+                    return new Opts(scope, new Context(args.args.get(3)), propName);
                 } // fall-through
             default:
                 return null;

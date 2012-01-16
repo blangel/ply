@@ -10,6 +10,7 @@ import net.ocheyedan.ply.cmd.Usage;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.props.Scope;
 
 import java.util.Collection;
 import java.util.Properties;
@@ -24,11 +25,13 @@ import java.util.Properties;
 public class Append extends ReliantCommand {
 
     static class Opts {
+        final Scope scope;
         final Context context;
         final String propName;
         final String propValue;
 
-        Opts(Context context, String propName, String propValue) {
+        Opts(Scope scope, Context context, String propName, String propValue) {
+            this.scope = scope;
             this.context = context;
             this.propName = propName;
             this.propValue = propValue;
@@ -47,7 +50,7 @@ public class Append extends ReliantCommand {
             new Usage(args).run();
             return;
         }
-        String path = FileUtil.pathFromParts(PlyUtil.LOCAL_CONFIG_DIR.getPath(), opts.context.name + ".properties");
+        String path = FileUtil.pathFromParts(PlyUtil.LOCAL_CONFIG_DIR.getPath(), opts.context.name + opts.scope.getFileSuffix() + ".properties");
         Properties properties = PropertiesFileUtil.load(path, true);
         String propValue = opts.propValue;
         String existing = getExisting(opts.context, opts.propName);
@@ -77,12 +80,17 @@ public class Append extends ReliantCommand {
 
     @SuppressWarnings("fallthrough")
     Opts parse(Args args) {
+        Scope scope = Scope.Default;
+        int scopeIndex = args.args.get(0).indexOf(":");
+        if (scopeIndex != -1) {
+            scope = Scope.named(args.args.get(0).substring(0, scopeIndex));
+        }
         switch (args.args.size()) {
             case 6:
                 if ("to".equals(args.args.get(2)) && "in".equals(args.args.get(4))) {
                     String propName = args.args.get(3);
                     String propValue = args.args.get(1);
-                    return new Opts(new Context(args.args.get(5)), propName, propValue);
+                    return new Opts(scope, new Context(args.args.get(5)), propName, propValue);
                 } // fall-through
             default:
                 return null;

@@ -9,6 +9,7 @@ import net.ocheyedan.ply.mvn.MavenPomParser;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.props.Scope;
 
 import java.io.*;
 import java.nio.CharBuffer;
@@ -123,7 +124,7 @@ public final class Init extends Command {
         PrintStream old = setupTabOutput();
         Map<Context, Collection<Prop>> props = Props.get(configDir);
         Get get = new Get(null);
-        get.print(props, false);
+        get.print(props, Scope.Default, false);
         revertTabOutput(old);
         Output.print("^ply^");
         Output.print("^ply^ Project ^b^%s^r^ initialized successfully.", getValue(props, Context.named("project"), "name"));

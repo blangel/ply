@@ -1,5 +1,7 @@
 package net.ocheyedan.ply.props;
 
+import net.ocheyedan.ply.Output;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -17,9 +19,39 @@ public final class Prop implements Comparable<Prop> {
      * Represents the location from which the property value was taken.
      */
     public static enum Loc {
-        System, Local, AdHoc,
+        System, SystemScoped, Local, LocalScoped, AdHoc, AdHocScoped,
         /* Indicated the property was resolved by {@literal ply} and exported as an environment variable */
-        Resolved
+        Resolved;
+
+        /**
+         * @return the corresponding scoped {@link Loc} type.
+         */
+        Loc scoped() {
+            switch (this) {
+                case System:
+                    return SystemScoped;
+                case Local:
+                    return LocalScoped;
+                case AdHoc:
+                    return AdHocScoped;
+                default:
+                    return this;
+            }
+        }
+
+        /**
+         * @return true if this is a scoped location
+         */
+        public boolean isScoped() {
+            switch (this) {
+                case SystemScoped:
+                case LocalScoped:
+                case AdHocScoped:
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 
     /**
@@ -37,6 +69,10 @@ public final class Prop implements Comparable<Prop> {
             this.from = from;
             this.value = value;
             this.unfiltered = unfiltered;
+        }
+
+        Val scoped() {
+            return new Val(from.scoped(), value, unfiltered);
         }
     }
 
@@ -67,13 +103,24 @@ public final class Prop implements Comparable<Prop> {
             typeMap.put(type, new Val(type, value, unfiltered));
         }
 
+        public void set(Loc type, String value, String unfiltered) {
+            for (Scope scope : this.values.keySet()) {
+                Map<Loc, Val> typeMap = this.values.get(scope);
+                if (typeMap.containsKey(type)) {
+                    typeMap.put(type, new Val(type, value, unfiltered));
+                }
+            }
+        }
+
         public Val get(Scope scope) {
             return get(scope, false);
         }
 
         Val get(Scope scope, boolean excludeSystem) {
+            boolean retrievedFromScoped = !Scope.Default.equals(scope);
             Map<Loc, Val> typeMap = this.values.get(scope);
             if ((typeMap == null) && !Scope.Default.equals(scope)) {
+                retrievedFromScoped = false;
                 typeMap = this.values.get(Scope.Default);
             }
             if (typeMap == null) {
@@ -89,7 +136,7 @@ public final class Prop implements Comparable<Prop> {
                         }
                     }
                 }
-                return value;
+                return (retrievedFromScoped && (value != null) ? value.scoped(): value);
             }
         }
 

@@ -31,17 +31,17 @@ public final class CommandLineParser {
             return new Usage(parseArgs(Iter.sized(args)));
         }else if ("init".equals(args[0])) {
             return new Init(parseArgs(Iter.sized(args)));
-        } else if ("get".equals(args[0])) {
+        } else if ("get".equals(args[0]) || args[0].endsWith(":get")) {
             return new Get(parseArgs(Iter.sized(args)));
-        } else if ("get-all".equals(args[0])) {
+        } else if ("get-all".equals(args[0]) || args[0].endsWith(":get-all")) {
             return new GetAll(parseArgs(Iter.sized(args)));
-        } else if ("set".equals(args[0])) {
+        } else if ("set".equals(args[0]) || args[0].endsWith(":set")) {
             return new Set(parseArgs(Iter.sized(args)));
-        } else if ("remove".equals(args[0])) {
+        } else if ("remove".equals(args[0]) || args[0].endsWith(":remove")) {
             return new Remove(parseArgs(Iter.sized(args)));
-        } else if ("append".equals(args[0])) {
+        } else if ("append".equals(args[0]) || args[0].endsWith(":append")) {
             return new Append(parseArgs(Iter.sized(args)));
-        } else if ("prepend".equals(args[0])) {
+        } else if ("prepend".equals(args[0]) || args[0].endsWith(":prepend")) {
             return new Prepend(parseArgs(Iter.sized(args)));
         } else {
             return new Build(parseArgs(Iter.sized(args)));

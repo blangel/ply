@@ -115,7 +115,7 @@ public final class Filter {
                     }
                     _cache.put(cacheKey, filteredValue);
                 }
-                prop.set(scope, propVal.from, filteredValue, value);
+                prop.set(propVal.from, filteredValue, value);
             }
         }
     }

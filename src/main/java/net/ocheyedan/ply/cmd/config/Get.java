@@ -8,6 +8,7 @@ import net.ocheyedan.ply.cmd.Usage;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.props.Scope;
 
 import java.util.*;
 
@@ -21,11 +22,13 @@ import java.util.*;
 public class Get extends ReliantCommand {
 
     static class Opts {
+        final Scope scope;
         final Context context;
         final String propName;
         final boolean unfiltered;
 
-        Opts(Context context, String propName, boolean unfiltered) {
+        Opts(Scope scope, Context context, String propName, boolean unfiltered) {
+            this.scope = scope;
             this.context = context;
             this.propName = propName;
             this.unfiltered = unfiltered;
@@ -44,24 +47,24 @@ public class Get extends ReliantCommand {
             new Usage(args).run();
             return;
         }
-        Map<Context, Collection<Prop>> contextMap = getProps();
+        Map<Context, Collection<Prop>> contextMap = getProps(opts);
         if (opts.context == null) {
             List<Context> contexts = new ArrayList<Context>(contextMap.keySet());
             Collections.sort(contexts);
             boolean printed = false;
             for (Context context : contexts) {
-                if (printContext(context, contextMap.get(context), opts.propName, opts.unfiltered)) {
+                if (printContext(context, opts.scope, contextMap.get(context), opts.propName, opts.unfiltered)) {
                     printed = true;
                 }
             }
             if (printed) {
-                printAppendix();
+                printAppendix(opts.scope);
             } else {
                 printNothingMessage(opts);
             }
         } else {
-            if (printContext(opts.context, contextMap.get(opts.context), opts.propName, opts.unfiltered)) {
-                printAppendix();
+            if (printContext(opts.context, opts.scope, contextMap.get(opts.context), opts.propName, opts.unfiltered)) {
+                printAppendix(opts.scope);
             } else {
                 printNothingMessage(opts);
             }
@@ -71,50 +74,56 @@ public class Get extends ReliantCommand {
     /**
      * Prints {@code contextMap} as it {@link Get} were invoked from the directory in which they were extracted.
      * @param contextMap the properties to print mapped by their {@link Context}
+     * @param scope from which {@code contextMap} was retrieved.
      * @param unfiltered true to print the unfiltered value of the property
      */
-    public void print(Map<Context, Collection<Prop>> contextMap, boolean unfiltered) {
+    public void print(Map<Context, Collection<Prop>> contextMap, Scope scope, boolean unfiltered) {
         List<Context> contexts = new ArrayList<Context>(contextMap.keySet());
         Collections.sort(contexts);
         for (Context context : contexts) {
-            printContext(context, contextMap.get(context), null, unfiltered);
+            printContext(context, scope, contextMap.get(context), null, unfiltered);
         }
     }
 
     @SuppressWarnings("fallthrough")
     protected Opts parse(Args args) {
+        Scope scope = Scope.Default;
+        int scopeIndex = args.args.get(0).indexOf(":");
+        if (scopeIndex != -1) {
+            scope = Scope.named(args.args.get(0).substring(0, scopeIndex));
+        }
         switch (args.args.size()) {
             case 1:
-                return new Opts(null, null, false);
+                return new Opts(scope, null, null, false);
             case 2:
                 // either propName or unfiltered
                 if ("--unfiltered".equals(args.args.get(1))) {
-                    return new Opts(null, null, true);
+                    return new Opts(scope, null, null, true);
                 } else {
-                    return new Opts(null, args.args.get(1), false);
+                    return new Opts(scope, null, args.args.get(1), false);
                 }
             case 3:
                 // either propName and unfiltered or context
                 if ("from".equals(args.args.get(1))) {
-                    return new Opts(new Context(args.args.get(2)), null, false);
+                    return new Opts(scope, new Context(args.args.get(2)), null, false);
                 } else if ("--unfiltered".equals(args.args.get(2))) {
-                    return new Opts(null, args.args.get(1), true);
+                    return new Opts(scope, null, args.args.get(1), true);
                 } else {
                     return null;
                 }
             case 4:
                 // either propName and context or context and unfiltered
                 if ("from".equals(args.args.get(2))) {
-                    return new Opts(new Context(args.args.get(3)), args.args.get(1), false);
+                    return new Opts(scope, new Context(args.args.get(3)), args.args.get(1), false);
                 } else if ("from".equals(args.args.get(1)) && "--unfiltered".equals(args.args.get(3))) {
-                    return new Opts(new Context(args.args.get(2)), null, true);
+                    return new Opts(scope, new Context(args.args.get(2)), null, true);
                 } else {
                     return null;
                 }
             case 5:
                 // propName and context and unfiltered
                 if ("from".equals(args.args.get(2)) && "--unfiltered".equals(args.args.get(4))) {
-                    return new Opts(new Context(args.args.get(3)), args.args.get(1), true);
+                    return new Opts(scope, new Context(args.args.get(3)), args.args.get(1), true);
                 }
                 // fall-through
             default:
@@ -122,7 +131,7 @@ public class Get extends ReliantCommand {
         }
     }
 
-    protected boolean printContext(Context context, Collection<Prop> props, String likePropName, boolean unfiltered) {
+    protected boolean printContext(Context context, Scope scope, Collection<Prop> props, String likePropName, boolean unfiltered) {
         if ((props == null) || props.isEmpty()) {
             return false;
         }
@@ -136,7 +145,8 @@ public class Get extends ReliantCommand {
                     Output.print("Properties from ^b^%s^r^", context.name);
                     printedHeader = true;
                 }
-                Output.print("   ^b^%s^r^ = ^cyan^%s^r^%s", prop.name, (unfiltered ? prop.unfilteredValue : prop.value), getSuffix(prop));
+                Output.print("   ^b^%s^r^ = ^cyan^%s^r^%s", prop.name, (unfiltered ? prop.unfilteredValue : prop.value),
+                        getSuffix(prop, scope));
                 printedSomething = true;
             }
         }
@@ -154,11 +164,14 @@ public class Get extends ReliantCommand {
         return false;
     }
 
-    protected Map<Context, Collection<Prop>> getProps() {
-        return Props.getLocal();
+    protected Map<Context, Collection<Prop>> getProps(Opts opts) {
+        return Props.getLocal(opts.scope);
     }
 
-    protected String getSuffix(Prop prop) {
+    protected String getSuffix(Prop prop, Scope scope) {
+        if (!Scope.Default.equals(scope) && !prop.type.isScoped()) {
+            return " ^magenta^**^r^";
+        }
         return "";
     }
 
@@ -166,7 +179,11 @@ public class Get extends ReliantCommand {
         return " locally (try ^b^get-all^r^)";
     }
 
-    protected void printAppendix() { }
+    protected void printAppendix(Scope scope) {
+        if (!Scope.Default.equals(scope)) {
+            Output.print("^magenta^**^r^ indicates default-scoped property.");
+        }
+    }
 
     protected void printNothingMessage(Opts opts) {
         if (opts.context == null) {
