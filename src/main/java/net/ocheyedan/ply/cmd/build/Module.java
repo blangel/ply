@@ -97,6 +97,8 @@ final class Module {
         } else {
             Output.print("^error^ Could not find script ^b^%s^r^%s.", script.name,
                     Scope.Default.equals(script.scope) ? "" : String.format(" (in scope ^b^%s^r^)", script.scope));
+            Output.print("^error^    Place it into the project scripts directory (^b^ply %sget-all scripts.dir from project^r^).", script.scope.getScriptPrefix());
+            Output.print("^error^    Or alias it (^b^ply set %s%s=xxxx in aliases^r^).", script.scope.getScriptPrefix(), script.name);
             throw new SystemExit(1);
         }
     }
