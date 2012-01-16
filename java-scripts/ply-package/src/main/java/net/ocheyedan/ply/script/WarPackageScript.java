@@ -5,6 +5,7 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.jna.JnaAccessor;
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -49,15 +50,15 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
         File explodedWarDir = new File(getExplodedWarDirPath());
         explodedWarDir.mkdirs();
         // get the web-inf dir and copy to the exploded war web-inf dir
-        String webappDir = Props.getValue("package", "webapp.dir");
+        String webappDir = Props.getValue(Context.named("package"), "webapp.dir");
         FileUtil.copyDir(FileUtil.fromParts(webappDir, "WEB-INF"),
                 FileUtil.fromParts(explodedWarDir.getPath(), "WEB-INF"));
         // copy the meta-dir to the exploded war meta-inf dir
         FileUtil.copyDir(FileUtil.fromParts(buildDir, "META-INF"),
                 FileUtil.fromParts(explodedWarDir.getPath(), "META-INF"));
         // copy the classes/resources directory to the WEB-INF/classes
-        String buildPath = Props.getValue("compiler", "build.path");
-        String resBuildPath = Props.getValue("project", "res.build.dir");
+        String buildPath = Props.getValue(Context.named("compiler"), "build.path");
+        String resBuildPath = Props.getValue(Context.named("project"), "res.build.dir");
         File buildPathDir = new File(buildPath);
         File resBuildPathDir = new File(resBuildPath);
         if (buildPathDir.exists()) {
@@ -73,7 +74,7 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
     }
 
     protected String getExplodedWarDirPath() {
-        String explodedWarDir = Props.getValue("package", "exploded.war.dir");
+        String explodedWarDir = Props.getValue(Context.named("package"), "exploded.war.dir");
         if (explodedWarDir.endsWith(".war")) {
             explodedWarDir = explodedWarDir.substring(0, explodedWarDir.length() - 4);
         }

@@ -1,5 +1,6 @@
 package net.ocheyedan.ply.script;
 
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.script.print.PrivilegedOutput;
@@ -235,7 +236,7 @@ public class MavenReporter extends RunListener {
             }
         }
         // save the reports.
-        Prop reportDirProp = Props.get("project", "reports.dir");
+        Prop reportDirProp = Props.get(Context.named("project"), "reports.dir");
         if (reportDirProp == null) {
             PrivilegedOutput.print("^warn^ Could not find property project.reports.dir, skipping report save.");
             return;

@@ -3,12 +3,14 @@ package net.ocheyedan.ply.dep;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Graph;
 import net.ocheyedan.ply.graph.Graphs;
 import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.mvn.MavenPom;
 import net.ocheyedan.ply.mvn.MavenPomParser;
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -94,7 +96,7 @@ public final class Deps {
                                             boolean pomSufficient) {
         if (repositoryRegistry.isEmpty()) {
             Output.print("^error^ No repositories found, cannot resolve dependencies.");
-            System.exit(1);
+            SystemExit.exit(1);
         }
         for (DependencyAtom dependencyAtom : dependencyAtoms) {
             if ((parentVertex != null) && dependencyAtom.transientDep) {
@@ -107,7 +109,7 @@ public final class Deps {
                 if (path != null) {
                     Output.print("^error^ path to missing dependency [ %s ].", path);
                 }
-                System.exit(1);
+                SystemExit.exit(1);
             }
             Vertex<Dep> vertex = graph.addVertex(resolvedDep);
             if (parentVertex != null) {
@@ -115,7 +117,7 @@ public final class Deps {
                     graph.addEdge(parentVertex, vertex);
                 } catch (Graph.CycleException gce) {
                     Output.print("^error^ circular dependency [ %s ].", getCycleAsString(gce));
-                    System.exit(1);
+                    SystemExit.exit(1);
                 }
             }
             if (!dependencyAtom.transientDep) { // direct transient dependencies are not recurred upon
@@ -356,9 +358,9 @@ public final class Deps {
      * @return the contents of ${project.build.dir}/${resolved-deps.properties}
      */
     public static Properties getResolvedProperties() {
-        String buildDir = Props.getValue("project", "build.dir");
+        String buildDir = Props.getValue(Context.named("project"), "build.dir");
         // load the resolved-deps.properties file from the build directory.
-        String scope = Props.getValue("ply", "scope");
+        String scope = Props.getValue(Context.named("ply"), "scope");
         String suffix = (scope.isEmpty() ? "" : scope + ".");
         File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
         if (!dependenciesFile.exists()) {
@@ -392,10 +394,11 @@ public final class Deps {
      * @return a {@link DependencyAtom} representing this project
      */
     public static DependencyAtom getProjectDep() {
-        String namespace = Props.getValue("project", "namespace");
-        String name = Props.getValue("project", "name");
-        String version = Props.getValue("project", "version");
-        String artifactName = Props.getValue("project", "artifact.name");
+        Context projectContext = Context.named("project");
+        String namespace = Props.getValue(projectContext, "namespace");
+        String name = Props.getValue(projectContext, "name");
+        String version = Props.getValue(projectContext, "version");
+        String artifactName = Props.getValue(projectContext, "artifact.name");
         String defaultArtifactName = name + "-" + version + "." + DependencyAtom.DEFAULT_PACKAGING;
         // don't pollute by placing artifactName explicitly even though it's the default
         if (artifactName.equals(defaultArtifactName)) {

@@ -5,6 +5,7 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -21,7 +22,7 @@ import java.util.Properties;
 public class PrintClasspathScript {
 
     public static void main(String[] args) {
-        String buildDir = Props.getValue("project", "build.dir");
+        String buildDir = Props.getValue(Context.named("project"), "build.dir");
         DependencyAtom dependencyAtom = Deps.getProjectDep();
         String artifactName = dependencyAtom.getArtifactName();
         File artifactFile = FileUtil.fromParts(buildDir, artifactName);
@@ -54,9 +55,9 @@ public class PrintClasspathScript {
      * @return the contents of ${project.build.dir}/${resolved-deps.properties}
      */
     private static Properties addDependenciesToClasspathArgs() {
-        String buildDir = Props.getValue("project", "build.dir");
+        String buildDir = Props.getValue(Context.named("project"), "build.dir");
         // load the resolved-deps.properties file from the build directory.
-        String scope = Props.getValue("ply", "scope");
+        String scope = Props.getValue(Context.named("ply"), "scope");
         String suffix = (scope.isEmpty() ? "" : scope + ".");
         File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
         if (!dependenciesFile.exists()) {

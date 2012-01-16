@@ -13,4 +13,12 @@ public class OutputExt {
         Output.printFromExec(message, args);
     }
 
+    public static String resolve(String message, Object[] args) {
+        return Output.resolve(message, args);
+    }
+
+    public static void init() {
+        Output.init();
+    }
+
 }

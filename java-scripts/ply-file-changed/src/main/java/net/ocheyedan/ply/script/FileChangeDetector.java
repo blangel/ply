@@ -4,6 +4,7 @@ import net.ocheyedan.ply.BitUtil;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
@@ -36,11 +37,11 @@ import java.util.concurrent.atomic.AtomicReference;
 public class FileChangeDetector {
 
     public static void main(String[] args) {
-        Scope scope = new Scope(Props.getValue("ply", "scope"));
-        String srcDirPath = Props.getValue("project", "src.dir");
-        String buildDirPath = Props.getValue("project", "build.dir");
-        File lastSrcChanged = FileUtil.fromParts(buildDirPath, "changed-meta" + scope.fileSuffix + ".properties");
-        File changedPropertiesFile = FileUtil.fromParts(buildDirPath, "changed" + scope.fileSuffix + ".properties");
+        Scope scope = new Scope(Props.getValue(Context.named("ply"), "scope"));
+        String srcDirPath = Props.getValue(Context.named("project"), "src.dir");
+        String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
+        File lastSrcChanged = FileUtil.fromParts(buildDirPath, "changed-meta" + scope.getFileSuffix() + ".properties");
+        File changedPropertiesFile = FileUtil.fromParts(buildDirPath, "changed" + scope.getFileSuffix() + ".properties");
         File srcDir = new File(srcDirPath);
         Properties existing = PropertiesFileUtil.load(lastSrcChanged.getPath(), true);
         try {
@@ -96,7 +97,7 @@ public class FileChangeDetector {
             }
             String[] split = propertyValue.split("\\,");
             if (split.length != 2) {
-                Output.print("^warn^ corrupted changed-meta%s.properties file, recomputing.", scope.fileSuffix);
+                Output.print("^warn^ corrupted changed-meta%s.properties file, recomputing.", scope.getFileSuffix());
                 return true;
             }
             long timestamp = Long.valueOf(split[0]);
@@ -110,7 +111,7 @@ public class FileChangeDetector {
         } catch (IOException ioe) {
             throw new AssertionError(ioe);
         } catch (NumberFormatException nfe) {
-            Output.print("^warn^ corrupted changed-meta%s.properties file, recomputing.", scope.fileSuffix);
+            Output.print("^warn^ corrupted changed-meta%s.properties file, recomputing.", scope.getFileSuffix());
             return true;
         }
     }

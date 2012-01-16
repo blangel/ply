@@ -1,5 +1,6 @@
 package net.ocheyedan.ply;
 
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -48,14 +49,14 @@ public final class PlyUtil {
      * @return true if all prompts should be disallowed.
      */
     public static boolean isHeadless() {
-        return "true".equalsIgnoreCase(Props.getValue("headless"));
+        return "true".equalsIgnoreCase(Props.getValue(Context.named("ply"), "headless"));
     }
 
     /**
      * @return true if unicode is supported as output
      */
     public static boolean isUnicodeSupported() {
-        return "true".equalsIgnoreCase(Props.getValue("unicode"));
+        return "true".equalsIgnoreCase(Props.getValue(Context.named("ply"), "unicode"));
     }
 
     /**
@@ -92,7 +93,7 @@ public final class PlyUtil {
             return new File(path.endsWith(File.separator) ? path + "config" : path + File.separator + "config");
         } catch (IOException ioe) {
             Output.print(ioe);
-            System.exit(1);
+            SystemExit.exit(1);
             return null; // not reachable
         }
     }

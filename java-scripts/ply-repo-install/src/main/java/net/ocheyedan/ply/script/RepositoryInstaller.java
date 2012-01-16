@@ -4,6 +4,7 @@ import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.RepositoryAtom;
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -26,17 +27,17 @@ import java.util.Properties;
 public class RepositoryInstaller {
 
     public static void main(String[] args) {
-        String buildDirPath = Props.getValue("project", "build.dir");
-        String artifactName = Props.getValue("project", "artifact.name");
+        String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
+        String artifactName = Props.getValue(Context.named("project"), "artifact.name");
         File artifact = FileUtil.fromParts(buildDirPath, artifactName);
         if (!artifact.exists()) {
             return;
         }
 
-        String plyProjectDirPath = Props.getValue("project.dir");
+        String plyProjectDirPath = Props.getValue(Context.named("ply"), "project.dir");
         File dependenciesFile = FileUtil.fromParts(plyProjectDirPath, "config", "dependencies.properties");
 
-        String localRepoProp = Props.getValue("depmngr", "localRepo");
+        String localRepoProp = Props.getValue(Context.named("depmngr"), "localRepo");
         // determine repo type.
         boolean localRepoIsPly = !(localRepoProp.startsWith(RepositoryAtom.MAVEN_REPO_TYPE_PREFIX));
         if (!localRepoIsPly) {
@@ -45,9 +46,9 @@ public class RepositoryInstaller {
             localRepoProp = localRepoProp.substring(RepositoryAtom.PLY_REPO_TYPE_PREFIX.length());
         }
 
-        String namespace = Props.getValue("project", "namespace");
-        String name = Props.getValue("project", "name");
-        String version = Props.getValue("project", "version");
+        String namespace = Props.getValue(Context.named("project"), "namespace");
+        String name = Props.getValue(Context.named("project"), "name");
+        String version = Props.getValue(Context.named("project"), "version");
         File localRepoBase = new File(localRepoProp);
         if (!localRepoBase.exists()) {
             Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoBase.getPath());

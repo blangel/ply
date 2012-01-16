@@ -5,6 +5,7 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.jna.JnaAccessor;
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
@@ -33,8 +34,8 @@ import java.util.zip.ZipOutputStream;
 public class ZipPackageScript implements PackagingScript {
 
     @Override public void invoke() throws IOException, InterruptedException {
-        String buildPath = Props.getValue("compiler", "build.path");
-        String resBuildPath = Props.getValue("project", "res.build.dir");
+        String buildPath = Props.getValue(Context.named("compiler"), "build.path");
+        String resBuildPath = Props.getValue(Context.named("project"), "res.build.dir");
         File buildPathDir = new File(buildPath);
         File resBuildPathDir = new File(resBuildPath);
         if (!buildPathDir.exists() && !resBuildPathDir.exists()) {
@@ -79,7 +80,7 @@ public class ZipPackageScript implements PackagingScript {
      * @return an exit code (which should be {@code exitCode} unless an exception occurs).
      */
     protected int postprocess(int exitCode) {
-        if (getBoolean(Props.getValue("package", "includeDeps"))) {
+        if (getBoolean(Props.getValue(Context.named("package"), "includeDeps"))) {
             Properties deps = Deps.getResolvedProperties();
             if (deps.isEmpty()) {
                 return exitCode;
@@ -162,13 +163,13 @@ public class ZipPackageScript implements PackagingScript {
      * @return the arguments to the {@literal jar} executable.
      */
     protected String[] createArgs(String packaging, String[] includes) {
-        String jarScript = Props.getValue("java").replace("bin" + File.separator + "java",
+        String jarScript = Props.getValue(Context.named("ply"), "java").replace("bin" + File.separator + "java",
                 "bin" + File.separator + "jar");
         String options = getBaseOptions();
-        if (getBoolean(Props.getValue("package", "verbose"))) {
+        if (getBoolean(Props.getValue(Context.named("package"), "verbose"))) {
             options += "v";
         }
-        if (!getBoolean(Props.getValue("package", "compress"))) {
+        if (!getBoolean(Props.getValue(Context.named("package"), "compress"))) {
             options += "0";
         }
         String name = getPackageName(packaging);
@@ -186,13 +187,13 @@ public class ZipPackageScript implements PackagingScript {
     }
 
     protected String getPackageName(String packaging, String suffix) {
-        String name = Props.getValue("package", "name");
+        String name = Props.getValue(Context.named("package"), "name");
         if (isEmpty(name)) {
             Output.print("^warn^ Property 'package.name' was empty, defaulting to value of ${project.artifact.name}.");
-            name = Props.getValue("project", "artifact.name");
+            name = Props.getValue(Context.named("project"), "artifact.name");
             if (isEmpty(name)) {
                 Output.print("^warn^ Property 'project.artifact.name' was empty, defaulting to value of ${project.name}.");
-                name = Props.getValue("project", "name");
+                name = Props.getValue(Context.named("project"), "name");
                 if (isEmpty(name)) {
                     Output.print("^warn^ Property 'project.name' was empty, defaulting to 'no-name'.");
                     name = "no-name";
@@ -211,7 +212,7 @@ public class ZipPackageScript implements PackagingScript {
     }
 
     static String getPackageFilePath(String name) {
-        String buildDirPath = Props.getValue("project", "build.dir");
+        String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
         return FileUtil.pathFromParts(buildDirPath, name);
     }
 

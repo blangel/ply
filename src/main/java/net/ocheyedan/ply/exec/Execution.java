@@ -1,52 +1,63 @@
 package net.ocheyedan.ply.exec;
 
+import net.ocheyedan.ply.cmd.build.Script;
+
+import java.util.Arrays;
+
 /**
  * User: blangel
  * Date: 11/13/11
  * Time: 2:02 PM
  *
- * A struct of execution information.
+ * Represents a concrete execution.  Unlike, {@link net.ocheyedan.ply.cmd.build.Script}, this class represents something which can be executed
+ * via a {@link Process}.  To make a {@link net.ocheyedan.ply.cmd.build.Script} executable it is necessary to resolve its invoking mechanism;
+ * say direct, via a JVM, etc.
  */
-public class Execution {
+public final class Execution {
 
     /**
-     * The original, unresolved, script/alias.
+     * A name to use when identifying this exeuction.
      */
-    public final String originalScript;
+    public final String name;
 
     /**
-     * The scope of this execution.
+     * The underlying script for this execution.
      */
-    public final String scope;
-
-    /**
-     * The resolved script.
-     */
-    public final String script;
+    public final Script script;
 
     /**
      * The arguments to the execution for the script.  By convention of {@link Process} the
-     * first item is the {@link #script} itself.  So for an execution without args this
-     * array has one value, the script to execute.
+     * first item is the execution itself (i.e., 'java').  So for an execution without args this
+     * array has one value, the execution itself.
      */
-    public final String[] scriptArgs;
+    public final String[] executionArgs;
 
-    public Execution(String originalScript, String scope, String script, String[] scriptArgs) {
-        this.originalScript = originalScript;
-        this.scope = scope;
+    public Execution(String name, Script script, String[] executionArgs) {
+        this.name = name;
         this.script = script;
-        this.scriptArgs = scriptArgs;
+        this.executionArgs = executionArgs;
     }
 
-    public Execution with(String script) {
-        String[] args = new String[this.scriptArgs.length];
-        System.arraycopy(this.scriptArgs, 1, args, 1, this.scriptArgs.length - 1);
-        args[0] = script;
-        return new Execution(this.originalScript, this.scope, script, args);
+    public Execution augment(String[] with) {
+        String[] args = new String[this.executionArgs.length + with.length];
+        System.arraycopy(this.executionArgs, 0, args, 0, this.executionArgs.length);
+        System.arraycopy(with, 0, args, this.executionArgs.length, with.length);
+        return new Execution(name, script, args);
+    }
+
+    public Execution with(String executable) {
+        String[] args = new String[this.executionArgs.length];
+        System.arraycopy(this.executionArgs, 1, args, 1, this.executionArgs.length - 1);
+        args[0] = executable;
+        return new Execution(name, this.script, args);
     }
 
     public Execution with(String[] args) {
-        return new Execution(this.originalScript, this.scope, args[0], args);
+        return new Execution(name, this.script, args);
+    }
+
+    public Execution with(String executionName, String[] args) {
+        return new Execution(executionName, this.script, args);
     }
 
     @Override public boolean equals(Object o) {
@@ -58,16 +69,16 @@ public class Execution {
         }
 
         Execution execution = (Execution) o;
-        if (scope != null ? !scope.equals(execution.scope) : execution.scope != null) {
+
+        if (script != null ? !script.equals(execution.script) : execution.script != null) {
             return false;
         }
-        return (script == null ? (execution.script == null) : script.equals(execution.script));
+        return Arrays.equals(executionArgs, execution.executionArgs);
     }
 
     @Override public int hashCode() {
-        int result = scope != null ? scope.hashCode() : 0;
-        result = 31 * result + (script != null ? script.hashCode() : 0);
+        int result = script != null ? script.hashCode() : 0;
+        result = 31 * result + Arrays.hashCode(executionArgs);
         return result;
     }
-
 }

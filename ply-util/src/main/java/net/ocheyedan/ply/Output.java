@@ -1,9 +1,12 @@
 package net.ocheyedan.ply;
 
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
@@ -35,6 +38,31 @@ public final class Output {
     }
 
     /**
+     * Used to queue messages before {@link Output#init()} has been called.
+     */
+    private static final class Message {
+        private static enum Type { Line, NoLine, Exec }
+        private final String message;
+        private final Type type;
+        private final Object[] args;
+        private Message(String message, Type type, Object[] args) {
+            this.message = message;
+            this.type = type;
+            this.args = args;
+        }
+    }
+
+    /**
+     * The queue of {@link Message} objects which have been accumulated before the {@link Output#init()} has been called.
+     */
+    private static final List<Message> queue = new ArrayList<Message>();
+
+    /**
+     * Set to true when {@link #init()} has been called.
+     */
+    private static volatile boolean inited = false;
+
+    /**
      * Configurable log level variables.
      */
     private static final AtomicBoolean warnLevel = new AtomicBoolean(true);
@@ -57,52 +85,84 @@ public final class Output {
      * A mapping of easily identifiable words to a {@link TermCode} object for colored output.
      */
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
-    static {
-        String terminal = System.getenv("TERM");
-        init(terminal);
-        // TODO - what are the range of terminal values and what looks best for each?
-        String terminalBold = ("xterm".equals(terminal) ? "1" : "0");
-        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), "[\u001b[0;33mply\u001b[0m]", "[ply]"));
-        TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), "[\u001b[1;31merr!\u001b[0m]", "[err!]"));
-        TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), "[\u001b[1;33mwarn\u001b[0m]", "[warn]"));
-        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), "[\u001b[1;34minfo\u001b[0m]", "[info]"));
-        TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), "[\u001b[1;30mdbug\u001b[0m]", "[dbug]"));
-        TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), "\u001b[0m", ""));
-        TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), "\u001b[1m", ""));
-        TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), "\u001b[2m", ""));
-        TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), "\u001b[7m", ""));
-        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), "\u001b[" + terminalBold + ";30m", ""));
-        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"),  "\u001b[" + terminalBold + ";31m", ""));
-        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), "\u001b[" + terminalBold + ";32m", ""));
-        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), "\u001b[" + terminalBold + ";33m", ""));
-        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), "\u001b[" + terminalBold + ";34m", ""));
-        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), "\u001b[" + terminalBold + ";35m", ""));
-        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), "\u001b[" + terminalBold + ";36m", ""));
-        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), "\u001b[" + terminalBold + ";37m", ""));
+
+    static void init() {
+        if (inited) {
+            return;
+        }
+        try {
+            String terminal = System.getenv("TERM");
+            Context plyContext = Context.named("ply");
+            String logLevels = Props.getValue(plyContext, "log.levels");
+            if (!logLevels.contains("warn")) {
+                warnLevel.set(false);
+            }
+            if (!logLevels.contains("info")) {
+                infoLevel.set(false);
+            }
+            if (!logLevels.contains("debug") && !logLevels.contains("dbug")) {
+                dbugLevel.set(false);
+            }
+            String decorated = Props.getValue(plyContext, "decorated");
+            if ("false".equalsIgnoreCase(decorated)) {
+                Output.decorated.set(false);
+            }
+            withinTerminal.set(terminal != null);
+            String coloredOutput = Props.getValue(plyContext, "color");
+            boolean useColor = withinTerminal.get() && !"false".equalsIgnoreCase(coloredOutput);
+            Output.coloredOutput.set(useColor);
+            // TODO - what are the range of terminal values and what looks best for each?
+            String terminalBold = ("xterm".equals(terminal) ? "1" : "0");
+            TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), "[\u001b[0;33mply\u001b[0m]", "[ply]"));
+            TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), "[\u001b[1;31merr!\u001b[0m]", "[err!]"));
+            TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), "[\u001b[1;33mwarn\u001b[0m]", "[warn]"));
+            TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), "[\u001b[1;34minfo\u001b[0m]", "[info]"));
+            TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), "[\u001b[1;30mdbug\u001b[0m]", "[dbug]"));
+            TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), "\u001b[0m", ""));
+            TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), "\u001b[1m", ""));
+            TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), "\u001b[2m", ""));
+            TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), "\u001b[7m", ""));
+            TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), "\u001b[" + terminalBold + ";30m", ""));
+            TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"),  "\u001b[" + terminalBold + ";31m", ""));
+            TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), "\u001b[" + terminalBold + ";32m", ""));
+            TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), "\u001b[" + terminalBold + ";33m", ""));
+            TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), "\u001b[" + terminalBold + ";34m", ""));
+            TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), "\u001b[" + terminalBold + ";35m", ""));
+            TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), "\u001b[" + terminalBold + ";36m", ""));
+            TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), "\u001b[" + terminalBold + ";37m", ""));
+            drainQueue();
+        } finally {
+            inited = true;
+        }
     }
 
-    static void init(String terminal) {
-        String logLevels = Props.getValue("log.levels");
-        if (!logLevels.contains("warn")) {
-            warnLevel.set(false);
+    /**
+     * Takes all the messages from {@link #queue} and calls the appropriate print method based on its {@link Message.Type}
+     */
+    private static void drainQueue() {
+        if (inited) {
+            return;
         }
-        if (!logLevels.contains("info")) {
-            infoLevel.set(false);
+        inited = true; // so that the re-call of the print methods actually prints
+        for (Message message : queue) {
+            switch (message.type) {
+                case Line:
+                    print(message.message, message.args); break;
+                case NoLine:
+                    printNoLine(message.message, message.args); break;
+                case Exec:
+                    printFromExec(message.message, message.args); break;
+                default:
+                    throw new AssertionError(String.format("Unknown Message.Type %s", message.type));
+            }
         }
-        if (!logLevels.contains("debug") && !logLevels.contains("dbug")) {
-            dbugLevel.set(false);
-        }
-        String decorated = Props.getValue("decorated");
-        if ("false".equalsIgnoreCase(decorated)) {
-            Output.decorated.set(false);
-        }
-        withinTerminal.set(terminal != null);
-        String coloredOutput = Props.getValue("color");
-        boolean useColor = withinTerminal.get() && !"false".equalsIgnoreCase(coloredOutput);
-        Output.coloredOutput.set(useColor);
     }
 
     public static void print(String message, Object ... args) {
+        if (!inited) {
+            queue.add(new Message(message, Message.Type.Line, args));
+            return;
+        }
         String formatted = resolve(message, args);
         if ((formatted == null) || (!decorated.get() && isPrintFromPly())) {
             return;
@@ -111,6 +171,10 @@ public final class Output {
     }
 
     public static void printNoLine(String message, Object ... args) {
+        if (!inited) {
+            queue.add(new Message(message, Message.Type.NoLine, args));
+            return;
+        }
         String formatted = resolve(message, args);
         if ((formatted == null) || (!decorated.get() && isPrintFromPly())) {
             return;
@@ -131,6 +195,10 @@ public final class Output {
     }
 
     static void printFromExec(String message, Object ... args) {
+        if (!inited) {
+            queue.add(new Message(message, Message.Type.Exec, args));
+            return;
+        }
         String scriptArg = (String) args[1];
         if (!decorated.get()) {
             System.out.println(scriptArg);
@@ -229,18 +297,6 @@ public final class Output {
      */
     public static void enableDebug() {
         dbugLevel.set(true);
-    }
-
-    public static void handleAdHocProp(Prop prop) {
-        if (!"ply".equals(prop.context)) {
-            return;
-        }
-        if ("decorated".equals(prop.name)) {
-            decorated.set(!"false".equalsIgnoreCase(prop.value));
-        }
-        if ("color".equals(prop.name)) {
-            coloredOutput.set(!"false".equalsIgnoreCase(prop.value));
-        }
     }
 
     private Output() { }

@@ -34,7 +34,7 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
             return;
         }
 
-        String kind = "", pad = " ", color = "blue";
+        String kind, pad = " ", color = "blue";
         Type type = Type.Note;
         switch (diagnostic.getKind()) {
             case ERROR:

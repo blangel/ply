@@ -1,10 +1,10 @@
 package net.ocheyedan.ply.exec;
 
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.PropsExt;
+import net.ocheyedan.ply.props.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,22 +28,21 @@ public final class JarExec {
      * The whole command array needs to be processed as parameters to the JVM need to be inserted
      * into the command array.
      * @param execution to invoke
-     * @param projectConfigDir the ply configuration directory from which to resolve properties
+     * @param configDirectory the ply configuration directory from which to resolve properties
      * @return the translated execution
      */
-    public static Execution createJarExecutable(Execution execution, File projectConfigDir) {
-        String script = execution.script;
+    static Execution createJarExecutable(Execution execution, File configDirectory) {
         String classpath = null;
         AtomicReference<String> mainClass = new AtomicReference<String>();
         AtomicBoolean staticClasspath = new AtomicBoolean(false);
-        String[] options = getJarScriptOptions(projectConfigDir, execution.script, execution.scope, staticClasspath);
+        String[] options = getJarScriptOptions(configDirectory, execution, staticClasspath);
         if (!staticClasspath.get()) {
-            classpath = getClasspathEntries(script, execution.scope, mainClass, projectConfigDir);
+            classpath = getClasspathEntries(execution.executionArgs[0], execution.script.scope, mainClass, configDirectory);
         }
         int classpathLength = (staticClasspath.get() ? 0 : classpath == null ? 2 : 3);
         // add the appropriate java command
-        script = System.getProperty("ply.java");
-        String[] newCmdArray = new String[execution.scriptArgs.length + options.length + classpathLength];
+        String script = System.getProperty("ply.java");
+        String[] newCmdArray = new String[execution.executionArgs.length + options.length + classpathLength];
         newCmdArray[0] = script;
         System.arraycopy(options, 0, newCmdArray, 1, options.length);
         // if the '-classpath' option is specified, can't use '-jar' option (or rather vice-versa), so
@@ -55,10 +54,10 @@ public final class JarExec {
             newCmdArray[options.length + 3] = mainClass.get(); // main-class must be found if using implicit dependencies
         } else if (!staticClasspath.get()) {
             newCmdArray[options.length + 1] = "-jar";
-            newCmdArray[options.length + 2] = execution.script;
+            newCmdArray[options.length + 2] = execution.executionArgs[0];
         }
-        System.arraycopy(execution.scriptArgs, 1, newCmdArray, options.length + classpathLength + 1,
-                execution.scriptArgs.length - 1);
+        System.arraycopy(execution.executionArgs, 1, newCmdArray, options.length + classpathLength + 1,
+                execution.executionArgs.length - 1);
         return execution.with(newCmdArray);
     }
 
@@ -72,7 +71,7 @@ public final class JarExec {
      * @param projectConfigDir the ply configuration directory from which to resolve properties
      * @return the classpath (including the given {@code jarPath}).
      */
-    private static String getClasspathEntries(String jarPath, String scope, AtomicReference<String> mainClass,
+    private static String getClasspathEntries(String jarPath, Scope scope, AtomicReference<String> mainClass,
                                               File projectConfigDir) {
         JarFile jarFile = null;
         try {
@@ -99,7 +98,7 @@ public final class JarExec {
             return Deps.getClasspath(resolvedDependencies, jarPath);
         } catch (IOException ioe) {
             Output.print(ioe);
-            System.exit(1);
+            throw new SystemExit(1);
         } finally {
             if (jarFile != null) {
                 try {
@@ -109,26 +108,24 @@ public final class JarExec {
                 }
             }
         }
-        return null;
     }
 
-    private static RepositoryRegistry createRepositoryList(File projectConfigDir, String scope) {
-        Prop prop = PropsExt.get(projectConfigDir, "depmngr", scope, "localRepo");
-        String filteredLocalRepo = PropsExt.filterForPly(projectConfigDir, prop, scope);
-        RepositoryAtom localRepo = RepositoryAtom.parse(filteredLocalRepo);
+    private static RepositoryRegistry createRepositoryList(File configDirectory, Scope scope) {
+        Prop prop = Props.get(Context.named("depmngr"), "localRepo", configDirectory, scope);
+        RepositoryAtom localRepo = RepositoryAtom.parse((prop == null ? null : prop.value));
         if (localRepo == null) {
-            Output.print("^error^ Local repository not defined.  Set 'localRepo' property in context 'depmngr'");
-            System.exit(1);
+            Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
+            throw new SystemExit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
-        Map<String, Prop> repositoryProps = PropsExt.getPropsForScope(projectConfigDir, "repositories", scope); // TODO - filter the props?
+        Collection<Prop> repositoryProps = Props.get(Context.named("repositories"), configDirectory, scope);
         if (repositoryProps != null) {
-            for (String repoUri : repositoryProps.keySet()) {
-                if (localRepo.getPropertyName().equals(repoUri)) {
+            for (Prop repositoryProp : repositoryProps) {
+                if (localRepo.getPropertyName().equals(repositoryProp.name)) {
                     continue;
                 }
-                String repoType = repositoryProps.get(repoUri).value;
-                String repoAtom = repoType + ":" + repoUri;
+                String repoType = repositoryProp.value;
+                String repoAtom = repoType + ":" + repositoryProp.name;
                 RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
                 if (repo == null) {
                     Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);
@@ -142,25 +139,24 @@ public final class JarExec {
     }
 
     /**
-     * Retrieves the jvm options for {@code script} or the default options if none have been specified.
-     * @param projectConfigDir the ply configuration directory from which to resolve properties
-     * @param script for which to find options
-     * @param scope for the {@code script}
+     * Retrieves the jvm options for {@code execution} or the default options if none have been specified.
+     * @param configDirectory the ply configuration directory from which to resolve properties
+     * @param execution for which to retrieve options
      * @param staticClasspath will be set by this method to true iff the resolved options contains a
      *        {@literal -classpath} or {@literal -cp} value.
      * @return the split jvm options for {@code script}
      */
-    private static String[] getJarScriptOptions(File projectConfigDir, String script, String scope, AtomicBoolean staticClasspath) {
+    private static String[] getJarScriptOptions(File configDirectory, Execution execution, AtomicBoolean staticClasspath) {
+        String executable = execution.executionArgs[0];
         // strip the resolved path (just use the jar name)
-        int index = script.lastIndexOf(File.separator);
+        int index = executable.lastIndexOf(File.separator);
         if (index != -1) {
-            script = script.substring(index + 1);
+            executable = executable.substring(index + 1);
         }
-        String options = PropsExt.getValue(projectConfigDir, "scripts-jar", scope, "options." + script);
+        String options = Props.getValue(Context.named("scripts-jar"), "options." + executable, configDirectory, execution.script.scope);
         if (options.isEmpty()) {
-            options = PropsExt.getValue(projectConfigDir, "scripts-jar", scope, "options.default");
+            options = Props.getValue(Context.named("scripts-jar"), "options.default", configDirectory, execution.script.scope);
         }
-        options = PropsExt.filterForPly(projectConfigDir, new Prop("scripts-jar", scope, "", options, true), scope);
         if (options.contains("-cp") || options.contains("-classpath")) {
             staticClasspath.set(true);
         }

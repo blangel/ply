@@ -2,6 +2,7 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 
@@ -18,8 +19,8 @@ import java.io.File;
 public class ResourcesScript {
 
     public static void main(String[] args) {
-        Prop resourcesDirProp = Props.get("project", "res.dir");
-        Prop resourcesBuildDirProp = Props.get("project", "res.build.dir");
+        Prop resourcesDirProp = Props.get(Context.named("project"), "res.dir");
+        Prop resourcesBuildDirProp = Props.get(Context.named("project"), "res.build.dir");
         if ((resourcesDirProp == null) || (resourcesBuildDirProp == null)) {
             Output.print("^error^ Could not find properties 'project.res.dir' or 'project.res.build.dir'");
             System.exit(1);

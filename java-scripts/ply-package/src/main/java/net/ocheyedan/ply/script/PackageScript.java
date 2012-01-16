@@ -1,6 +1,7 @@
 package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.IOException;
@@ -19,7 +20,7 @@ import java.io.IOException;
 public class PackageScript {
 
     public static void main(String[] args) {
-        String packaging = Props.getValue("project", "packaging");
+        String packaging = Props.getValue(Context.named("project"), "packaging");
         PackagingScript packagingScript;
         if ("zip".equals(packaging)) {
             packagingScript = new ZipPackageScript();

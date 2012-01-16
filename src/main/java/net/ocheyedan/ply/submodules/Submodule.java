@@ -5,7 +5,7 @@ package net.ocheyedan.ply.submodules;
  * Date: 10/27/11
  * Time: 3:58 PM
  */
-public class Submodule {
+public final class Submodule {
 
     public final String name;
 

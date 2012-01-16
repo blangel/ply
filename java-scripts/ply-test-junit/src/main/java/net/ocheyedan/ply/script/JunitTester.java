@@ -4,6 +4,7 @@ import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.input.Resources;
+import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
@@ -42,16 +43,16 @@ public class JunitTester {
     @SuppressWarnings("unchecked") /* ignore unchecked in constructor call */
     public static void main(String[] args) {
 
-        Prop buildDirProp = Props.get("project", "build.dir");
-        Prop artifactNameProp = Props.get("project", "artifact.name");
+        Prop buildDirProp = Props.get(Context.named("project"), "build.dir");
+        Prop artifactNameProp = Props.get(Context.named("project"), "artifact.name");
         if ((buildDirProp == null) || (artifactNameProp == null)) {
             Output.print("^warn^ No project.build.dir or project.artifact.name found, skipping test execution.");
             return;
         }
 
         // load the resolved dependencies file from the ply-dependency-manager script
-        Scope scope = new Scope(Props.getValue("ply", "scope"));
-        String resolvedDepFileName = "resolved-deps" + scope.fileSuffix + ".properties";
+        Scope scope = new Scope(Props.getValue(Context.named("ply"), "scope"));
+        String resolvedDepFileName = "resolved-deps" + scope.getFileSuffix() + ".properties";
         Properties resolvedDepProps = PropertiesFileUtil.load(FileUtil.fromParts(buildDirProp.value, resolvedDepFileName).getPath(),
                                                               false, true);
         if (resolvedDepProps == null) {
@@ -69,7 +70,9 @@ public class JunitTester {
         // create a loader with the given test artifact and its dependencies
         ClassLoader loader = URLClassLoader.newInstance(
                 urls.toArray(new URL[urls.size()]),
-                JunitTester.class.getClassLoader()
+                // use the boot class-loader so as to not interfere with any common jars shared by this tester and the
+                // artifact being tested
+                null
         );
 
         FilenameFilter filter = new FilenameFilter() {
@@ -93,7 +96,7 @@ public class JunitTester {
         PrintStream oldErr = System.err;
         redirect:try {
             // create the redirected out/err files.
-            Prop reportDirProp = Props.get("project", "reports.dir");
+            Prop reportDirProp = Props.get(Context.named("project"), "reports.dir");
             if (reportDirProp == null) {
                 Output.print("^warn^ Could not find property project.reports.dir, skipping out/err redirection.");
                 break redirect;
@@ -145,23 +148,91 @@ public class JunitTester {
         List<URL> urls = new ArrayList<URL>();
         URL artifactUrl = getUrl(artifact);
         if (artifactUrl == null) {
-            return null;
+            throw new AssertionError(String.format("Could not find artifact: %s", artifact.getPath()));
         }
         urls.add(artifactUrl);
         if (dependencies == null) {
             return urls;
         }
 
+        boolean includesPlyUtil = false;
         for (String depName : dependencies.stringPropertyNames()) {
             // TODO - should this exclude the direct-transient deps? perhaps not b/c need for testing?
             String depPath = dependencies.getProperty(depName);
             URL depUrl = getUrl(new File(depPath));
             if (depUrl == null) {
-                return null;
+                throw new AssertionError(String.format("Could not find dependency artifact: %s", depPath));
             }
             urls.add(depUrl);
+            // TODO - is this the best way to handle those projects which depend upon ply-util?
+            if (depName.contains("ply-util")) {
+                includesPlyUtil = true;
+            }
         }
+
+        // now add our own dependencies
+        String localRepo = Props.getValue(Context.named("depmngr"), "localRepo");
+        if (localRepo.isEmpty()) {
+            Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
+            System.exit(1);
+        }
+        // TODO - how to resolve own namespace/name/version and dependencies
+        if (!includesPlyUtil) {
+            URL plyUtil = getUrl(FileUtil.fromParts(localRepo, "ply-util", "ply-util", "1.0", "ply-util-1.0.jar"));
+            if (plyUtil == null) {
+                throw new AssertionError("Could not find ^b^ply-util-1.0.jar^r^ in local repository.");
+            }
+            urls.add(plyUtil);
+        }
+        URL plyJunitTester = getUrl(FileUtil.fromParts(localRepo, "ply-test-junit", "ply-test-junit", "1.0", "ply-test-junit-1.0.jar"));
+        if (plyJunitTester == null) {
+            throw new AssertionError("Could not find ^b^ply-test-junit-1.0.jar^r^ in local repository.");
+        }
+        urls.add(plyJunitTester);
+        URL hamcrest = getUrl(FileUtil.fromParts(localRepo, "org.hamcrest", "hamcrest-core", "1.1", "hamcrest-core-1.1.jar"));
+        if (hamcrest == null) {
+            throw new AssertionError("Could not find ^b^hamcrest-core-1.1.jar^r^ in local repository.");
+        }
+        urls.add(hamcrest);
+        URL commonsLang = getUrl(FileUtil.fromParts(localRepo, "commons-lang", "commons-lang", "2.6", "commons-lang-2.6.jar"));
+        if (commonsLang == null) {
+            throw new AssertionError("Could not find ^b^commons-lang-2.6.jar^r^ in local repository.");
+        }
+        urls.add(commonsLang);
+        URL junit = getUrl(FileUtil.fromParts(localRepo, "junit", "junit", "4.10", "junit-4.10.jar"));
+        if (junit == null) {
+            throw new AssertionError("Could not find ^b^junit-4.10.jar^r^ in local repository.");
+        }
+        urls.add(junit);
+
         return urls;
+    }
+
+    private static boolean addClasspathEntries(File artifact, Properties dependencies, List<URL> urls) {
+        URL artifactUrl = getUrl(artifact);
+        if (artifactUrl == null) {
+            return false;
+        }
+        urls.add(artifactUrl);
+        if (dependencies == null) {
+            return false;
+        }
+
+        boolean includesPlyUtil = false;
+        for (String depName : dependencies.stringPropertyNames()) {
+            // TODO - should this exclude the direct-transient deps? perhaps not b/c need for testing?
+            String depPath = dependencies.getProperty(depName);
+            URL depUrl = getUrl(new File(depPath));
+            if (depUrl == null) {
+                return false;
+            }
+            urls.add(depUrl);
+            // TODO - is this the best way to handle those projects which depend upon ply-util?
+            if (depName.contains("ply-util")) {
+                includesPlyUtil = true;
+            }
+        }
+        return includesPlyUtil;
     }
 
     private static URL getUrl(File artifact) {
