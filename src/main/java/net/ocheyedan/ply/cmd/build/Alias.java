@@ -10,10 +10,7 @@ import net.ocheyedan.ply.exec.Execution;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Graph;
 import net.ocheyedan.ply.graph.Vertex;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 
 import java.io.File;
 import java.util.*;
@@ -82,17 +79,19 @@ public final class Alias extends Script {
         Alias parseAlias(Scope scope, Script parsed, String value, Map<String, Prop> unparsedAliases,
                          DirectedAcyclicGraph<String> cycleDetector, Map<String, Alias> parsedAliases, List<String> adHocProps) {
             cycleDetector.addVertex(parsed.name);
-            List<Script> scripts = parse(scope, parsed.scope, parsed.name, value, unparsedAliases, cycleDetector, parsedAliases);
-            Alias alias = new Alias(parsed.name, parsed.scope, scripts, parsed.arguments, adHocProps, parsed.unparsedName);
+            Args args = CommandLineParser.parseArgs(Iter.sized(splitScript(value)));
+            List<String> unparsedScripts = args.args;
+            List<String> augmentedAdHocProps = new ArrayList<String>(adHocProps);
+            augmentedAdHocProps.addAll(args.adHocProps);
+            List<Script> scripts = parse(scope, parsed.scope, parsed.name, unparsedScripts, unparsedAliases, cycleDetector, parsedAliases);
+            Alias alias = new Alias(parsed.name, parsed.scope, scripts, parsed.arguments, augmentedAdHocProps, parsed.unparsedName);
             parsedAliases.put(parsed.name, alias);
             return alias;
         }
 
-        private List<Script> parse(Scope originalScope, Scope scope, String name, String value,
+        private List<Script> parse(Scope originalScope, Scope scope, String name, List<String> scripts,
                                    Map<String, Prop> unparsedAliases, DirectedAcyclicGraph<String> cycleDetector,
                                    Map<String, Alias> parsedAliases) {
-            Args args = CommandLineParser.parseArgs(Iter.sized(splitScript(value)));
-            List<String> scripts = args.args;
             List<Script> parsedScripts = new ArrayList<Script>(scripts.size());
             Vertex<String> aliasVertex = cycleDetector.getVertex(name);
             for (String script : scripts) {
@@ -108,7 +107,7 @@ public final class Alias extends Script {
                     if (scopedUnparsedAliases.containsKey(parsed.name)) {
                         Alias alias = parseAlias(parsed.scope, parsed, scopedUnparsedAliases.get(parsed.name).value,
                                 scopedUnparsedAliases, new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(),
-                                args.adHocProps);
+                                Collections.<String>emptyList());
                         parsedScripts.add(alias.augment(parsed.arguments, parsed.unparsedName));
                     } else {
                         parsedScripts.add(parsed);
@@ -118,7 +117,7 @@ public final class Alias extends Script {
                         parsedScripts.add(parsedAliases.get(parsed.name).augment(parsed.arguments, parsed.unparsedName));
                     } else if (unparsedAliases.containsKey(parsed.name)) {
                         Alias alias = parseAlias(parsed.scope, parsed, unparsedAliases.get(parsed.name).value,
-                                unparsedAliases, cycleDetector, parsedAliases, args.adHocProps);
+                                unparsedAliases, cycleDetector, parsedAliases, Collections.<String>emptyList());
                         parsedScripts.add(alias.augment(parsed.arguments, parsed.unparsedName));
                     } else {
                         parsedScripts.add(parsed);
@@ -208,6 +207,12 @@ public final class Alias extends Script {
             Execution last = executions.get(executions.size() - 1);
             last = last.augment(this.arguments.toArray(new String[this.arguments.size()]));
             executions.set(executions.size() - 1, last);
+        }
+        // merge this alias's ad-hoc properties if any
+        if (!adHocProps.isEmpty()) {
+            Output.print("Adding %d ad-hoc properties.", adHocProps.size());
+            AdHoc.add(adHocProps);
+            AdHoc.merge();
         }
         return executions;
     }

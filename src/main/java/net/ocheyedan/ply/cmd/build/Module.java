@@ -112,9 +112,6 @@ final class Module {
      */
     void processAlias(Alias alias, List<Script> scripts) {
         List<Script> aliasesProcessedScripts = new ArrayList<Script>(alias.scripts.size());
-        // merge this alias's ad-hoc properties if any
-        AdHoc.add(alias.adHocProps);
-        AdHoc.merge();
         for (Script script : alias.scripts) {
             if (script instanceof Alias) {
                 processAlias((Alias) script, aliasesProcessedScripts);
