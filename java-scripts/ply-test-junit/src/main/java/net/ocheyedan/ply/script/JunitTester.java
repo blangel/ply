@@ -208,33 +208,6 @@ public class JunitTester {
         return urls;
     }
 
-    private static boolean addClasspathEntries(File artifact, Properties dependencies, List<URL> urls) {
-        URL artifactUrl = getUrl(artifact);
-        if (artifactUrl == null) {
-            return false;
-        }
-        urls.add(artifactUrl);
-        if (dependencies == null) {
-            return false;
-        }
-
-        boolean includesPlyUtil = false;
-        for (String depName : dependencies.stringPropertyNames()) {
-            // TODO - should this exclude the direct-transient deps? perhaps not b/c need for testing?
-            String depPath = dependencies.getProperty(depName);
-            URL depUrl = getUrl(new File(depPath));
-            if (depUrl == null) {
-                return false;
-            }
-            urls.add(depUrl);
-            // TODO - is this the best way to handle those projects which depend upon ply-util?
-            if (depName.contains("ply-util")) {
-                includesPlyUtil = true;
-            }
-        }
-        return includesPlyUtil;
-    }
-
     private static URL getUrl(File artifact) {
         URL artifactUrl;
         try {

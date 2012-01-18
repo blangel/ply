@@ -85,9 +85,9 @@ public class Junit4Invoker implements Runnable {
         int failCount = result.getFailureCount() - syntheticCount;
 
         PrivilegedOutput
-                .print("\nRan ^b^%d^r^ test%s in ^b^%.3f seconds^r^ with %s%d^r^ failure%s and %s%d^r^ ignored.\n",
+                .print("\nRan ^b^%d^r^ test%s in ^b^%.3f seconds^r^ with %s%d%s^r^ failure%s and %s%d^r^ ignored.\n",
                         runCount, (runCount == 1 ? "" : "s"), (result.getRunTime() / 1000.0f),
-                        (failCount > 0 ? "^red^^i^" : "^green^"), failCount, (failCount == 1 ? "" : "s"),
+                        (failCount > 0 ? "^red^^i^ " : "^green^"), failCount, (failCount == 0 ? "" : " "), (failCount == 1 ? "" : "s"),
                         (result.getIgnoreCount() > 0 ? "^yellow^^i^" : "^b^"), result.getIgnoreCount());
 
         Prop reportDirProp = Props.get(Context.named("project"), "reports.dir");
