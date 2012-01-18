@@ -210,7 +210,6 @@ public final class Alias extends Script {
         }
         // merge this alias's ad-hoc properties if any
         if (!adHocProps.isEmpty()) {
-            Output.print("Adding %d ad-hoc properties.", adHocProps.size());
             AdHoc.add(adHocProps);
             AdHoc.merge();
         }

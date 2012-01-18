@@ -62,7 +62,7 @@ final class Module {
             // resolve alias, if necessary; otherwise, add as script
             Alias alias = Alias.getAlias(configDirectory, parse.scope, parse.name);
             if (alias != null) {
-                processAlias(alias, scripts);
+                processAlias(alias.augment(parse.arguments, parse.unparsedName), scripts);
             } else {
                 processScript(parse, scripts, arg);
             }
