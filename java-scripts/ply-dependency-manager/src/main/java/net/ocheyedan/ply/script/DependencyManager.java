@@ -133,9 +133,9 @@ public class DependencyManager {
                 printDependencyGraph(depGraph.getRootVertices(), String.format("%s ", PlyUtil.isUnicodeSupported() ? "\u26AC" : "+"), new HashSet<Vertex<Dep>>());
             }
         } else if ((args.length > 1) && "add-repo".equals(args[0])) {
-            addRepository(args[1]);
+            addRepository(args[1], scope);
         } else if ((args.length > 1) && "remove-repo".equals(args[0])) {
-            removeRepository(args[1]);
+            removeRepository(args[1], scope);
         } else if (args.length == 0) {
             Map<String, String> dependencies = getDependencies(scope);
             int size = dependencies.size();
@@ -169,6 +169,8 @@ public class DependencyManager {
         if (Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry) != null) { // getDependencyGraph returns => ok
             storeDependenciesFile(dependencies, scope);
         }
+        Output.print("Added dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
+                String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
     }
 
     private static void removeDependency(String dependency, Scope scope) {
@@ -190,10 +192,12 @@ public class DependencyManager {
             Properties dependencies = loadDependenciesFile(scope);
             dependencies.remove(atom.getPropertyName());
             storeDependenciesFile(dependencies, scope);
+            Output.print("Removed dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
+                String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
         }
     }
 
-    private static void addRepository(String repository) {
+    private static void addRepository(String repository, Scope scope) {
         RepositoryAtom atom = RepositoryAtom.parse(repository);
         if (atom == null) {
             Output.print("^error^ Repository %s not of format [type:]repoUri.", repository);
@@ -206,16 +210,18 @@ public class DependencyManager {
                     atom.getPropertyName());
             System.exit(1);
         }
-        Properties repositories = loadRepositoriesFile();
+        Properties repositories = loadRepositoriesFile(scope);
         if (repositories.contains(atom.getPropertyName())) {
             Output.print("^info^ overriding repository %s; was %s now is %s.", atom.getPropertyName(),
                     repositories.getProperty(atom.getPropertyName()), atom.getPropertyValue());
         }
         repositories.put(atom.getPropertyName(), atom.getPropertyValue());
-        storeRepositoriesFile(repositories);
+        storeRepositoriesFile(repositories, scope);
+        Output.print("Added repository %s%s", atom.toString(), !Scope.Default.equals(scope) ?
+                String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
     }
 
-    private static void removeRepository(String repository) {
+    private static void removeRepository(String repository, Scope scope) {
         RepositoryAtom atom = RepositoryAtom.parse(repository);
         if (atom == null) {
             Output.print("^error^ Repository %s not of format [type:]repoUri.", repository);
@@ -226,9 +232,11 @@ public class DependencyManager {
             Output.print("^warn^ Repository not found; given %s:%s", atom.getPropertyValue(),
                     atom.getPropertyName());
         } else {
-            Properties repositories = loadRepositoriesFile();
+            Properties repositories = loadRepositoriesFile(scope);
             repositories.remove(atom.getPropertyName());
-            storeRepositoriesFile(repositories);
+            storeRepositoriesFile(repositories, scope);
+            Output.print("Removed repository %s%s", atom.toString(), !Scope.Default.equals(scope) ?
+                String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
         }
     }
 
@@ -319,10 +327,10 @@ public class DependencyManager {
         return PropertiesFileUtil.load(loadPath, true);
     }
 
-    private static Properties loadRepositoriesFile() {
+    private static Properties loadRepositoriesFile(Scope scope) {
         String localDir = Props.getValue(Context.named("ply"), "project.dir");
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "repositories.properties";
+                File.separator + "repositories" + scope.getFileSuffix() + ".properties";
         return PropertiesFileUtil.load(loadPath, true);
     }
 
@@ -335,10 +343,10 @@ public class DependencyManager {
         }
     }
 
-    private static void storeRepositoriesFile(Properties repositories) {
+    private static void storeRepositoriesFile(Properties repositories, Scope scope) {
         String localDir = Props.getValue(Context.named("ply"), "project.dir");
         String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "repositories.properties";
+                File.separator + "repositories" + scope.getFileSuffix() + ".properties";
         if (!PropertiesFileUtil.store(repositories, storePath, true)) {
             System.exit(1);
         }

@@ -216,16 +216,9 @@ public final class Deps {
 
         Output.print("^error^ Dependency ^b^%s^r^ not found in any repository; ensure repositories are accessible.", dependencyAtom.toString());
         Output.print("^error^ Project's local repository is ^b^%s^r^.", localRepo.toString());
-        StringBuilder remoteRepoString = new StringBuilder();
-        for (RepositoryAtom remote : repositoryRegistry.remoteRepositories) {
-            if (remoteRepoString.length() != 0) {
-                remoteRepoString.append(", ");
-            }
-            remoteRepoString.append(remote.toString());
-        }
         int remoteRepoSize = repositoryRegistry.remoteRepositories.size();
-        Output.print("^error^ Project has ^b^%d^r^ other repositor%s%s", remoteRepoSize, (remoteRepoSize != 1 ? "ies" : "y"),
-                (remoteRepoSize > 0 ? String.format(" [ %s ]", remoteRepoString.toString()) : ""));
+        Output.print("^error^ Project has ^b^%d^r^ other repositor%s %s", remoteRepoSize, (remoteRepoSize != 1 ? "ies" : "y"),
+                (remoteRepoSize > 0 ? repositoryRegistry.remoteRepositories.toString() : ""));
         return null;
     }
 
@@ -416,6 +409,13 @@ public final class Deps {
     private static String getDependencyDirectoryPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
         String startPath = repositoryAtom.getPropertyName();
         if (!startPath.contains(":")) {
+            // first coerce into an absolute file path
+            try {
+                startPath = FileUtil.getCanonicalPath(new File(startPath));
+            } catch (RuntimeException re) {
+                // the path is likely invalid, attempt resolution anyway and let the subsequent code determine the
+                // actual reason the path is invalid.
+            }
             // a file path without prefix, make absolute
             startPath = "file://" + startPath;
         }

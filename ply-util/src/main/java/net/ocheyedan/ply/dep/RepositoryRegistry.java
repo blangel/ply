@@ -25,7 +25,7 @@ public final class RepositoryRegistry {
 
     /**
      * A synthetic repository to consult before looking into either the {@link #localRepository} or
-     * the list of {@link #remoteRepositories}.  Use a synthetic repository when adding dependencies as none of the
+     * the list of {@link #remoteRepositories}.  Use a synthetic repository when adding dependencies; as none of the
      * actual repositories will hold the new dependency until it has been resolved correctly.  This is like a staging
      * repository until it has been determined that adding the new dependency will do no harm (i.e., cause a circular
      * dependency).
