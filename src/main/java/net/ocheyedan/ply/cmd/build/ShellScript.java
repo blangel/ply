@@ -21,17 +21,21 @@ public final class ShellScript extends Script {
 
     /**
      * Removes the tick marks from the script and creates an appropriate {@link Execution} object.
+     * Note, any {@link #arguments} are concatenated (space delimited) into a string and appended to the end of the
+     * {@link #name} as the shell invocation's arguments are the argument to the resolved shell (i.e., bash) and
+     * not considered part of the actual scripts arguments (i.e., ls).
      * @param overriddenExecutionName to use in the converted {@link Execution} objects' {@link Execution#name} values.
      * @return an shell script execution
      */
     @Override protected List<Execution> convert(String overriddenExecutionName) {
-        String[] executableArgs = new String[arguments.size() + 1];
+        String[] executableArgs = new String[1];
         // remove the '`' leading and trailing tick marks
-        String shellScript = name.substring(1, name.length() - 1);
-        executableArgs[0] = shellScript;
-        for (int i = 1; i < executableArgs.length; i++) {
-            executableArgs[i] = arguments.get(i - 1);
+        StringBuilder shellScript = new StringBuilder(name.substring(1, name.length() - 1));
+        for (String arg : arguments) {
+            shellScript.append(" ");
+            shellScript.append(arg);
         }
+        executableArgs[0] = shellScript.toString();
         List<Execution> executions = new ArrayList<Execution>(1);
         executions.add(new Execution(overriddenExecutionName, this, executableArgs));
         return executions;
