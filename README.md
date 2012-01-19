@@ -11,7 +11,7 @@ Features
 ![ply-util: ply clean test](https://github.com/blangel/ply/raw/master/docs/imgs/ply-util-test.png "ply-util: ply clean test")
 
 * __No xml__ - Ply has no xml configuration. Its configuration is simple and familiar; unix-style [properties](ply/tree/master/docs/Properties.md) files. Ply even has tools built-in to help you manage your project's properties. And yes, just properties files. Good old simple key value pairs, no complex syntax or DSL to learn.
-* __Sensible defaults__ - ply uses defaults which are intuitive (i.e., the default _java_ source/target for compilation is the version of the `$JAVA_HOME` jdk). And because ply has sensible and intuitive defaults starting a new project is as simple as running `ply init`; no copy/paste find/replace necessary!
+* __Sensible defaults__ - ply uses defaults which are intuitive (e.g., the default _java_ source/target for compilation is the version of the `$JAVA_HOME` jdk). And because ply has sensible and intuitive defaults starting a new project is as simple as running `ply init`; no copy/paste find/replace necessary!
 * __Easily extensible__ - since _ply_ simply executes scripts (or aliases of scripts; i.e., _clean_, _install_, _test_) changing or augmenting a build lifecycle is just a matter of adding/removing/replacing scripts (or re-aliasing them).  The default scripts and aliases provided specify a best practice for development but if your project wants/needs to deviate from this approach doing so shouldn't feel like working against the grain.  And keep in mind, [scripts](ply/tree/master/docs/Scripts.md) are anything executable (bash, perl, ruby, python, ...) so even though your project's written in one language feel free to flex your polyglot-muscles and augment your build process in any language you like! 
 
 Why Another Build Tool?
@@ -35,9 +35,9 @@ Concepts
 
 At its simplest _ply_ just invokes a series of scripts. The following is a valid series of scripts for ply:
 
-    $ ply '`echo ply says:`' '`echo hello`'
+    $ ply clean compile
 
-The series is space delimited so the previous example ran two scripts: `echo ply says:` and `echo hello`.
+The series is space delimited so the previous example ran two scripts: `clean` and `compile`
 
 [Scripts](ply/tree/master/docs/Scripts.md) can be extended and [aliased](ply/tree/master/docs/Aliases.md).
 Ply ships with property defaults and packaged scripts which allow most java projects to
