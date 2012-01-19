@@ -14,43 +14,43 @@ and assign your overridden value to the same property name.  For instance, the s
 is a property defined within the `$PLY_HOME/config/project.properties` file named `src.dir`.  To override this for
 a project, you would add a property named `src.dir` within the `.ply/config/project.properties` file.
 
-Because setting property values is a common task, ply provides a utility to assist.
+Because interacting with these property files is a common task, ply provides tools to assist
 
-    $ ply config --usage
+    $ ply --usage
 
 Some examples:
 
 To get all locally defined properties (across all contexts):
 
-    $ ply config get
+    $ ply get
 
 To get all properties (including system properties):
 
-    $ ply config get-all
+    $ ply get-all
 
 To get all local properties with context `project` (i.e., those defined within the `project.properties` file)
 
-    $ ply config --project get
+    $ ply get from project
 
 To get all properties starting with _name_
 
-    $ ply config get-all name*
+    $ ply get-all name*
 
 To get all properties within the `compiler` context starting with _warn_
 
-    $ ply config --compiler get-all warn*
+    $ ply get-all warn* from compiler
 
 To set _version_ within the `project` context to be _2.0_
 
-    $ ply config --project set version 2.0
+    $ ply set version=2.0 in project
 
 To set a property named _url_ in a context called `environ` to _http://mydomain.com_ (note, the property file will be created if it doesn't exist).
 
-    $ ply config --environ set url http://mydomain.com
+    $ ply set "url=http://mydomain.com" in environ
 
 To delete the property _url_ from the context `environ` (note, if after removal of _url_ there are no properties left the whole `environ.properties` file will be deleted)
 
-    $ ply config --environ remove url
+    $ ply remove url from environ
 
 Any script can directly read these property files during execution, however, ply does the heavy lifting by resolving the
 properties and passing them as environmental variables to each invoked script.  The resolution of properties files
