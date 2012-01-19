@@ -3,7 +3,7 @@ Overview
 
 Ply is a build tool.  It is sensible, fast and a joy to use. 
 
-##Features
+__Features__
 
 * __Pretty print__ - _ply_'s output is clean and colored.  Here's the actual output of running `ply clean test` from the `ply-util` module:
 
@@ -22,8 +22,8 @@ Other build tools make you work harder than you should have to.  How hard? Stupi
   * __Rigid extensions__ - extending the functionality of build tools is hard and often forces developers to conform to rigid APIs (i.e., implementing an interface in a particular langauge) or in the best case forces developers to write their extensions in a set language (i.e., an extension is anything _provided_ it is written in Ruby).
   * __Boiler-plate configuration for new projects__ - starting a new project, developers are eager to get working.  Having to copy and paste configuration files from existing projects and then do find-replace operations is annoying and not productive.
 
-Ok, I Want It! Download/Install
--------------------------------
+Ok, I Want It!
+-------------
 
 [ply.tar](ply/raw/master/dist/ply.tar)
 
