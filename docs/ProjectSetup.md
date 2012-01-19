@@ -25,7 +25,7 @@ Will create directories `.ply/config` under `electric-chilly` and the following 
 
 This can also be verified via _ply_ itself by doing:
 
-     $ ply config get
+     $ ply get
 
 Here's an image of the steps:
 
