@@ -29,7 +29,9 @@ public final class CommandLineParser {
     public static Command parse(String[] args) {
         if ((args == null) || (args.length < 1) || "--usage".equals(args[0]) || "--help".equals(args[0])) {
             return new Usage(parseArgs(Iter.sized(args)));
-        }else if ("init".equals(args[0])) {
+        } else if ("--version".equals(args[0]) || "-v".equals(args[0]) || "-version".equals(args[0])) {
+            return new Version(parseArgs(Iter.sized(args)));
+        } else if ("init".equals(args[0])) {
             return new Init(parseArgs(Iter.sized(args)));
         } else if ("get".equals(args[0]) || args[0].endsWith(":get")) {
             return new Get(parseArgs(Iter.sized(args)));

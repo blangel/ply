@@ -132,6 +132,6 @@ exec "$JAVACMD" \
   -client -Xms32M -Xmx32M -dsa -XX:+UseCompressedStrings -XX:+UseFastAccessorMethods \
   -classpath "${PLY_HOME}"/lib/ply-1.0.jar:"${PLY_HOME}"/lib/ply-util-1.0.jar \
   "-Dply.home=${PLY_HOME}" \
-  "-Dply.version=1.0-SNAPSHOT" \
+  "-Dply.version=1.0" \
   "-Dply.java=${JAVACMD}" \
   "net.ocheyedan.ply.Ply" "$@"

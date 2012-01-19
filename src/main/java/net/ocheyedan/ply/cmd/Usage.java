@@ -17,8 +17,8 @@ public final class Usage extends Command {
     }
 
     @Override public void run() {
-        OutputExt.init(); // dis-regard ad-hoc props and defined properties, simply init
-        Output.print("ply <^b^command^r^> [--usage|--help] [-PadHocProp]");
+        OutputExt.init();
+        Output.print("ply <^b^command^r^> [--usage|--help|--version] [-PadHocProp]");
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^init^r^");
         Output.print("        initializes the current directory as a ply project");
