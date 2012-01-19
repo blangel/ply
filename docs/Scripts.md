@@ -12,9 +12,13 @@ within context `project`; see [Properties](Properties.md) for a general descript
 your project is located at `~/projects/myproject` its scripts directory would default to be `~/projects/myproject/scripts`).  If such a script is found, invoke it, otherwise try -3-.
 
 -3- Check for an executable script of the same name within the ply scripts' directory `$PLY_HOME/scripts`. If found,
-invoke it, otherwise, try -4-
+invoke it, otherwise, use it as an argument to the previous script.
 
--4- Invoke directly (must be accessible via the system $PATH).
+For example; here is how ply resolves the following execution (assuming the default properties; i.e., you haven't re-aliased or added new scripts):
+
+    $ ply dep tree
+
+Ply first looks up `dep` to see if it is an alias.  It is, it is aliased as `ply-dependency-manager-1.0.jar`.  It then checks to see if `ply-dependency-manager-1.0.jar` is itself an alias.  It is not.  So it then checks to see if `ply-dependency-manager-1.0.jar` is a script from with the local project's scripts directory.  It is not so it checks to see if it is a script within the `$PLY_HOME/scripts` directory.  It is.  Ply then needs to resolve the next argument `tree` in case it is an argument to the script.  It goes through the same process as it did for `dep` however `tree` is neither an alias nor is it a script in either the local scripts directory or the system scripts directory and so it is treated as an argument to the `ply-dependency-manager-1.0.jar` script.
 
 Each script invocation will be passed, via environmental variables, a set of resolved properties particular to the
 invocation.  See the [Properties](Properties.md) section for a description of how properties are resolved and then passed to
