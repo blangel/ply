@@ -3,7 +3,8 @@ Overview
 
 Ply is a build tool.  It is sensible, fast and a joy to use. 
 
-__Features__
+Features
+--------
 
 * __Pretty print__ - _ply_'s output is clean and colored.  Here's the actual output of running `ply clean test` from the `ply-util` module:
 
@@ -21,25 +22,6 @@ Other build tools make you work harder than you should have to.  How hard? Stupi
   * __Copious XML configuration__ - many build tools use xml to configure their execution.  XML is verbose and maintaining it is arduous, err prone and often mandates IDE features/plugins to prevent developer insanity.
   * __Rigid extensions__ - extending the functionality of build tools is hard and often forces developers to conform to rigid APIs (i.e., implementing an interface in a particular langauge) or in the best case forces developers to write their extensions in a set language (i.e., an extension is anything _provided_ it is written in Ruby).
   * __Boiler-plate configuration for new projects__ - starting a new project, developers are eager to get working.  Having to copy and paste configuration files from existing projects and then do find-replace operations is annoying and not productive.
-
-Ok, I Want It!
--------------
-
-[ply.tar](ply/raw/master/dist/ply.tar)
-
-Untar the `ply.tar` package to a directory of your choosing (say `/opt/ply`) and then make sure the following properties are set as environmental variables:
-
-* `JAVA_HOME` -> (likely already set by your distro) set to the home directory of the java installation
-
-* `PLY_HOME` -> set to the directory of where ever you untar-ed ply (i.e., `/opt/ply`).
-
-Finally add `${PLY_HOME}/bin` to your `$PATH`
-
-__Bash Tab Completion__ (i.e., readline support)
-
-Within the distribution is a file [ply_completion.bash](ply/raw/master/dist/ply/ply_completion.bash) which provides Bash tab completion.  To enable:
-
-       $ sudo cp ply_completion.bash /etc/bash_completion.d/
 
 Concepts
 --------
@@ -64,6 +46,25 @@ build with no configuration.  For a list of all scripts which ply ships with see
 To enable a directory/project to use ply, simply run init from within the directory:
 
     $ ply init
+
+Ok, I Want It!
+--------------
+
+[ply.tar](ply/raw/master/dist/ply.tar)
+
+Untar the `ply.tar` package to a directory of your choosing (say `/opt/ply`) and then make sure the following properties are set as environmental variables:
+
+* `JAVA_HOME` -> (likely already set by your distro) set to the home directory of the java installation
+
+* `PLY_HOME` -> set to the directory of where ever you untar-ed ply (i.e., `/opt/ply`).
+
+Finally add `${PLY_HOME}/bin` to your `$PATH`
+
+__Bash Tab Completion__ (i.e., readline support)
+
+Within the distribution is a file [ply_completion.bash](ply/raw/master/dist/ply/ply_completion.bash) which provides Bash tab completion.  To enable:
+
+       $ sudo cp ply_completion.bash /etc/bash_completion.d/
 
 Tutorials
 --------
