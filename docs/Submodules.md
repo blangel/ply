@@ -3,7 +3,7 @@ Submodules
 Ply has a concept of submodules which (like __maven__'s aggregators) is simply a convenient way to allow one sequence of script invocations to be progagated to other subprojects during the same execution.  Submodules are configured by placing the subproject directory name in a property file with context `submodules`.  For instance if you had a project named _mypoject_ which has a sub-directory named _mysubproject_ which was also a ply project one could add
 _mysubproject_ as a submodule to _myproject_ by invoking the following from within the _myproject_ directory:
 
-    $ ply config --submodules set mysubproject ""
+    $ ply set mysubproject= in submodules
 
 Then all ply scripts run for _mypoject_ are also run for _mysubproject_; e.g.
 
