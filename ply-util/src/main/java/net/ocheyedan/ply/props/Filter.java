@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -54,7 +55,8 @@ public final class Filter {
         for (String envPropKey : System.getenv().keySet()) {
             if (toFilter.contains("${" + envPropKey + "}")) {
                 try {
-                    toFilter = toFilter.replaceAll(Pattern.quote("${" + envPropKey + "}"), System.getenv(envPropKey));
+                    toFilter = toFilter.replaceAll(Pattern.quote("${" + envPropKey + "}"), Matcher.quoteReplacement((
+                            System.getenv(envPropKey))));
                 } catch (IllegalArgumentException iae) {
                     Output.print("^error^ Error filtering '^b^%s^r^' with '^b^%s^r^'.", envPropKey, System.getenv(envPropKey));
                     Output.print(iae);
@@ -70,7 +72,7 @@ public final class Filter {
 
     private static String filterValue(String toFilter, Prop by, String prefix) {
         try {
-            return toFilter.replaceAll(Pattern.quote("${" + prefix + by.name + "}"), by.value);
+            return toFilter.replaceAll(Pattern.quote("${" + prefix + by.name + "}"), Matcher.quoteReplacement(by.value));
         } catch (IllegalArgumentException iae) {
             Output.print("^error^ Error filtering '^b^%s^r^' with '^b^%s^r^'.", prefix + by.name, by.value);
             Output.print(iae);
@@ -170,7 +172,7 @@ public final class Filter {
         for (String envPropKey : System.getenv().keySet()) {
             if (filtered.contains("${" + envPropKey + "}")) {
                 try {
-                    filtered = filtered.replaceAll(Pattern.quote("${" + envPropKey + "}"), System.getenv(envPropKey));
+                    filtered = filtered.replaceAll(Pattern.quote("${" + envPropKey + "}"), Matcher.quoteReplacement(System.getenv(envPropKey)));
                 } catch (IllegalArgumentException iae) {
                     Output.print("^error^ Error filtering '^b^%s^r^' with '^b^%s^r^'.", envPropKey, System.getenv(envPropKey));
                     Output.print(iae);
@@ -193,9 +195,12 @@ public final class Filter {
             String toFind = prefix + prop.name;
             if (value.contains("${" + toFind + "}")) {
                 Prop.Val propVal = prop.get(scope);
-                String replacement = filter(context, scope, (propVal == null ? null : propVal.unfiltered), props, contexts); // TODO - circular prop defs
+                String replacement = propVal.value;
+                if (propVal.value.equals(propVal.unfiltered)) {
+                    replacement = filter(context, scope, (propVal == null ? null : propVal.unfiltered), props, contexts); // TODO - circular prop defs
+                }
                 try {
-                    value = value.replaceAll(Pattern.quote("${" + toFind + "}"), replacement);
+                    value = value.replaceAll(Pattern.quote("${" + toFind + "}"), Matcher.quoteReplacement(replacement));
                 } catch (IllegalArgumentException iae) {
                     Output.print("^error^ Error filtering '^b^%s^r^' with '^b^%s^r^'.", toFind, replacement);
                     Output.print(iae);

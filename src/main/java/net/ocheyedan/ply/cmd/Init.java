@@ -32,7 +32,7 @@ public final class Init extends Command {
 
     public void run() {
         try {
-            OutputExt.init(); // dis-regard ad-hoc props and defined properties, simply init
+            OutputExt.init("true", "true", "warn,info"); // dis-regard ad-hoc props and defined properties, simply init
             init(new File("."), args);
         } catch (PomNotFound pnf) {
             Output.print("^ply^ ^error^ Specified maven pom file [ ^b^%s^r^ ] does not exist.", pnf.pom);
@@ -122,7 +122,7 @@ public final class Init extends Command {
         Output.print("^ply^ Created the following project properties:");
         Output.print("^ply^");
         PrintStream old = setupTabOutput();
-        Map<Context, Collection<Prop>> props = Props.get(configDir);
+        Map<Context, Collection<Prop>> props = Props.getLocal(configDir, Scope.Default);
         Get get = new Get(null);
         get.print(props, Scope.Default, false);
         revertTabOutput(old);
@@ -146,7 +146,7 @@ public final class Init extends Command {
     private static File getMavenPom(File from, Args args) {
         if ((args.args.size() > 1) && args.args.get(1).startsWith("--from-pom=")) {
             return FileUtil.fromParts(from.getPath(), args.args.get(1).substring("--from-pom=".length()));
-        } else if (PlyUtil.isHeadless()) {
+        } else if (isHeadless()) {
             return null;
         }
         File[] poms = findPomFiles(from);
@@ -201,6 +201,18 @@ public final class Init extends Command {
         for (File file : CLEANUP_FILES) {
             FileUtil.delete(file);
         }
+    }
+
+    /**
+     * Exists as an alternative to {@link net.ocheyedan.ply.PlyUtil#isHeadless()} as during init the process
+     * cannot load properties until the local project properties have been initialized; otherwise, the resolved
+     * properties (which will not yet contain the, just created, local properties) will not be within the cache.
+     * @return true if {@literal ply} is running as headless
+     * @see net.ocheyedan.ply.PlyUtil#isHeadless()
+     */
+    private static boolean isHeadless() {
+        Properties plySystemProps = PropertiesFileUtil.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "ply.properties"));
+        return (plySystemProps != null) && "true".equalsIgnoreCase(plySystemProps.getProperty("headless"));
     }
 
     /**
@@ -367,12 +379,12 @@ public final class Init extends Command {
      */
     private static List<RepositoryAtom> getRepositories() throws NoRepositories {
         List<RepositoryAtom> repositories = new ArrayList<RepositoryAtom>();
-        String localRepoPath = Props.getValue(Context.named("depmngr"), "localRepo");
+        String localRepoPath = getSystemLocalRepo();
         RepositoryAtom local = RepositoryAtom.parse(localRepoPath);
         if (local != null) {
             repositories.add(local);
         }
-        Collection<Prop> repositoryProperties = Props.get(Context.named("repositories"));
+        Collection<Prop> repositoryProperties = getSystemRepositories();
         RepositoryAtom repo;
         for (Prop prop : repositoryProperties) {
             repo = RepositoryAtom.parse(RepositoryAtom.atomFromProp(prop));
@@ -385,6 +397,31 @@ public final class Init extends Command {
         }
         Collections.sort(repositories, RepositoryAtom.LOCAL_COMPARATOR);
         return repositories;
+    }
+
+    /**
+     * @return the system value for the {@literal depmngr.localRepo} property for the default scope
+     */
+    private static String getSystemLocalRepo() {
+        Properties systemDepmngrProps = PropertiesFileUtil.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "depmngr.properties"));
+        return (systemDepmngrProps == null ? null : systemDepmngrProps.getProperty("localRepo"));
+    }
+
+    /**
+     * @return the system defined repositories for the default scope
+     */
+    private static Collection<Prop> getSystemRepositories() {
+        Properties systemRepositoriesProps = PropertiesFileUtil.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "repositories.properties"));
+        if (systemRepositoriesProps == null) {
+            return Collections.emptyList();
+        }
+        Context repositoriesContext = Context.named("repositories");
+        List<Prop> props = new ArrayList<Prop>(systemRepositoriesProps.size());
+        for (String propName : systemRepositoriesProps.stringPropertyNames()) {
+            String propValue = systemRepositoriesProps.getProperty(propName);
+            props.add(new Prop(repositoriesContext, propName, propValue, propValue, Prop.Loc.System));
+        }
+        return props;
     }
 
     /**

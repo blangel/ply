@@ -5,6 +5,7 @@ import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 import java.io.File;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -79,7 +80,7 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
         message = message.replaceAll("location:", "^r^in^b^");
         // since we're printing the className at the end of every message, if the className is within the message
         // replace it with the shortClassName (i.e., className without package) for readability.
-        message = message.replaceAll(Pattern.quote(className), classShortName);
+        message = message.replaceAll(Pattern.quote(className), Matcher.quoteReplacement(classShortName));
 
         Set<String> messages = statements.get(type);
         if (messages == null) {

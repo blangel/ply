@@ -9,7 +9,7 @@ package net.ocheyedan.ply;
  */
 public class OutputExt {
 
-    public static void printFromExec(String message, Object ... args) { // TODO - rename
+    public static void printFromExec(String message, Object ... args) {
         Output.printFromExec(message, args);
     }
 
@@ -19,6 +19,10 @@ public class OutputExt {
 
     public static void init() {
         Output.init();
+    }
+
+    public static void init(String coloredOutput, String decorated, String logLevels) {
+        Output.init(coloredOutput, decorated, logLevels);
     }
 
 }

@@ -87,13 +87,17 @@ public final class Output {
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
 
     static void init() {
+        Context plyContext = Context.named("ply");
+        init(Props.getValue(plyContext, "color"), Props.getValue(plyContext, "decorated"),
+             Props.getValue(plyContext, "log.levels"));
+    }
+
+    static void init(String coloredOutput, String decorated, String logLevels) {
         if (inited) {
             return;
         }
         try {
             String terminal = System.getenv("TERM");
-            Context plyContext = Context.named("ply");
-            String logLevels = Props.getValue(plyContext, "log.levels");
             if (!logLevels.contains("warn")) {
                 warnLevel.set(false);
             }
@@ -103,12 +107,10 @@ public final class Output {
             if (!logLevels.contains("debug") && !logLevels.contains("dbug")) {
                 dbugLevel.set(false);
             }
-            String decorated = Props.getValue(plyContext, "decorated");
             if ("false".equalsIgnoreCase(decorated)) {
                 Output.decorated.set(false);
             }
             withinTerminal.set(terminal != null);
-            String coloredOutput = Props.getValue(plyContext, "color");
             boolean useColor = withinTerminal.get() && !"false".equalsIgnoreCase(coloredOutput);
             Output.coloredOutput.set(useColor);
             // TODO - what are the range of terminal values and what looks best for each?

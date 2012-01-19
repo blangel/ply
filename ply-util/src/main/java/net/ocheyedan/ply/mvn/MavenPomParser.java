@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -494,7 +495,8 @@ public class MavenPomParser {
         }
         if (toFilter.contains("${" + filterValue + "}")) {
             try {
-                return toFilter.replaceAll(Pattern.quote("${" + filterValue + "}"), replacementMap.get(filterValue));
+                return toFilter.replaceAll(Pattern.quote("${" + filterValue + "}"), Matcher
+                        .quoteReplacement(replacementMap.get(filterValue)));
             } catch (IllegalArgumentException iae) {
                 Output.print("^error^ Error filtering '^b^%s^r^' with '^b^%s^r^'.", filterValue,
                         replacementMap.get(filterValue));
