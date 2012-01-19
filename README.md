@@ -1,16 +1,19 @@
 Overview
 --------
-Ply is a fun build tool that works.
 
-Build tools suck. Make is a disaster. Maven and Ant have copious XML configurations and don't allow the developer to easily override things they want.
-DSL's seem nice on the surface but end up being inflexible when one has a large complex project to work on.
+Ply is a build tool.  It is sensible, fast and a joy to use.
+
+Other build tools make you work harder than you should have to.  How hard? Stupidly hard:
+
+  * __Copious XML configuration__ - many build tools use xml to configure their execution.  XML is verbose and maintaining it is arduous, err prone and often mandates IDE features/plugins to prevent developer insanity.
+  * __Rigid extensions__ - extending the functionality of build tools is hard and often forces developers to conform to rigid APIs (i.e., implementing an interface in a particular langauge) or in the best case forces developers to write their extensions in a set language (i.e., an extension is anything _provided_ it is written in Ruby).
+  * __Boiler-plate configuration for new projects__ - starting a new project, developers are eager to get working.  Having to copy and paste configuration files from existing projects and then do find-replace operations is annoying and not productive.
+
 Ply fixes all of this by providing a few simple paradigms:
 
   * Small, simple run-time written in Java
   * Complete configuration of everything by using code in any language (i.e.; not a DSL)
   * Sensible defaults so you have to work very little
-
-Ply currently only supports Java builds, but is language agnostic. Future work is planned to make Ply build other languages.
 
 Features
 --------
@@ -19,7 +22,8 @@ Features
 
 ![ply-util: ply clean test](https://github.com/blangel/ply/raw/master/docs/imgs/ply-util-test.png "ply-util: ply clean test")
 
-* __Sensible defaults__ - _ply_ uses defaults which are intuitive (i.e., the default _java_ source/target for compilation is the version of the `$JAVA_HOME` jdk) and make setting up a new project extremely easy. 
+* __No xml__ - Ply has no xml configuration. Its configuration is simple and familiar; unix-style [properties](ply/tree/master/docs/Properties.md) files. Ply even has tools built-in to help you manage your project's properties. And yes, just properties files. Good old simple key value pairs, no complex syntax or DSL to learn.
+* __Sensible defaults__ - ply uses defaults which are intuitive (i.e., the default _java_ source/target for compilation is the version of the `$JAVA_HOME` jdk). And because ply has sensible and intuitive defaults starting a new project is as simple as running `ply init`; no copy/paste find/replace necessary!
 * __Easily extensible__ - since _ply_ simply executes scripts (or aliases of scripts; i.e., _clean_, _install_, _test_) changing or augmenting a build lifecycle is just a matter of adding/removing/replacing scripts (or re-aliasing them).  The default scripts and aliases provided specify a best practice for development but if your project wants/needs to deviate from this approach doing so shouldn't feel like working against the grain.  And keep in mind, [scripts](ply/tree/master/docs/Scripts.md) are anything executable (bash, perl, ruby, python, ...) so even though your project's written in one language feel free to flex your polyglot-muscles and augment your build process in any language you like! 
 
 Download/Install
@@ -53,13 +57,13 @@ Concepts
 
 At its simplest _ply_ just invokes a series of scripts. The following is a valid series of scripts for ply:
 
-    $ ply "echo ply says:" "echo hello"
+    $ ply '`echo ply says:`' '`echo hello`'
 
 The series is space delimited so the previous example ran two scripts: `echo ply says:` and `echo hello`.
 
 [Scripts](ply/tree/master/docs/Scripts.md) can be extended and [aliased](ply/tree/master/docs/Aliases.md).
 Ply ships with property defaults and packaged scripts which allow most java projects to
-build with no-to-minimal configuration.  For a list of all scripts which ply ships with see [Included Scripts](ply/tree/master/docs/IncludedScripts.md).
+build with no configuration.  For a list of all scripts which ply ships with see [Included Scripts](ply/tree/master/docs/IncludedScripts.md).
 
 To enable a directory/project to use ply, simply run init from within the directory:
 
