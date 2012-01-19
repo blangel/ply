@@ -21,11 +21,11 @@ Which tells ply, run alias/script `compile` but resolve properties using the sco
 
 This same notion of scopes (which is used for test execution as well as scoping dependencies) can be useful when choosing which property values to use while filtering.  For example, suppose your project placed all URLs in context `urls`; i.e.,
 
-    $ ply config --urls set domain localhost
+    $ ply set domain=localhost in urls
 
 One could scope the urls and then run `install` with the proper scope depending upon the environment.  For instance;
 
-    $ ply config --urls set domain localhost; ply config --urls.dev set domain dev.com; ply config --urls.beta set domain beta.com
+    $ ply set domain=localhost in urls; ply config dev:set domain=dev.com in urls; ply beta:set domain=beta.com in urls
 
 Now to run a build for the dev environment:
 
@@ -35,4 +35,4 @@ Because of the `dev` scope, ply will automatically run filtering against the `de
 
 Something useful to note, one can include scopes within aliases and in fact that is how the alias _test_ is defined:
 
-    $ ply config --aliases set test "install test:install ply-test-junit-1.0.jar"
+    $ ply set test="install test:install ply-test-junit-1.0.jar" in aliases
