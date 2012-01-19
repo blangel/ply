@@ -66,7 +66,7 @@ project's overridden property is passed.
 For example; the `$PLY_HOME/config/compiler.properties` file contains a property named _warnings_ whose value is _true_.
 If the local project overrides this to false
 
-    $ ply config --compiler set warnings false
+    $ ply set warnings=false in compiler
 
 then only the local override is passed to scripts (i.e., scripts will see one environment variable named `ply$compiler.warnings` with
 value `false`).
