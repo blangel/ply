@@ -91,6 +91,9 @@ public class Props {
     }
 
     private static Map<Context, Collection<Prop>> get(File configDirectory, Scope scope, boolean excludeSystem) {
+        if (Cache.containsContextMap(configDirectory, scope, excludeSystem)) {
+            return Cache.getContextMap(configDirectory, scope, excludeSystem);
+        }
         Collection<Prop.All> props = Loader.get(configDirectory);
         Map<Context, Collection<Prop>> map = new HashMap<Context, Collection<Prop>>();
         for (Prop.All prop : props) {
@@ -105,6 +108,7 @@ public class Props {
             }
             properties.add(new Prop(prop.context, prop.name, value.value, value.unfiltered, value.from));
         }
+        Cache.putContextMap(configDirectory, scope, excludeSystem, map);
         return map;
     }
 
@@ -192,6 +196,9 @@ public class Props {
     }
 
     private static Collection<Prop> get(Context context, File configDirectory, Scope scope, boolean excludeSystem) {
+        if (Cache.containsContext(context, configDirectory, scope, excludeSystem)) {
+            return Cache.getContext(context, configDirectory, scope, excludeSystem);
+        }
         Collection<Prop.All> props = Loader.get(configDirectory);
         Collection<Prop> properties = new HashSet<Prop>();
         for (Prop.All prop : props) {
@@ -204,6 +211,7 @@ public class Props {
             }
             properties.add(new Prop(prop.context, prop.name, value.value, value.unfiltered, value.from));
         }
+        Cache.putContext(context, configDirectory, scope, excludeSystem, properties);
         return properties;
     }
 
