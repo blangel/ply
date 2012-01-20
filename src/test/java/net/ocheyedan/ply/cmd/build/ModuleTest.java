@@ -116,6 +116,16 @@ public class ModuleTest {
         assertEquals(FileUtil.getCanonicalPath(FileUtil.fromParts(mockScriptsDir.getPath(), "mock-clean.jar")),
                      executions.get(2).executionArgs[0]);
         assertEquals("arg1-to-mock-clean", executions.get(2).executionArgs[1]);
+        // test with explicit arguments
+        rawArguments.clear();
+        rawArguments.add("compile arg1");
+        executions = Module.resolve(args, mockConfigDir);
+        assertEquals(1, executions.size());
+        assertEquals("compile", executions.get(0).name);
+        assertEquals(2, executions.get(0).executionArgs.length);
+        assertEquals(FileUtil.getCanonicalPath(FileUtil.fromParts(mockScriptsDir.getPath(), "mock-compile.jar")),
+                     executions.get(0).executionArgs[0]);
+        assertEquals("arg1", executions.get(0).executionArgs[1]);
     }
 
 }
