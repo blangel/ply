@@ -431,7 +431,11 @@ public final class Deps {
      */
     public static String getDirectoryPathForRepo(RepositoryAtom repositoryAtom) {
         try {
-            return FileUtil.getCanonicalPath(new File(repositoryAtom.getPropertyName()));
+            String repoPath = repositoryAtom.getPropertyName();
+            if (repoPath.startsWith("file://")) {
+                repoPath = repoPath.substring(7);
+            }
+            return FileUtil.getCanonicalPath(new File(repoPath));
         } catch (RuntimeException re) {
             // the path is likely invalid, attempt resolution anyway and let the subsequent code determine the
             // actual reason the path is invalid.

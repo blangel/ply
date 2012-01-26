@@ -48,11 +48,12 @@ public class RepositoryInstaller {
             System.exit(1);
         }
         String convertedNamespace = (localRepo.isPlyType() ? namespace : namespace.replaceAll("\\.", File.separator));
-        String localRepoPath = FileUtil.pathFromParts(Deps.getDirectoryPathForRepo(localRepo), convertedNamespace, name, version);
-        File localRepoArtifact = FileUtil.fromParts(localRepoPath, artifactName);
+        String localRepoPath = Deps.getDirectoryPathForRepo(localRepo);
+        String localRepoArtifactBasePath = FileUtil.pathFromParts(localRepoPath, convertedNamespace, name, version);
+        File localRepoArtifact = FileUtil.fromParts(localRepoArtifactBasePath, artifactName);
         FileUtil.copy(artifact, localRepoArtifact);
 
-        File localRepoDependenciesFile = FileUtil.fromParts(localRepoPath, "dependencies.properties");
+        File localRepoDependenciesFile = FileUtil.fromParts(localRepoArtifactBasePath, "dependencies.properties");
         if (dependenciesFile.exists()) {
             FileUtil.copy(dependenciesFile, localRepoDependenciesFile);
         } else {
