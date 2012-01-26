@@ -11,6 +11,7 @@ import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.mvn.MavenPom;
 import net.ocheyedan.ply.mvn.MavenPomParser;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -295,6 +296,24 @@ public final class Deps {
         storeDependenciesFile(dependenciesFile, saveToRepoDirPath);
         List<DependencyAtom> dependencyAtoms = parse(dependenciesFile);
         return new Dep(dependencyAtom, dependencyAtoms, saveToRepoDirPath);
+    }
+
+    public static List<DependencyAtom> parse(Collection<Prop> dependenciesProps) {
+        List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>(dependenciesProps.size());
+        AtomicReference<String> error = new AtomicReference<String>();
+        for (Prop dependencyProp : dependenciesProps) {
+            error.set(null);
+            String dependencyKey = dependencyProp.name;
+            String dependencyValue = dependencyProp.value;
+            DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + ":" + dependencyValue, error);
+            if (dependencyAtom == null) {
+                Output.print("^warn^ Invalid dependency %s:%s; missing %s", dependencyKey, dependencyValue,
+                        error.get());
+                continue;
+            }
+            dependencyAtoms.add(dependencyAtom);
+        }
+        return dependencyAtoms;
     }
 
     /**

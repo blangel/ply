@@ -76,6 +76,10 @@ public class DependencyAtom {
         return new DependencyAtom(namespace, name, version, name + "-" + version + "." + packaging, transientDep);
     }
 
+    public DependencyAtom withClassifier(String classifier) {
+        return new DependencyAtom(namespace, name, version, name + "-" + version + "-" + classifier + "." + getSyntheticPackaging(), transientDep);
+    }
+
     /**
      * @return the packaging of the dependency (either {@link #DEFAULT_PACKAGING} or the extension of {@link #artifactName}
      *         if {@link #artifactName} is not null).
