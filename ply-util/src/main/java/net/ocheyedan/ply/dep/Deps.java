@@ -48,12 +48,12 @@ public final class Deps {
         }
 
         static LocalPaths get(DependencyAtom dependencyAtom, RepositoryAtom localRepo) {
-            String localPath = getDependencyPathForRepo(dependencyAtom, localRepo);
+            String localDirUrlPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
+            String localPath = getDependencyPathForRepo(dependencyAtom, localDirUrlPath);
             URL localUrl = getUrl(localPath);
             if (localUrl == null) {
                 throw new AssertionError(String.format("The local path is not valid [ %s ]", localPath));
             }
-            String localDirUrlPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
             String localDirPath = (localDirUrlPath.startsWith("file://") ? localDirUrlPath.substring(7) : localDirUrlPath);
             return new LocalPaths(localPath, localUrl, localDirUrlPath, localDirPath);
         }
@@ -401,23 +401,30 @@ public final class Deps {
         }
     }
 
-    private static String getDependencyPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
-        String dependencyDirectoryPath = getDependencyDirectoryPathForRepo(dependencyAtom, repositoryAtom);
+    private static String getDependencyPathForRepo(DependencyAtom dependencyAtom, String dependencyDirectoryPath) {
         return FileUtil.pathFromParts(dependencyDirectoryPath, dependencyAtom.getArtifactName());
+    }
+
+    /**
+     * Resolves {@code repositoryAtom} to a canonical directory path and returns that value.
+     * @param repositoryAtom assumed to be a {@link RepositoryAtom} to a local directory
+     * @return the canonical directory path of {@code repositoryAtom}
+     */
+    public static String getDirectoryPathForRepo(RepositoryAtom repositoryAtom) {
+        try {
+            return FileUtil.getCanonicalPath(new File(repositoryAtom.getPropertyName()));
+        } catch (RuntimeException re) {
+            // the path is likely invalid, attempt resolution anyway and let the subsequent code determine the
+            // actual reason the path is invalid.
+        }
+        return repositoryAtom.getPropertyName();
     }
 
     private static String getDependencyDirectoryPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
         String startPath = repositoryAtom.getPropertyName();
         if (!startPath.contains(":")) {
-            // first coerce into an absolute file path
-            try {
-                startPath = FileUtil.getCanonicalPath(new File(startPath));
-            } catch (RuntimeException re) {
-                // the path is likely invalid, attempt resolution anyway and let the subsequent code determine the
-                // actual reason the path is invalid.
-            }
-            // a file path without prefix, make absolute
-            startPath = "file://" + startPath;
+            // a file path without prefix, make absolute for URL handling
+            startPath = "file://" + getDirectoryPathForRepo(repositoryAtom);
         }
         RepositoryAtom.Type type = repositoryAtom.getResolvedType();
         String namespace = (type == RepositoryAtom.Type.ply ? dependencyAtom.namespace : dependencyAtom.namespace.replaceAll("\\.", File.separator));

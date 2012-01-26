@@ -63,6 +63,9 @@ public class RepositoryAtom {
     public Type getResolvedType() {
         return (type == null ? Type.ply : type);
     }
+    public boolean isPlyType() {
+        return (getResolvedType() == Type.ply);
+    }
     public String getResolvedPropertyValue() {
         return getResolvedType().name();
     }

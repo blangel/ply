@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
@@ -38,24 +39,16 @@ public class RepositoryInstaller {
         File dependenciesFile = FileUtil.fromParts(plyProjectDirPath, "config", "dependencies.properties");
 
         String localRepoProp = Props.getValue(Context.named("depmngr"), "localRepo");
-        // determine repo type.
-        boolean localRepoIsPly = !(localRepoProp.startsWith(RepositoryAtom.MAVEN_REPO_TYPE_PREFIX));
-        if (!localRepoIsPly) {
-            localRepoProp = localRepoProp.substring(RepositoryAtom.MAVEN_REPO_TYPE_PREFIX.length());
-        } else if (localRepoProp.startsWith(RepositoryAtom.PLY_REPO_TYPE_PREFIX)) {
-            localRepoProp = localRepoProp.substring(RepositoryAtom.PLY_REPO_TYPE_PREFIX.length());
-        }
-
+        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp);
         String namespace = Props.getValue(Context.named("project"), "namespace");
         String name = Props.getValue(Context.named("project"), "name");
         String version = Props.getValue(Context.named("project"), "version");
-        File localRepoBase = new File(localRepoProp);
-        if (!localRepoBase.exists()) {
-            Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoBase.getPath());
+        if (localRepo == null) {
+            Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoProp);
             System.exit(1);
         }
-        String convertedNamespace = (localRepoIsPly ? namespace : namespace.replaceAll("\\.", File.separator));
-        String localRepoPath = FileUtil.pathFromParts(localRepoBase.getPath(), convertedNamespace, name, version);
+        String convertedNamespace = (localRepo.isPlyType() ? namespace : namespace.replaceAll("\\.", File.separator));
+        String localRepoPath = FileUtil.pathFromParts(Deps.getDirectoryPathForRepo(localRepo), convertedNamespace, name, version);
         File localRepoArtifact = FileUtil.fromParts(localRepoPath, artifactName);
         FileUtil.copy(artifact, localRepoArtifact);
 

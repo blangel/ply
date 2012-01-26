@@ -3,6 +3,8 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.dep.Deps;
+import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.input.Resources;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
@@ -171,35 +173,37 @@ public class JunitTester {
         }
 
         // now add our own dependencies
-        String localRepo = Props.getValue(Context.named("depmngr"), "localRepo");
-        if (localRepo.isEmpty()) {
+        String localRepoProp = Props.getValue(Context.named("depmngr"), "localRepo");
+        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp);
+        if (localRepo == null) {
             Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
             System.exit(1);
         }
+        String localRepoDirectoryPath = Deps.getDirectoryPathForRepo(localRepo);
         // TODO - how to resolve own namespace/name/version and dependencies
         if (!includesPlyUtil) {
-            URL plyUtil = getUrl(FileUtil.fromParts(localRepo, "ply-util", "ply-util", "1.0", "ply-util-1.0.jar"));
+            URL plyUtil = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "ply-util", "ply-util", "1.0", "ply-util-1.0.jar"));
             if (plyUtil == null) {
                 throw new AssertionError("Could not find ^b^ply-util-1.0.jar^r^ in local repository.");
             }
             urls.add(plyUtil);
         }
-        URL plyJunitTester = getUrl(FileUtil.fromParts(localRepo, "ply-test-junit", "ply-test-junit", "1.0", "ply-test-junit-1.0.jar"));
+        URL plyJunitTester = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "ply-test-junit", "ply-test-junit", "1.0", "ply-test-junit-1.0.jar"));
         if (plyJunitTester == null) {
             throw new AssertionError("Could not find ^b^ply-test-junit-1.0.jar^r^ in local repository.");
         }
         urls.add(plyJunitTester);
-        URL hamcrest = getUrl(FileUtil.fromParts(localRepo, "org.hamcrest", "hamcrest-core", "1.1", "hamcrest-core-1.1.jar"));
+        URL hamcrest = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "org.hamcrest", "hamcrest-core", "1.1", "hamcrest-core-1.1.jar"));
         if (hamcrest == null) {
             throw new AssertionError("Could not find ^b^hamcrest-core-1.1.jar^r^ in local repository.");
         }
         urls.add(hamcrest);
-        URL commonsLang = getUrl(FileUtil.fromParts(localRepo, "commons-lang", "commons-lang", "2.6", "commons-lang-2.6.jar"));
+        URL commonsLang = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "commons-lang", "commons-lang", "2.6", "commons-lang-2.6.jar"));
         if (commonsLang == null) {
             throw new AssertionError("Could not find ^b^commons-lang-2.6.jar^r^ in local repository.");
         }
         urls.add(commonsLang);
-        URL junit = getUrl(FileUtil.fromParts(localRepo, "junit", "junit", "4.10", "junit-4.10.jar"));
+        URL junit = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "junit", "junit", "4.10", "junit-4.10.jar"));
         if (junit == null) {
             throw new AssertionError("Could not find ^b^junit-4.10.jar^r^ in local repository.");
         }

@@ -40,23 +40,28 @@ public final class JarExec {
             classpath = getClasspathEntries(execution.executionArgs[0], execution.script.scope, mainClass, configDirectory);
         }
         int classpathLength = (staticClasspath.get() ? 0 : classpath == null ? 2 : 3);
+        int propertyLength = 3;
         // add the appropriate java command
         String script = System.getProperty("ply.java");
-        String[] newCmdArray = new String[execution.executionArgs.length + options.length + classpathLength];
+        String[] newCmdArray = new String[execution.executionArgs.length + options.length + classpathLength + propertyLength];
         newCmdArray[0] = script;
-        System.arraycopy(options, 0, newCmdArray, 1, options.length);
+        // pay-forward the -D props passed into ply itself
+        newCmdArray[1] = "-Dply.home=" + System.getProperty("ply.home");
+        newCmdArray[2] = "-Dply.version=" + System.getProperty("ply.version");
+        newCmdArray[3] = "-Dply.java=" + System.getProperty("ply.java");
+        System.arraycopy(options, 0, newCmdArray, 4, options.length);
         // if the '-classpath' option is specified, can't use '-jar' option (or rather vice-versa), so
         // need to explicitly give the Main-Class value (implies, using -classpath implicitly via dependencies
         // file means the jar is built with the Main-Class specified).
         if (classpath != null) {
-            newCmdArray[options.length + 1] = "-classpath";
-            newCmdArray[options.length + 2] = classpath;
-            newCmdArray[options.length + 3] = mainClass.get(); // main-class must be found if using implicit dependencies
+            newCmdArray[options.length + propertyLength + 1] = "-classpath";
+            newCmdArray[options.length + propertyLength + 2] = classpath;
+            newCmdArray[options.length + propertyLength + 3] = mainClass.get(); // main-class must be found if using implicit dependencies
         } else if (!staticClasspath.get()) {
-            newCmdArray[options.length + 1] = "-jar";
-            newCmdArray[options.length + 2] = execution.executionArgs[0];
+            newCmdArray[options.length + propertyLength + 1] = "-jar";
+            newCmdArray[options.length + propertyLength + 2] = execution.executionArgs[0];
         }
-        System.arraycopy(execution.executionArgs, 1, newCmdArray, options.length + classpathLength + 1,
+        System.arraycopy(execution.executionArgs, 1, newCmdArray, options.length + classpathLength + propertyLength + 1,
                 execution.executionArgs.length - 1);
         return execution.with(newCmdArray);
     }
