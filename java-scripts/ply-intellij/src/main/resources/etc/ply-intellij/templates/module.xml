@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<module version="4" type="JAVA_MODULE">
+    <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_6" inherit-compiler-output="false">
+        <orderEntry type="inheritedJdk" />
+        <orderEntry type="sourceFolder" forTests="false"/>
+    </component>
+</module>
