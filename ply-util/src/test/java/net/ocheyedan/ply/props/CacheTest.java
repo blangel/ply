@@ -17,33 +17,31 @@ public class CacheTest {
 
     @Test public void getKey() {
         File testDir = new File("/tmp");
-        String key = Cache.getKey(testDir);
-        assertEquals("/tmp", key);
+        String key = Cache.getKey(testDir, false);
+        assertEquals("/tmp-false", key);
 
         testDir = new File("/tmp/another");
-        key = Cache.getKey(testDir);
-        assertEquals("/tmp/another", key);
+        key = Cache.getKey(testDir, false);
+        assertEquals("/tmp/another-false", key);
     }
 
     @Test public void get() {
         File testDir = new File("/tmp");
-        Collection<Prop.All> props = Cache.get(testDir);
+        Collection<Prop.All> props = Cache.get(testDir, false);
         assertNull(props);
         Collection<Prop.All> placed = new HashSet<Prop.All>(1);
-        Cache.put(testDir, placed);
-        assertSame(placed, Cache.get(testDir));
-        assertNotNull(Cache.get(testDir));
-        assertEquals(0, Cache.get(testDir).size());
+        Cache.put(testDir, false, placed);
+        assertSame(placed, Cache.get(testDir, false));
+        assertNotNull(Cache.get(testDir, false));
+        assertEquals(0, Cache.get(testDir, false).size());
     }
 
     @Test public void put() {
         File testDir = new File("/tmp");
-        Collection<Prop.All> props = Cache.get(testDir);
-        assertNotNull(Cache.get(testDir));
-        assertEquals(0, Cache.get(testDir).size());
+        assertNull(Cache.get(testDir, true));
         Collection<Prop.All> placed = new HashSet<Prop.All>(1);
-        Cache.put(testDir, placed);
-        assertSame(placed, Cache.get(testDir));
+        Cache.put(testDir, true, placed);
+        assertSame(placed, Cache.get(testDir, true));
     }
 
 }

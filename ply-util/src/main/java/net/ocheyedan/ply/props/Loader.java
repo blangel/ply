@@ -31,19 +31,21 @@ final class Loader {
 
     /**
      * @param configDirectory from which to extract project properties
+     * @param forceResolution if true then properties will be resolved as
+     *                        if {@link Loader#shouldLoadFromEnv(java.io.File)} returns false no matter its actual return
      * @return the loaded and filtered properties within {@code configDirectory}
      */
-    static Collection<Prop.All> get(File configDirectory) {
+    static Collection<Prop.All> get(File configDirectory, boolean forceResolution) {
         if (configDirectory == null) {
             throw new AssertionError("Argument cannot be null.");
         }
-        if (Cache.contains(configDirectory)) {
-            return Cache.get(configDirectory);
+        if (Cache.contains(configDirectory, forceResolution)) {
+            return Cache.get(configDirectory, forceResolution);
         } else {
-            Collection<Prop.All> props = load(configDirectory);
+            Collection<Prop.All> props = load(configDirectory, forceResolution);
             Filter.filter(configDirectory, props);
-            Cache.put(configDirectory, props);
-            if (shouldLoadFromEnv(configDirectory)) {
+            Cache.put(configDirectory, forceResolution, props);
+            if (!forceResolution && shouldLoadFromEnv(configDirectory)) {
                 try {
                     Method initMethod = Output.class.getDeclaredMethod("init");
                     initMethod.setAccessible(true);
@@ -56,8 +58,8 @@ final class Loader {
         }
     }
 
-    static List<Prop.All> load(File configDirectory) {
-        if (shouldLoadFromEnv(configDirectory)) {
+    static List<Prop.All> load(File configDirectory, boolean forceResolution) {
+        if (!forceResolution && shouldLoadFromEnv(configDirectory)) {
             return loadFromEnv();
         }
         List<Prop.All> props = new ArrayList<Prop.All>();

@@ -1,7 +1,5 @@
 package net.ocheyedan.ply.props;
 
-import net.ocheyedan.ply.Output;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -103,15 +101,6 @@ public final class Prop implements Comparable<Prop> {
             typeMap.put(type, new Val(type, value, unfiltered));
         }
 
-        public void set(Loc type, String value, String unfiltered) {
-            for (Scope scope : this.values.keySet()) {
-                Map<Loc, Val> typeMap = this.values.get(scope);
-                if (typeMap.containsKey(type)) {
-                    typeMap.put(type, new Val(type, value, unfiltered));
-                }
-            }
-        }
-
         public Val get(Scope scope) {
             return get(scope, false);
         }
@@ -128,15 +117,28 @@ public final class Prop implements Comparable<Prop> {
             } else {
                 Val value = typeMap.get(Loc.Resolved);
                 if (value == null) {
-                    value = typeMap.get(Loc.AdHoc);
+                    value = get(typeMap, retrievedFromScoped, Loc.AdHocScoped, Loc.AdHoc);
                     if (value == null) {
-                        value = typeMap.get(Loc.Local);
+                        value = get(typeMap, retrievedFromScoped, Loc.LocalScoped, Loc.Local);
                         if ((value == null) && !excludeSystem) {
-                            value = typeMap.get(Loc.System);
+                            value = get(typeMap, retrievedFromScoped, Loc.SystemScoped, Loc.System);
                         }
                     }
                 }
                 return (retrievedFromScoped && (value != null) ? value.scoped(): value);
+            }
+        }
+
+        private Val get(Map<Loc, Val> typeMap, boolean retrievedFromScoped, Loc scoped, Loc nonScoped) {
+            if (retrievedFromScoped) {
+                Val value = typeMap.get(scoped);
+                if (value == null) {
+                    return typeMap.get(nonScoped);
+                } else {
+                    return value;
+                }
+            } else {
+                return typeMap.get(nonScoped);
             }
         }
 

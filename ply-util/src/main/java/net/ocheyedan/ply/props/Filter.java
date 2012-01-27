@@ -93,7 +93,7 @@ public final class Filter {
         Set<Context> contexts = collectContexts(props);
         for (Scope scope : scopes) {
             for (Prop.All prop : props) {
-                Prop.Val propVal = prop.get(scope);
+                Prop.Val propVal = prop.get(scope, false);
                 String value = (propVal == null ? null : propVal.unfiltered);
                 if ((value == null) || !value.contains("${")) {
                     continue;
@@ -117,7 +117,7 @@ public final class Filter {
                     }
                     _cache.put(cacheKey, filteredValue);
                 }
-                prop.set(propVal.from, filteredValue, value);
+                prop.set(scope, propVal.from, filteredValue, value);
             }
         }
     }
@@ -211,7 +211,7 @@ public final class Filter {
     }
 
     private static String getKey(File configDirectory, Scope scope, Context context, String unfilteredValue) {
-        return Cache.getKey(configDirectory) + "#" + scope.name + "#" + context.name + "." + unfilteredValue;
+        return Cache.getKey(configDirectory, false) + "#" + scope.name + "#" + context.name + "." + unfilteredValue;
     }
 
 }

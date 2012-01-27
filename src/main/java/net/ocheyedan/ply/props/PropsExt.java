@@ -35,7 +35,7 @@ public final class PropsExt {
      */
     @SuppressWarnings("unchecked")
     public static Map<String, String> getPropsForEnv(File configDirectory, Scope scope) {
-        String cacheKey = FileUtil.pathFromParts(FileUtil.getCanonicalPath(configDirectory), scope.name);
+        String cacheKey = FileUtil.getCanonicalPath(configDirectory) + "-" + scope.name;
         if (RESOLVED_ENV_CACHE.containsKey(cacheKey)) {
             return RESOLVED_ENV_CACHE.get(cacheKey);
         }

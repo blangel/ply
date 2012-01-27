@@ -49,10 +49,10 @@ public final class AdHoc {
 
     @SuppressWarnings("unchecked")
     static void merge(File configDirectory) {
-        if (!Cache.contains(configDirectory)) {
+        if (!Cache.contains(configDirectory, false)) {
             return; // let it be loaded on-demand
         }
-        Collection<Prop.All> propsCol = Cache.get(configDirectory);
+        Collection<Prop.All> propsCol = Cache.get(configDirectory, false);
         if (!(propsCol instanceof List)) {
             throw new AssertionError("Expecting Cache.get internal representation to be a List<Prop.All>");
         }

@@ -20,55 +20,61 @@ final class Cache {
     private static final Map<String, Map<Context, Collection<Prop>>> _contextMapCache = new ConcurrentHashMap<String, Map<Context, Collection<Prop>>>();
     private static final Map<String, Collection<Prop>> _contextCache = new ConcurrentHashMap<String, Collection<Prop>>();
 
-    static boolean contains(File configDirectory) {
-        String key = getKey(configDirectory);
+    static boolean contains(File configDirectory, boolean forceResolution) {
+        String key = getKey(configDirectory, forceResolution);
         return _cache.containsKey(key);
     }
 
-    static Collection<Prop.All> get(File configDirectory) {
-        return _cache.get(getKey(configDirectory));
+    static Collection<Prop.All> get(File configDirectory, boolean forceResolution) {
+        return _cache.get(getKey(configDirectory, forceResolution));
     }
 
-    static void put(File configDirectory, Collection<Prop.All> props) {
-        _cache.put(getKey(configDirectory), props);
+    static void put(File configDirectory, boolean forceResolution, Collection<Prop.All> props) {
+        _cache.put(getKey(configDirectory, forceResolution), props);
     }
 
-    static String getKey(File configDirectory) {
-        return FileUtil.getCanonicalPath(configDirectory);
+    static String getKey(File configDirectory, boolean forceResolution) {
+        return FileUtil.getCanonicalPath(configDirectory) + "-" + Boolean.toString(forceResolution);
     }
 
-    static boolean containsContextMap(File configDirectory, Scope scope, boolean excludeSystem) {
-        String key = getContextMapKey(configDirectory, scope, excludeSystem);
+    static boolean containsContextMap(File configDirectory, Scope scope, boolean excludeSystem, boolean forceResolution) {
+        String key = getContextMapKey(configDirectory, scope, excludeSystem, forceResolution);
         return _contextMapCache.containsKey(key);
     }
 
-    static Map<Context, Collection<Prop>> getContextMap(File configDirectory, Scope scope, boolean excludeSystem) {
-        return _contextMapCache.get(getContextMapKey(configDirectory, scope, excludeSystem));
+    static Map<Context, Collection<Prop>> getContextMap(File configDirectory, Scope scope, boolean excludeSystem,
+                                                        boolean forceResolution) {
+        return _contextMapCache.get(getContextMapKey(configDirectory, scope, excludeSystem, forceResolution));
     }
 
-    static void putContextMap(File configDirectory, Scope scope, boolean excludeSystem, Map<Context, Collection<Prop>> contextMap) {
-        _contextMapCache.put(getContextMapKey(configDirectory, scope, excludeSystem), contextMap);
+    static void putContextMap(File configDirectory, Scope scope, boolean excludeSystem, boolean forceResolution,
+                              Map<Context, Collection<Prop>> contextMap) {
+        _contextMapCache.put(getContextMapKey(configDirectory, scope, excludeSystem, forceResolution), contextMap);
     }
 
-    static String getContextMapKey(File configDirectory, Scope scope, boolean excludeSystem) {
-        return getKey(configDirectory) + "-" + scope.name + "-" + Boolean.toString(excludeSystem);
+    static String getContextMapKey(File configDirectory, Scope scope, boolean excludeSystem, boolean forceResolution) {
+        return getKey(configDirectory, forceResolution) + "-" + scope.name + "-" + Boolean.toString(excludeSystem);
     }
 
-    static boolean containsContext(Context context, File configDirectory, Scope scope, boolean excludeSystem) {
-        String key = getContextKey(context, configDirectory, scope, excludeSystem);
+    static boolean containsContext(Context context, File configDirectory, Scope scope, boolean excludeSystem,
+                                   boolean forceResolution) {
+        String key = getContextKey(context, configDirectory, scope, excludeSystem, forceResolution);
         return _contextCache.containsKey(key);
     }
 
-    static Collection<Prop> getContext(Context context, File configDirectory, Scope scope, boolean excludeSystem) {
-        return _contextCache.get(getContextKey(context, configDirectory, scope, excludeSystem));
+    static Collection<Prop> getContext(Context context, File configDirectory, Scope scope, boolean excludeSystem,
+                                       boolean forceResolution) {
+        return _contextCache.get(getContextKey(context, configDirectory, scope, excludeSystem, forceResolution));
     }
 
-    static void putContext(Context context, File configDirectory, Scope scope, boolean excludeSystem, Collection<Prop> props) {
-        _contextCache.put(getContextKey(context, configDirectory, scope, excludeSystem), props);
+    static void putContext(Context context, File configDirectory, Scope scope, boolean excludeSystem,
+                           boolean forceResolution, Collection<Prop> props) {
+        _contextCache.put(getContextKey(context, configDirectory, scope, excludeSystem, forceResolution), props);
     }
 
-    static String getContextKey(Context context, File configDirectory, Scope scope, boolean excludeSystem) {
-        return context.name + "-" + getContextMapKey(configDirectory, scope, excludeSystem);
+    static String getContextKey(Context context, File configDirectory, Scope scope, boolean excludeSystem,
+                                boolean forceResolution) {
+        return context.name + "-" + getContextMapKey(configDirectory, scope, excludeSystem, forceResolution);
     }
 
 }
