@@ -125,8 +125,10 @@ public class Junit4RunListener extends RunListener {
             } else {
                 return String.format("@ ^b^line %d^r^", lineNumber);
             }
-        } else {
+        } else if (message != null) {
             return String.format("[ %s ]", message);
+        } else {
+            return "";
         }
     }
 
