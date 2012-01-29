@@ -116,7 +116,7 @@ public final class Exec {
      */
     private static Execution handleNonNativeExecutable(Execution execution, File configDirectory) {
         String executable = execution.executionArgs[0];
-        if (execution.script instanceof ShellScript) {
+        if ((execution.script instanceof ShellScript) || executable.endsWith(".sh")) {
             return ShellExec.createShellExecutable(execution, configDirectory);
         } else if (executable.endsWith(".jar")) {
             return JarExec.createJarExecutable(execution, configDirectory);
