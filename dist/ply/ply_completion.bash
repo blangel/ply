@@ -1,6 +1,7 @@
 _ply_completion() {
     local has_compopt=`type -t compopt`
-    local cur prev tasks defaultaliases projectaliases aliases configtasks projectdir
+    local cur prev tasks defaultaliases projectaliases aliases configtasks projectdir defaultcontexts projectcontexts
+    local deptasks="add remove add-repo remove-repo list tree"
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -26,9 +27,27 @@ _ply_completion() {
 	projectaliases=$(less ${projectdir}/config/aliases.properties | sed 's/^#.*//' | grep -v '^$' | sed 's/^\([^=]*\)=.*/\1/')
     fi
     aliases="${defaultaliases} ${projectaliases}"
-    tasks="init config ${aliases}"
     configtasks="get get-all set append prepend remove"
-    
+    tasks="init --version --usage --help ${configtasks} ${aliases}"
+    defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" | \
+    sed 's/\(\/.*\/\)\(.*\)\.properties/-P\2/' | sed 's/\./#/')
+    projectcontexts=$(find ${projectdir}/config/ -type f -name "*.properties" | \
+    sed 's/\(\/.*\/\)\(.*\)\.properties/-P\2/' | sed 's/\./#/')
+    local prjContexts=""
+    for prjContext in $projectcontexts
+    do
+        if [[ ${prjContext:3} != *.* ]]; then
+            prjContexts=`echo "$prjContexts ${prjContext:3}"`
+        fi
+    done
+    local dflContexts=""
+    for dflContext in $defaultcontexts
+    do
+        if [[ ${dflContext} != *#* ]]; then
+            dflContexts=`echo "$dflContexts ${dflContext:2}"`
+        fi
+    done
+
     # if '-P' is start of cur, print the contexts after the -P
     if [[ ${cur} == -P* ]]; then
 	if [ "$has_compopt" == "builtin" ]; then
@@ -36,10 +55,6 @@ _ply_completion() {
 	fi
 	# the start of the -P
 	if [[ ${cur} != *.* ]]; then
-	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" | \
-		sed 's/\(\/.*\/\)\(.*\)\.properties/-P\2/' | sed 's/\./#/')
-	    local projectcontexts=$(find ${projectdir}/config/ -type f -name "*.properties" | \
-		sed 's/\(\/.*\/\)\(.*\)\.properties/-P\2/' | sed 's/\./#/')
 	    COMPREPLY=( $(compgen -W "${defaultcontexts} ${projectcontexts}" -- ${cur}) )
 	# the -P has a complete context, complete with the context's property-names
 	elif [[ ${cur} == *.* ]]; then
@@ -79,74 +94,257 @@ _ply_completion() {
 	return 0;
     fi
 
-    case "${prev}" in 
+    # pull out the scope, if any
+    local nonscopedPrev=$prev
+    local scope=""
+    local prevIndex=1
+    if [[ ${cur} == :* ]]; then
+        scope=$prev
+        if [[ COMP_CWORD > 2 ]]; then
+            prevIndex=2
+            nonscopedPrev="${COMP_WORDS[COMP_CWORD-2]}"
+        else
+            nonscopedPrev=""
+        fi
+    elif [[ ${prev} == : ]]; then
+        if [[ COMP_CWORD > 3 ]]; then
+            prevIndex=3
+            scope="${COMP_WORDS[COMP_CWORD-2]}"
+            nonscopedPrev="${COMP_WORDS[COMP_CWORD-3]}"
+        elif [[ COMP_CWORD > 2 ]]; then
+            scope="${COMP_WORDS[COMP_CWORD-2]}"
+            nonscopedPrev=""
+        else
+            nonscopedPrev=""
+        fi
+    fi
+
+    case "${nonscopedPrev}" in
 	init)
 	    if [ "$has_compopt" == "builtin" ]; then
 		compopt -o nospace
 	    fi
 	    COMPREPLY=( $(compgen -S '=' -W "--from-pom" -- ${cur}) );;
-	config)
-	    local defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" | \
-		sed 's/\(\/.*\/\)\(.*\)\.properties/--\2/')
-	    local projectcontexts=$(find ${projectdir}/config/ -type f -name "*.properties" | \
-		sed 's/\(\/.*\/\)\(.*\)\.properties/--\2/')
-	    COMPREPLY=( $(compgen -W "${configtasks} ${defaultcontexts} ${projectcontexts}" -- ${cur}) );;
+	--version | --usage | --help)
+	    ;;
+	remove)
+	    # remove could be for the 'dep' alias
+	    if [[ ($nonscopedPrev == "remove") && ("${COMP_WORDS[COMP_CWORD-prevIndex-1]}" == "dep") ]]; then
+	        local depFile="dependencies.properties"
+            if [[ -n $scope ]]; then
+                depFile=`echo "dependencies.$scope.properties"`
+            fi
+            if [ -e $projectdir/config/$depFile ]; then
+                local prop=`less $projectdir/config/$depFile | sed 's/^#.*//' | grep -v '^$' \
+                            | sed "s/^\([^=]*\)=.*/\1/"`
+                COMPREPLY=( $(compgen -W "${prop}" -- ${cur}) )
+            fi
+            return 0
+        fi
+        ;&
+	get | get-all | set)
+        local allprops=""
+        for context in $prjContexts
+        do
+            if [ -e $projectdir/config/${context}.properties ]; then
+                local prop=`less $projectdir/config/${context}.properties | sed 's/^#.*//' | grep -v '^$' \
+                    | sed "s/^\([^=]*\)=.*/\1/"`
+                allprops=`echo "$allprops $prop"`
+            fi
+        done
+        case "${nonscopedPrev}" in
+        remove | get)
+            ;;
+        *)
+            # need to get system props as well
+            for context in $dflContexts
+            do
+                if [ -e $PLY_HOME/config/${context}.properties ]; then
+                    local prop=`less $PLY_HOME/config/${context}.properties | sed 's/^#.*//' | grep -v '^$' \
+                        | sed "s/^\([^=]*\)=.*/\1/"`
+                    allprops=`echo "$allprops $prop"`
+                fi
+            done
+        esac
+        case "${nonscopedPrev}" in
+        remove)
+            COMPREPLY=( $(compgen -W "${allprops}" -- ${cur}) );;
+        set)
+            if [ "$has_compopt" == "builtin" ]; then
+                compopt -o nospace
+            fi
+            COMPREPLY=( $(compgen -S '=' -W "${allprops}" -- ${cur}) );;
+        *)
+            COMPREPLY=( $(compgen -W "${allprops} from --unfiltered" -- ${cur}) );;
+        esac;;
+	append | prepend)
+	    ;;
 	dep)
-	    local deptasks="add remove repo-add repo-remove list tree"
-	    # TODO - look into -S and -P
-	    COMPREPLY=( $(compgen -W "${deptasks}" -- ${cur}) );;
-	ply)
-	    COMPREPLY=( $(compgen -W "${tasks}" -- ${cur}) );;
-	*)
-	    # if aliases was previous, print again as aliases can be duplicated and chained
-	    if [[ ${aliases} == *${prev}* ]]; then
-		COMPREPLY=( $(compgen -W "${aliases}" -- ${cur}) )
-	    # if config was the first (after ply) and config is not the previous, check for aliases/config-tasks/property-names
-	    elif [ "${COMP_WORDS[1]}" == "config" ]; then 
-		# if config-tasks was not prev and we have not already printed the config-tasks before, print them
-		if [[ (${configtasks} != *${prev}*) && (${COMP_CWORD} -lt 5) ]]; then
-		    COMPREPLY=( $(compgen -W "${configtasks}" -- ${cur}) )
-		# if config-tasks was prev and there is a context specified (i.e., '--xxxxx') print the context's property names
-	        elif [[ (${configtasks} == *${prev}*) && (${COMP_WORDS[2]} == --*) ]]; then
-		    local nonscopedcontext=""
-		    if [[ ${COMP_WORDS[2]} == *.* ]]; then
-			local index=`echo "${COMP_WORDS[2]}" | sed -n 's/[\.].*//p' | wc -c`
-			local len=$(($index - 1))
-			nonscopedcontext=${COMP_WORDS[2]:0:$len}
-		    fi
-		    local defaultprops=""
-		    if [ -e $PLY_HOME/config/${COMP_WORDS[2]:2}.properties ]; then
-			defaultprops=$(less $PLY_HOME/config/${COMP_WORDS[2]:2}.properties | sed 's/^#.*//' | grep -v '^$' \
-			    | sed 's/^\([^=]*\)=.*/\1/')
-		    fi		    
-		    local nonscopeddefaultprops=""
-		    if [[ (${#nonscopedcontext} -gt 0) && (-e $PLY_HOME/config/${nonscopedcontext:2}.properties) ]]; then
-			nonscopeddefaultprops=$(less $PLY_HOME/config/${nonscopedcontext:2}.properties | sed 's/^#.*//' | grep -v '^$' \
-			    | sed 's/^\([^=]*\)=.*/\1/')			
-		    fi
-		    local projectprops=""
-		    if [ -e ${projectdir}/config/${COMP_WORDS[2]:2}.properties ]; then
-			projectprops=$(less ${projectdir}/config/${COMP_WORDS[2]:2}.properties | sed 's/^#.*//' | grep -v '^$' \
-			    | sed 's/^\([^=]*\)=.*/\1/')
-		    fi
-		    local nonscopedprojectprops=""
-		    if [[ (${#nonscopedcontext} -gt 0) && (-e ${projectdir}/config/${nonscopedcontext:2}.properties) ]]; then
-			nonscopedprojectprops=$(less ${projectdir}/config/${nonscopedcontext:2}.properties | sed 's/^#.*//' | grep -v '^$' \
-			    | sed 's/^\([^=]*\)=.*/\1/')			
-		    fi
-		    # if get/remove only print the projectprops
-		    # for set/append/prepend need to also print non-scoped if in scoped context
-		    case "${prev}" in
-			get | remove)
-			    COMPREPLY=( $(compgen -W "${projectprops}" -- ${cur}) );;
-			get-all)
-			    COMPREPLY=( $(compgen -W "${defaultprops} ${projectprops}" -- ${cur}) );;
-			set | append | prepend)
-			    COMPREPLY=( $(compgen -W "${defaultprops} ${nonscopeddefaultprops} ${projectprops} ${nonscopedprojectprops}" -- ${cur}) );;
-		    esac
-		fi
+	    if [[ $cur == : ]]; then
+	        COMPREPLY=( $(compgen -W "${aliases}" -- '') )
+	    else
+	        COMPREPLY=( $(compgen -W "${deptasks} ${aliases}" -- ${cur}) )
 	    fi
 	    ;;
+	ply)
+	    if [[ ($COMP_CWORD == 1) || (${configtasks} != *${COMP_WORDS[1]}*) ]]; then
+	        if [[ $cur == : ]]; then
+                COMPREPLY=( $(compgen -W "${aliases} ${configtasks}" -- '') )
+            else
+                COMPREPLY=( $(compgen -W "${tasks}" -- ${cur}) )
+            fi
+            return 0;
+	    fi
+	    ;&
+	*)
+	    # handle the next dep case
+	    if [[ (${deptasks} == *${nonscopedPrev}*) && ("${COMP_WORDS[COMP_CWORD - prevIndex - 1]}" == "dep") ]]; then
+	        case "${nonscopedPrev}" in
+	        add)
+	            # TODO - augment with values within localRepo/...
+	            ;;
+	        remove)
+	            # handled by 'remove' case above (as maybe the 'remove' is a config-task)
+	            ;;
+	        remove-repo)
+	            local repoFile="repositories.properties"
+	            if [[ -n $scope ]]; then
+	                repoFile=`echo "repositories.$scope.properties"`
+	            fi
+	            if [ -e $projectdir/config/$repoFile ]; then
+                    local prop=`less $projectdir/config/$repoFile | sed 's/^#.*//' | grep -v '^$' \
+                                | sed "s/^\([^=]*\)=.*/\1/"`
+                    COMPREPLY=( $(compgen -W "${prop}" -- ${cur}) )
+	            fi
+	            ;;
+	        esac
+	    # handle the next config-task (get/get-all/set/append/prepend/remove) case
+	    elif [[ (${configtasks} == *${COMP_WORDS[COMP_CWORD - prevIndex - 1]}*) ]]; then
+	        local configTask=${COMP_WORDS[COMP_CWORD - prevIndex - 1]}
+
+	        case "${configTask}" in
+	        get)
+	            if [[ ${nonscopedPrev} == from ]]; then
+	                COMPREPLY=( $(compgen -W "${prjContexts}" -- ${cur}) )
+	            elif [[ ${nonscopedPrev} != --unfiltered ]]; then
+	                COMPREPLY=( $(compgen -W "from --unfiltered" -- ${cur}) )
+                fi
+                ;;
+            get-all)
+                if [[ ${nonscopedPrev} == from ]]; then
+	                COMPREPLY=( $(compgen -W "${prjContexts} ${dflContexts}" -- ${cur}) )
+	            elif [[ ${nonscopedPrev} != --unfiltered ]]; then
+	                COMPREPLY=( $(compgen -W "from --unfiltered" -- ${cur}) )
+                fi
+                ;;
+            remove)
+                COMPREPLY=( $(compgen -W "from" -- '') );;
+            append | prepend)
+                COMPREPLY=( $(compgen -W "to" -- '') );;
+            esac
+        # handle the tertiary case for config-tasks
+        elif [[ (${configtasks} == *${COMP_WORDS[COMP_CWORD - prevIndex - 2]}*) ]]; then
+            local configTask=${COMP_WORDS[COMP_CWORD - prevIndex - 2]}
+	        case "${configTask}" in
+	        get | get-all | remove)
+	            if [[ ${nonscopedPrev} == from ]]; then
+	                local propName=${COMP_WORDS[COMP_CWORD - prevIndex - 1]}
+                    local contexts=${prjContexts}
+                    if [[ ${configTask} == get-all ]]; then
+                        contexts=`echo "$contexts $dflContexts"`
+                    fi
+                    local propContexts=""
+                    for context in $contexts
+                    do
+                        if [ -e $projectdir/config/${context}.properties ]; then
+                            local prop=`less $projectdir/config/${context}.properties | sed 's/^#.*//' | grep -v '^$' \
+                                | sed "s/^\([^=]*\)=.*/\1/"`
+                            if [[ $prop == *$propName* ]]; then
+                                propContexts=`echo "$propContexts $context"`
+                            fi
+                        fi
+                        if [ -e $PLY_HOME/config/${context}.properties ]; then
+                            local prop=`less $PLY_HOME/config/${context}.properties | sed 's/^#.*//' | grep -v '^$' \
+                                | sed "s/^\([^=]*\)=.*/\1/"`
+                            if [[ $prop == *$propName* ]]; then
+                                propContexts=`echo "$propContexts $context"`
+                            fi
+                        fi
+                    done
+	                COMPREPLY=( $(compgen -W "${propContexts}" -- ${cur}) )
+                fi
+                ;;
+            append | prepend)
+                if [[ ${nonscopedPrev} == to ]]; then
+                    local allprops=""
+                    for context in $prjContexts
+                    do
+                        if [ -e $projectdir/config/${context}.properties ]; then
+                            local prop=`less $projectdir/config/${context}.properties | sed 's/^#.*//' | grep -v '^$' \
+                                | sed "s/^\([^=]*\)=.*/\1/"`
+                            allprops=`echo "$allprops $prop"`
+                        fi
+                    done
+                    for context in $dflContexts
+                    do
+                        if [ -e $PLY_HOME/config/${context}.properties ]; then
+                            local prop=`less $PLY_HOME/config/${context}.properties | sed 's/^#.*//' | grep -v '^$' \
+                                | sed "s/^\([^=]*\)=.*/\1/"`
+                            allprops=`echo "$allprops $prop"`
+                        fi
+                    done
+                    COMPREPLY=( $(compgen -W "${allprops}" -- ${cur}) )
+                fi
+                ;;
+            esac
+        # handle the forth case for config-tasks
+        elif [[ (${configtasks} == *${COMP_WORDS[COMP_CWORD - prevIndex - 3]}*) ]]; then
+            local configTask=${COMP_WORDS[COMP_CWORD - prevIndex - 3]}
+	        case "${configTask}" in
+	        get | get-all)
+                COMPREPLY=( $(compgen -W "--unfiltered" -- '') );;
+            append | prepend | set)
+                COMPREPLY=( $(compgen -W "in" -- '') );;
+            esac
+        # handle the fifth case for config-tasks
+        elif [[ (${configtasks} == *${COMP_WORDS[COMP_CWORD - prevIndex - 4]}*) ]]; then
+            local configTask=${COMP_WORDS[COMP_CWORD - prevIndex - 4]}
+	        case "${configTask}" in
+            append | prepend | set)
+                local propName=${COMP_WORDS[COMP_CWORD - prevIndex - 1]}
+                if [[ ${configTask} == set ]]; then
+                    propName=${COMP_WORDS[COMP_CWORD - prevIndex - 3]}
+                fi
+                local contexts=`echo "$prjContexts $dflContexts"`
+                local propContexts=""
+                for context in $contexts
+                do
+                    if [ -e $projectdir/config/${context}.properties ]; then
+                        local prop=`less $projectdir/config/${context}.properties | sed 's/^#.*//' | grep -v '^$' \
+                            | sed "s/^\([^=]*\)=.*/\1/"`
+                        if [[ $prop == *$propName* ]]; then
+                            propContexts=`echo "$propContexts $context"`
+                        fi
+                    fi
+                    if [ -e $PLY_HOME/config/${context}.properties ]; then
+                        local prop=`less $PLY_HOME/config/${context}.properties | sed 's/^#.*//' | grep -v '^$' \
+                            | sed "s/^\([^=]*\)=.*/\1/"`
+                        if [[ $prop == *$propName* ]]; then
+                            propContexts=`echo "$propContexts $context"`
+                        fi
+                    fi
+                done
+                COMPREPLY=( $(compgen -W "${propContexts}" -- ${cur}) )
+            esac
+        # handle the sixth case for config-tasks - which is nothing
+        elif [[ (${configtasks} == *${COMP_WORDS[COMP_CWORD - prevIndex - 5]}*) ]]; then
+            return 0;
+        # handle the case just after scope addition 'test:'
+	    elif [[ $cur == : ]]; then
+	        COMPREPLY=( $(compgen -W "${aliases}" -- '') )
+	    else
+	        COMPREPLY=( $(compgen -W "${aliases}" -- ${cur}) )
+	    fi
     esac
     	   
     return 0;
