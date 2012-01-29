@@ -219,12 +219,12 @@ public class AliasTest {
 
         // test that ad-hoc props defined within an alias are recognized.
         String scope = String.valueOf(System.currentTimeMillis());
-        assertTrue(Props.get(new Context("ply"), new File("./ply/config"), new Scope(scope)).isEmpty());
+        assertTrue(Props.get(new Context(scope), new File("./ply/config"), new Scope(scope)).isEmpty());
         name = "clean";
         value = "\"rm -rf target\" -Pply.color=false";
         unparsedAliases.clear();
         List<String> adHocProps = new ArrayList<String>(1);
-        adHocProps.add("ply#" + scope + ".test=hello");
+        adHocProps.add(scope + "#" + scope + ".test=hello");
         unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
                                  new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), adHocProps);
@@ -238,7 +238,7 @@ public class AliasTest {
         assertEquals("rm -rf target", alias.scripts.get(0).unparsedName);
         assertEquals(2, alias.adHocProps.size());
         String testProp = alias.adHocProps.get(0);
-        assertEquals("ply#" + scope + ".test=hello", testProp);
+        assertEquals(scope + "#" + scope + ".test=hello", testProp);
         String colorProp = alias.adHocProps.get(1);
         assertEquals("ply.color=false", colorProp);
 

@@ -110,9 +110,6 @@ public class Junit4RunListener extends RunListener {
     }
 
     private static String createEasilyIdentifiableDiffMessage(Failure failure, String message) {
-        if (message == null) {
-            return "";
-        }
         // junit already gives nice desc; like: expected:<missis[s]ippi> but was:<missis[]ippi>
         // but add the line number at which the error occurred right after desc.
         Integer lineNumber = null;
@@ -123,7 +120,11 @@ public class Junit4RunListener extends RunListener {
             }
         }
         if (lineNumber != null) {
-            return String.format("@ ^b^line %d^r^ [ %s ]", lineNumber, message);
+            if (message != null) {
+                return String.format("@ ^b^line %d^r^ [ %s ]", lineNumber, message);
+            } else {
+                return String.format("@ ^b^line %d^r^", lineNumber);
+            }
         } else {
             return String.format("[ %s ]", message);
         }
