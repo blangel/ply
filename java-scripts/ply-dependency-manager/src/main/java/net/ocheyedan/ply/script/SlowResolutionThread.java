@@ -4,6 +4,7 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 
 import java.io.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -21,8 +22,11 @@ public final class SlowResolutionThread extends Thread {
 
         final Lock lock;
 
-        Runner(Lock lock) {
+        final AtomicBoolean responded;
+
+        Runner(Lock lock, AtomicBoolean responded) {
             this.lock = lock;
+            this.responded = responded;
         }
 
         @Override public void run() {
@@ -37,6 +41,7 @@ public final class SlowResolutionThread extends Thread {
                         if (PlyUtil.isHeadless()) {
                             Output.print("You can always run with ^b^-Pply.log.levels=info^r^ to see more log messages.");
                         } else {
+                            responded.set(false);
                             // need to go directly to stdout to avoid Output parsing prior to Exec handling
                             System.out.println(String.format(
                                     "^no_line^You can always run with ^b^-Pply.log.levels=info^r^ to see more log messages. Enable now? [Y/n] "));
@@ -52,10 +57,10 @@ public final class SlowResolutionThread extends Thread {
                     if (!PlyUtil.isHeadless()) {
                         try {
                             String answer = new BufferedReader(new InputStreamReader(System.in)).readLine();
+                            responded.set(true); // user responded
                             if ((answer != null) && "y".equalsIgnoreCase(answer.trim())) {
                                 Output.enableInfo();
                             }
-                            revertOutput(old);
                         } catch (IOException ioe) {
                             throw new AssertionError(ioe);
                         }
@@ -65,6 +70,10 @@ public final class SlowResolutionThread extends Thread {
                 }
             } catch (InterruptedException ie) {
                 // abort
+            } finally {
+                if (old != null) {
+                    revertOutput(old);
+                }
             }
         }
 
@@ -100,8 +109,22 @@ public final class SlowResolutionThread extends Thread {
         }
     }
 
+    final AtomicBoolean responded;
+
     public SlowResolutionThread(Lock lock) {
-        super(new Runner(lock));
+        this(lock, new AtomicBoolean(true));
+    }
+
+    private SlowResolutionThread(Lock lock, AtomicBoolean responded) {
+        super(new Runner(lock, responded));
         setDaemon(true);
+        this.responded = responded;
+    }
+
+    @Override public void interrupt() {
+        super.interrupt();
+        if (!responded.get()) {
+            System.out.print("^no_prefix^^no_line^"); // jump lines
+        }
     }
 }
