@@ -23,3 +23,5 @@ This will add your local __maven__ repository to the list of repositories _ply_ 
      ~/.m2/repository=maven
 
 Where, again, `~/.m2/repository` points to your local __maven__ repository.
+
+Continue on to [Running tests](RunningTests.md)

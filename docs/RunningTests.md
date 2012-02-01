@@ -35,7 +35,7 @@ Then copy/paste the following code into the `FrigidWinterTest.java` file.
 
      }
 
-Make sure you've added the test-scoped `junit` dependency (`ply "test:dep add junit:junit:4.10"`).  Now let's test!
+Make sure you've added the test-scoped `junit` dependency (`ply test:dep add junit:junit:4.10`).  Now let's test!
 
      $ ply test
 
@@ -104,3 +104,5 @@ Would match any class whose package started with `net` had zero or more packages
     $ ply test DinnerPartyTest#enter*
 
 Would match any test method from a class whose name was `DinnerPartyTest` and the method name started with `enter` 
+
+Continue on to [Changing log levels](Logging.md)

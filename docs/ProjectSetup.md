@@ -30,3 +30,5 @@ This can also be verified via _ply_ itself by doing:
 Here's an image of the steps:
 
 ![project setup](https://github.com/blangel/ply/raw/master/docs/imgs/project-setup.png "project setup")
+
+Continue on to [Building](BuildingProject.md)

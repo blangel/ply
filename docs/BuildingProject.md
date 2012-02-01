@@ -45,3 +45,5 @@ We can package and install the project as well.
 ![project install](https://github.com/blangel/ply/raw/master/docs/imgs/building-install.png "project install")
 
 Note, the output, because the `FrigidWinter.java` file has not changed since last we compiled, nothing needed to be recompiled.  Doing a `ply clean install` would force a recompilation.
+
+Continue on to [Adding dependencies](DependenciesTutorial.md)
