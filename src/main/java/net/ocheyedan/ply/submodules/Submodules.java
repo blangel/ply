@@ -1,7 +1,6 @@
 package net.ocheyedan.ply.submodules;
 
 import net.ocheyedan.ply.FileUtil;
-import net.ocheyedan.ply.ListUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
@@ -86,7 +85,7 @@ public final class Submodules {
      * @param scope of the retrieved {@code submodules}
      * @return the sorted list of {@code submodules}
      */
-    private static List<Submodule> sortSubmodules(final Map<String, Submodule> submodules, File configDirectory, Scope scope) {
+    static List<Submodule> sortSubmodules(final Map<String, Submodule> submodules, File configDirectory, Scope scope) {
         if ((submodules == null) || submodules.isEmpty()) {
             return Collections.emptyList();
         }
@@ -106,11 +105,12 @@ public final class Submodules {
         // if submoduleA is a child but submoduleB isn't then submoduleB goes first
         Comparator<Submodule> comparator = new Comparator<Submodule>() {
             @Override public int compare(final Submodule submoduleA, Submodule submoduleB) {
-                Set<String> submoduleADeps = submoduleDepMap.get(submoduleA);
-                Set<String> submoduleBDeps = submoduleDepMap.get(submoduleB);
-                if ((submoduleADeps != null) && submoduleADeps.contains(submoduleB.dependencyName)) {
+                if (submoduleA.name.equals(submoduleB.name)) {
+                    return 0;
+                }
+                if (dependsUpon(submoduleA, submoduleB, submodules, submoduleDepMap)) {
                     return 1;
-                } else if ((submoduleBDeps != null) && submoduleBDeps.contains(submoduleA.dependencyName)) {
+                } else if (dependsUpon(submoduleB, submoduleA, submodules, submoduleDepMap)) {
                     return -1;
                 }
                 if (submoduleA.name.contains(submoduleB.name)) {
@@ -126,8 +126,33 @@ public final class Submodules {
                 return 0; // TODO - default to order specified by user
             }
         };
-        ListUtil.sort(orderedSubmodules, comparator);
+        Collections.sort(orderedSubmodules, comparator);
         return orderedSubmodules;
+    }
+
+    /**
+     * @param submodule to see if it depends upon {@code dependencyToCheck}
+     * @param dependencyToCheck whether it is a dependency of {@code submodule}
+     * @param submodules a mapping of a submodules dependency name to the actual {@link Submodule} object
+     * @param submoduleDepMap a mapping of {@link Submodule} to its dependencies' names
+     * @return true if {@code submodule} depends upon {@code dependencyToCheck}
+     */
+    private static boolean dependsUpon(Submodule submodule, Submodule dependencyToCheck, Map<String, Submodule> submodules,
+                                       Map<Submodule, Set<String>> submoduleDepMap) {
+        Set<String> submoduleDeps = submoduleDepMap.get(submodule);
+        if (submoduleDeps == null) {
+            return false;
+        }
+        if (submoduleDeps.contains(dependencyToCheck.dependencyName)) {
+            return true;
+        }
+        for (String dep : submoduleDeps) {
+            if (submodules.containsKey(dep) && dependsUpon(submodules.get(dep), dependencyToCheck,
+                                                           submodules, submoduleDepMap)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String getSubmoduleResolvedDepName(File submoduleConfigDir, Scope scope) {

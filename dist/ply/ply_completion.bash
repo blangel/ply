@@ -54,7 +54,7 @@ _ply_completion() {
 	    projectdir="${result}"
 	    break
 	fi
-	projectdir=`readlink -f "${projectdir}../"`
+	projectdir=`readlink "${projectdir}../"`
     done
     if [ ! -d ${projectdir} ]; then
 	projectdir="./.ply" # default to current
