@@ -113,7 +113,8 @@ public final class Filter {
                         if (value.length() > 80) {
                             outputValue = value.substring(0, 80) + " [truncated]";
                         }
-                        Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s ].", outputValue, outputFiltered, prop.context.name);
+                        Output.print("^dbug^ filtered ^b^%s^r^ to ^b^%s^r^ [ in %s%s ].", outputValue, outputFiltered,
+                                prop.context.name, (Scope.Default.equals(scope) ? "" : String.format(" with %s scope", scope.name)));
                     }
                     _cache.put(cacheKey, filteredValue);
                 }

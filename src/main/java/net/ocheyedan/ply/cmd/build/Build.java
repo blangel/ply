@@ -31,6 +31,7 @@ public final class Build extends ReliantCommand {
     }
 
     @Override public void run() {
+        long start = System.currentTimeMillis();
         super.run();
         List<Execution> executions = Module.resolve(args, PlyUtil.LOCAL_CONFIG_DIR);
         // enough has been resolved to allow printing, so init the output
@@ -39,7 +40,6 @@ public final class Build extends ReliantCommand {
         // print a statement quickly, alerting the user that the build has begun (need to do after local execution
         // resolution as that resolution may affect printing (i.e., ply.decorated=false from an alias definition).
 
-        long start = System.currentTimeMillis();
         String projectName = Props.getLocalValue(Context.named("project"), "name");
         String projectVersion = Props.getLocalValue(Context.named("project"), "version");
         Output.printNoLine("^ply^ building ^b^%s^r^, %s", projectName, projectVersion);
@@ -132,14 +132,6 @@ public final class Build extends ReliantCommand {
         long freeMem = Runtime.getRuntime().freeMemory() / 1024 / 1024;
         Output.print("^ply^ Finished %sin ^b^%.3f seconds^r^ using ^b^%d/%d MB^r^.", suppliment, seconds, (totalMem - freeMem), totalMem);
         return seconds;
-    }
-
-    private void print(List<Execution> executions, String prefix) {
-        for (Execution execution : executions) {
-            Script script = execution.script;
-            Output.print("%s^b^%s^r^ (scope = %s) : %s%s", prefix, script.name, script.scope.name, execution.executionArgs[0],
-                    execution.executionArgs.length < 2 ? "" : String.format(" (args = %s)", script.arguments.toString()));
-        }
     }
 
 }

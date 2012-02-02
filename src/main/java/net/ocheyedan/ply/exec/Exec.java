@@ -54,12 +54,16 @@ public final class Exec {
         execution = handleNonNativeExecutable(execution, projectConfigDir);
         String script = Output.isDebug() ? buildScriptName(execution.executionArgs) : "";
         try {
+            long start = System.currentTimeMillis();
+
             ProcessBuilder processBuilder = new ProcessBuilder(execution.executionArgs).redirectErrorStream(true).directory(projectRoot);
 
             Map<String, String> environment = processBuilder.environment();
             environment.putAll(PropsExt.getPropsForEnv(projectConfigDir, execution.script.scope));
 
+            String outputScriptName = buildExecutionName(execution);
             Output.print("^dbug^ invoking %s", script);
+
             // the Process thread reaps the child if the parent (this) is terminated
             final Process process = processBuilder.start();
             // take the parent's input and pipe to the child's output
@@ -68,10 +72,13 @@ public final class Exec {
             BufferedReader processStdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String processStdoutLine;
             while ((processStdoutLine = processStdout.readLine()) != null) {
-                OutputExt.printFromExec("[^green^%s^r^] %s", buildExecutionName(execution), processStdoutLine);
+                OutputExt.printFromExec("[^green^%s^r^] %s", outputScriptName, processStdoutLine);
             }
             int result = process.waitFor();
             STDIN_PROCESS_PIPE.pausePipe();
+
+            printTime(start, outputScriptName);
+
             if (result == 0) {
                 return true;
             }
@@ -83,6 +90,13 @@ public final class Exec {
             Output.print(ie);
         }
         return false;
+    }
+
+    private static float printTime(long start, String script) {
+        long end = System.currentTimeMillis();
+        float seconds = ((end - start) / 1000.0f);
+        Output.print("^dbug^ executed ^b^%s^r^ in ^b^%.3f seconds^r^.", script, seconds);
+        return seconds;
     }
 
     private static String buildExecutionName(Execution execution) {
