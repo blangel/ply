@@ -104,7 +104,13 @@ public final class Deps {
                 continue; // non-direct (transitive) transient dependencies should be skipped
             }
             // pom is sufficient for resolution if this is a transient dependency
-            Dep resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep));
+            Dep resolvedDep;
+            try {
+                resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep));
+            } catch (Exception e) {
+                Output.print(e);
+                resolvedDep = null; // allow the path to the dependency to be printed
+            }
             if (resolvedDep == null) {
                 String path = getPathAsString(parentVertex, dependencyAtom);
                 if (path != null) {

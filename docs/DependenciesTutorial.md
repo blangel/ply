@@ -27,5 +27,6 @@ Let's now add `junit` to our `electric-chilly` project as a test dependency.
       $ ply test:dep add junit:junit:4.10
 
 Note, adding a test dependency is the same except the `dep` script is run within scope _test_ (i.e., `test:dep`).
+See [Scopes](Scopes.md) for more information on their usage in ply.
 
 Continue on to [Repositories](Repositories.md)

@@ -52,6 +52,18 @@ To delete the property _url_ from the context `environ` (note, if after removal 
 
     $ ply remove url from environ
 
+Ad-Hoc Properties
+-----------------
+
+Property values can also be set for a single execution.  These ad-hoc properties are command line arguments specified with the `-P` directive and are only valid for that particular execution (are not saved for subsequent executions).  For instance, to disable the java compiler's warnings only for the particular execution of `compile` one would:
+
+    $ ply compile -Pcompiler.java.warningsLevel=none
+
+The next time `compile` is run the java compiler's warnings will revert to the value within the properties files as normal.
+
+Accessing Property Values From Scripts
+-------------------------------------
+
 Any script can directly read these property files during execution, however, ply does the heavy lifting by resolving the
 properties and passing them as environmental variables to each invoked script.  The resolution of properties files
 involves collecting all properties for all contexts (for the given scope; again see [Scopes](Scopes.md) for a general description
