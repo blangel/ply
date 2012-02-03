@@ -1,0 +1,6 @@
+VERSION=1.0_1
+do something
+# ignore
+ something else
+VERSION=1.0_2
+next version do something

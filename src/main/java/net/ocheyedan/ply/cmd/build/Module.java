@@ -6,7 +6,10 @@ import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.cmd.Args;
 import net.ocheyedan.ply.exec.Execution;
-import net.ocheyedan.ply.props.*;
+import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.Prop;
+import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.props.Scope;
 
 import java.io.File;
 import java.util.ArrayList;

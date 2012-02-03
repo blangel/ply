@@ -4,6 +4,10 @@ import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +26,70 @@ import java.util.regex.Pattern;
  * default context, {@literal ply}.
  */
 public final class Output {
+
+    /**
+     * Used to convert a {@link Throwable}'s stacktrace to a {@link String}.
+     */
+    private static final class StackTraceWriter extends Writer {
+
+        /**
+         * Convenience method to convert the {@code t}'s stack-trace into a string
+         * @param t to convert its stack-trace into a string
+         * @param appendOutputError true if the {@literal ^error^} prefix should be appended to each new line of the stack-trace
+         * @return the stack-trace of {@code t} as a string
+         */
+        static String convertStackTrace(Throwable t, boolean appendOutputError) {
+            StackTraceWriter writer = new StackTraceWriter(appendOutputError);
+            t.printStackTrace(new PrintWriter(writer));
+            return writer.toString();
+        }
+
+        /**
+         * If true, the {@literal ^error^} prefix will be append to each new line of the stack-trace.
+         */
+        private final boolean appendOutputError;
+
+        /**
+         * Using thread-safe {@link StringBuffer} as character buffer.
+         */
+        private final StringBuffer buffer = new StringBuffer();
+
+        private StackTraceWriter(boolean appendOutputError) {
+            this.appendOutputError = appendOutputError;
+            if (this.appendOutputError) {
+                buffer.append("^error^ ");
+            }
+        }
+
+        @Override public void write(char[] cbuf, int off, int len) throws IOException {
+            if (appendOutputError) {
+                for (int i = off; i < (off + len); i++) {
+                    char character = cbuf[i];
+                    buffer.append(character);
+                    if (character == '\n') {
+                        buffer.append("^error^ ");
+                    }
+                }
+            } else {
+                buffer.append(cbuf, off, len);
+            }
+        }
+
+        /**
+         * Nothing to do for this implementation
+         * @throws IOException
+         */
+        @Override public void flush() throws IOException { }
+        /**
+         * Nothing to do for this implementation.
+         * @throws IOException
+         */
+        @Override public void close() throws IOException { }
+
+        @Override public String toString() {
+            return buffer.toString();
+        }
+    }
 
     /**
      * A regex {@link java.util.regex.Pattern} paired with its corresponding output string.
@@ -221,6 +289,9 @@ public final class Output {
 
     public static void print(Throwable t) {
         print("^error^ Message: ^i^^red^%s^r^", (t == null ? "" : t.getMessage()));
+        if (isDebug()) {
+            print(StackTraceWriter.convertStackTrace(t, true));
+        }
     }
 
     static String resolve(String message, Object[] args) {

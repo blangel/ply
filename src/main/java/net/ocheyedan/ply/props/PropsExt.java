@@ -1,12 +1,11 @@
 package net.ocheyedan.ply.props;
 
 import net.ocheyedan.ply.FileUtil;
-import net.ocheyedan.ply.Output;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * User: blangel

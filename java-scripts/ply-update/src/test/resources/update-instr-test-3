@@ -1,0 +1,6 @@
+VERSION=1.0_1
+# nothing to do
+# nothing at all
+VERSION=1.0_2
+something to do
+VERSION=1.0_3

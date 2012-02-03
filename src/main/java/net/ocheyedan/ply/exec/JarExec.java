@@ -4,7 +4,10 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
-import net.ocheyedan.ply.props.*;
+import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.Prop;
+import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.props.Scope;
 
 import java.io.File;
 import java.io.IOException;

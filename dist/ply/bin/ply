@@ -128,10 +128,16 @@ if $cygwin; then
     CLASSPATH=`cygpath --path --windows "$CLASSPATH"`
 fi
 
+# Determine the ply version
+PLY_VERSION=""
+if [ -e $PLY_HOME/version ]; then
+  PLY_VERSION=`cat $PLY_HOME/version`
+fi
+
 exec "$JAVACMD" \
   -client -Xms32M -Xmx32M -dsa -XX:+UseCompressedStrings -XX:+UseFastAccessorMethods \
   -classpath "${PLY_HOME}"/lib/ply-1.0.jar:"${PLY_HOME}"/lib/ply-util-1.0.jar \
   "-Dply.home=${PLY_HOME}" \
-  "-Dply.version=1.0" \
+  "-Dply.version=${PLY_VERSION}" \
   "-Dply.java=${JAVACMD}" \
   "net.ocheyedan.ply.Ply" "$@"
