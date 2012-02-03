@@ -1,12 +1,16 @@
 package net.ocheyedan.ply.script;
 
+import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.SystemExit;
+import org.junit.After;
 import org.junit.Test;
 
 import java.io.File;
 import java.net.MalformedURLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import static junit.framework.Assert.*;
 
@@ -105,6 +109,123 @@ public class UpdateScriptTest {
         assertEquals("1.0_2", updateInstructions.get("VERSIONS").get(1));
         assertEquals("1.0_3", updateInstructions.get("VERSIONS").get(2));
 
+    }
+
+    @Test
+    public void updateProperty() {
+        File currentDir = new File("./");
+        File configDir;
+        if (!currentDir.getPath().contains("java-scripts")) {
+            configDir = new File("java-scripts/ply-update/src/test/resources/config");
+        } else {
+            configDir = new File("src/test/resources/config");
+        }
+
+        // test null
+        try {
+            UpdateScript.updateProperty(null, configDir);
+            fail("Expected a SystemExit exception as the instruction was null.");
+        } catch (SystemExit se) {
+            assertNull(se.getCause());
+        }
+
+        // test invalid instruction - no context
+        try {
+            UpdateScript.updateProperty("property=value|expected", configDir);
+            fail("Expected a SystemExit exception as the instruction has no context.");
+        } catch (SystemExit se) {
+            assertNull(se.getCause());
+        }
+        // test invalid instruction - no propName break
+        try {
+            UpdateScript.updateProperty("context.property:value|expected", configDir);
+            fail("Expected a SystemExit exception as the instruction has no property name break '='.");
+        } catch (SystemExit se) {
+            assertNull(se.getCause());
+        }
+        // test invalid instruction - no propValue end pipe
+        try {
+            UpdateScript.updateProperty("context.property=value", configDir);
+            fail("Expected a SystemExit exception as the instruction has no property value ending pipe '|'.");
+        } catch (SystemExit se) {
+            assertNull(se.getCause());
+        }
+
+        // test property name with invalid expected value
+        UpdateScript.updateProperty("aliases.update=ply-update-2.0.jar|something-else", configDir);
+        Properties aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
+        assertEquals("ply-update-1.0.jar", aliases.getProperty("update"));
+        // test property name with valid expected value
+        UpdateScript.updateProperty("aliases.update=ply-update-2.0.jar|ply-update-1.0.jar", configDir);
+        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
+        assertEquals("ply-update-2.0.jar", aliases.getProperty("update"));
+
+        // test property name with invalid expected value
+        UpdateScript.updateProperty("aliases.update=ply-update-3.0.jar|", configDir);
+        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
+        assertEquals("ply-update-2.0.jar", aliases.getProperty("update"));
+
+        // test property name with a period in it
+        // test property name with invalid expected value
+        UpdateScript.updateProperty("aliases.user.modified=testing|blah", configDir);
+        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
+        assertEquals("something-else", aliases.getProperty("user.modified"));
+        // test property name with valid expected value
+        UpdateScript.updateProperty("aliases.user.modified=testing|something-else", configDir);
+        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
+        assertEquals("testing", aliases.getProperty("user.modified"));
+
+        // test property value with pipe in it
+        UpdateScript.updateProperty("aliases.user.modified=with\\| character|testing", configDir);
+        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
+        assertEquals("with| character", aliases.getProperty("user.modified"));
+        UpdateScript.updateProperty("aliases.user.modified=\\|pipe!|with| character", configDir);
+        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
+        assertEquals("|pipe!", aliases.getProperty("user.modified"));
+
+        // test property where the user has deleted the existing
+        UpdateScript.updateProperty("aliases.user.deleted=something|dne", configDir);
+        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
+        assertFalse(aliases.containsKey("user.deleted"));
+
+        // test add a new property
+        UpdateScript.updateProperty("aliases.system.created=something|", configDir);
+        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
+        assertEquals("something", aliases.getProperty("system.created"));
+
+        // test the properties file dne
+        UpdateScript.updateProperty("project.prop=newvalue|oldvalue", configDir);
+        Properties project = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "project.properties"), false, true);
+        assertNull(project);
+
+        // test the properties file dne but is created
+        UpdateScript.updateProperty("project.prop=newvalue|", configDir);
+        project = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "project.properties"));
+        assertEquals("newvalue", project.getProperty("prop"));
+
+        // test scoped properties file, creation
+        UpdateScript.updateProperty("project#test.testprop=newvalue|", configDir);
+        project = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "project.test.properties"));
+        assertEquals("newvalue", project.getProperty("testprop"));
+    }
+
+    @After
+    public void teardown() {
+        File currentDir = new File("./");
+        File configDir;
+        if (!currentDir.getPath().contains("java-scripts")) {
+            configDir = new File("java-scripts/ply-update/src/test/resources/config");
+        } else {
+            configDir = new File("src/test/resources/config");
+        }
+        String aliasesFile = FileUtil.pathFromParts(configDir.getPath(), "aliases.properties");
+        Properties aliases = PropertiesFileUtil.load(aliasesFile);
+        aliases.put("update", "ply-update-1.0.jar");
+        aliases.put("user.modified", "something-else");
+        PropertiesFileUtil.store(aliases, aliasesFile);
+
+        FileUtil.delete(FileUtil.fromParts(configDir.getPath(), "project.properties"));
+        FileUtil.delete(FileUtil.fromParts(configDir.getPath(), "project.test.properties"));
     }
 
 }

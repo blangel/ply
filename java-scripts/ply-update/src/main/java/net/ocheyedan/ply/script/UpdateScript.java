@@ -1,9 +1,6 @@
 package net.ocheyedan.ply.script;
 
-import net.ocheyedan.ply.FileUtil;
-import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.PlyUtil;
-import net.ocheyedan.ply.SystemExit;
+import net.ocheyedan.ply.*;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Filter;
 import net.ocheyedan.ply.props.Props;
@@ -12,10 +9,7 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * User: blangel
@@ -72,9 +66,10 @@ public final class UpdateScript {
             for (int i = currentVersionIndex; i < versions.size(); i++) {
                 String version = versions.get(i);
                 List<String> instructions = updateInstructions.get(version);
-                update(version, instructions);
+                update(version, instructions, plyHomeDir);
             }
-            Output.print("Successfully updated ply from ^yellow^%s^r^ to ^green^%s^r^!", currentVersion, versions.get(versions.size() - 1));
+            Output.print("Successfully updated ply from ^yellow^%s^r^ to ^green^%s^r^%s!", currentVersion,
+                    versions.get(versions.size() - 1), (numberOfUpdates > 1 ? String.format(" (^b^%d^r^ updates)", numberOfUpdates) : ""));
         } catch (Exception e) {
             Output.print(e);
             restore(plyHomeDir, backupTar, currentVersion);
@@ -86,13 +81,29 @@ public final class UpdateScript {
      * Updates {@code version} by executing each instruction within {@code instructions}
      * @param version to update
      * @param instructions the instructions necessary for the update
+     * @param plyHomeDir the {@literal PLY_HOME} directory
      */
-    static void update(String version, List<String> instructions) {
+    static void update(String version, List<String> instructions, File plyHomeDir) {
         Output.print("^info^ Updating ^b^%s^r^", version);
         for (String instruction : instructions) {
             if (instruction.startsWith("OUTPUT=")) {
                 String output = instruction.substring("OUTPUT=".length());
                 Output.print("^dbug^ %s", output);
+            } else if (instruction.startsWith("METHOD=")) {
+                String methodInstruction = instruction.substring("METHOD=".length());
+                int methodIndex = methodInstruction.indexOf("=");
+                if (methodIndex == -1) {
+                    Output.print("^error^ Invalid method instruction [ %s ].", methodInstruction);
+                    throw new SystemExit(1);
+                }
+                String method = methodInstruction.substring(0, methodIndex);
+                instruction = methodInstruction.substring(methodIndex + 1);
+                if ("property".equals(method)) {
+                    updateProperty(instruction, FileUtil.fromParts(plyHomeDir.getPath(), "config"));
+                } else {
+                    Output.print("^error^ Unrecognized method [ %s ].", method);
+                    throw new SystemExit(1);
+                }
             } else {
                 String filteredInstruction = Filter.filter(Context.named("ply"), instruction, Props.get());
                 if (!instruction.equals(filteredInstruction)) {
@@ -242,6 +253,76 @@ public final class UpdateScript {
             }
         }
         return updateInstructions;
+    }
+
+    /**
+     * Assumes {@code instruction} is in the format: context.propName=propVal|expectedVal
+     * Updates {@literal propName} to {@literal propVal} in {@literal context} provided the existing
+     * value is {@literal expectedVal}, unless {@literal expectedVal} is not present then the update happens
+     * regardless.
+     * @param instruction to parse for property update instructions
+     * @param configDirectory the directory in which to look for the {@literal context} parsed from {@code instruction}
+     */
+    @SuppressWarnings("fallthrough")
+    static void updateProperty(String instruction, File configDirectory) {
+        int contextIndex = (instruction == null ? -1 : instruction.indexOf("."));
+        if (contextIndex == -1) {
+            Output.print("^error^ Invalid method instruction [ %s ].", instruction);
+            throw new SystemExit(1);
+        }
+        String context = instruction.substring(0, contextIndex);
+        if (context.contains("#")) {
+            context = context.replaceAll("#", ".");
+        }
+        instruction = instruction.substring(contextIndex + 1);
+        int propertyNameIndex = instruction.indexOf("=");
+        if (propertyNameIndex == -1) {
+            Output.print("^error^ Invalid method instruction [ %s ].", instruction);
+            throw new SystemExit(1);
+        }
+        String propName = instruction.substring(0, propertyNameIndex);
+        instruction = instruction.substring(propertyNameIndex + 1);
+        // now loop for the next pipe which is not escaped (prop-values may contain pipe characters)
+        char[] characters = instruction.toCharArray();
+        boolean escaped = false;
+        int index = -1;
+        String propValue = null, expectedPropValue = null;
+        find:for (char character : characters) {
+            index++;
+            switch (character) {
+                case '\\':
+                    escaped = true;
+                    break;
+                case '|':
+                    if (!escaped) {
+                        propValue = instruction.substring(0, index);
+                        expectedPropValue = (index < (characters.length - 1)) ? instruction.substring(index + 1) : null;
+                        break find;
+                    }
+                default:
+                    escaped = false;
+            }
+        }
+        if (propValue == null) {
+            Output.print("^error^ Invalid method instruction [ %s ].", instruction);
+            throw new SystemExit(1);
+        }
+        String contextFile = FileUtil.pathFromParts(configDirectory.getPath(), context + ".properties");
+        Properties properties = PropertiesFileUtil.load(contextFile, false);
+        if (expectedPropValue != null) {
+            if (!properties.containsKey(propName) || !expectedPropValue.equals(properties.getProperty(propName))) {
+                Output.print("^error^ Your ply has set ^b^%s^r^=%s but ply wants to set it to ^b^%s^r^. Please manually resolve.",
+                    propName, properties.get(propName), propValue);
+                return;
+            }
+        } else if (properties.containsKey(propName)) {
+            Output.print("^error^ Your ply has set ^b^%s^r^=%s but ply wants to set it to ^b^%s^r^. Please manually resolve.",
+                    propName, properties.get(propName), propValue);
+            return;
+        }
+        propValue = propValue.replaceAll("\\\\\\|", "|"); // replace escaped pipe characters
+        properties.put(propName, propValue);
+        PropertiesFileUtil.store(properties, contextFile, true);
     }
 
 }
