@@ -66,6 +66,13 @@ Within the distribution is a file [ply_completion.bash](ply/raw/master/dist/ply/
 
        $ sudo cp ply_completion.bash /etc/bash_completion.d/
 
+Updating Ply
+------------
+
+Once installed, ply can update itself to the most recent version.  Simply run:
+
+       $ ply update
+
 Tutorials
 --------
 
