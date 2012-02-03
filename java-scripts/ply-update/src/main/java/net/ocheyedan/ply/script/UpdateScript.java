@@ -176,7 +176,7 @@ public final class UpdateScript {
         String[] args = new String[3];
         args[0] = shell;
         args[1] = shellArgs;
-        args[3] = execution;
+        args[2] = execution;
         return new ProcessBuilder(args).redirectErrorStream(true);
     }
 
