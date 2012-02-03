@@ -56,7 +56,7 @@ public final class UpdateScript {
         int currentVersionIndex = versions.indexOf(currentVersion);
         int numberOfUpdates = (versions.size() - 1) - currentVersionIndex;
         if (numberOfUpdates == 0) {
-            Output.print("No updates found, ply is up to date.");
+            Output.print("No updates found, ply is up to date^green^!^r^");
             return;
         } else {
             Output.print("Found %d updates to ply.", numberOfUpdates);
@@ -74,6 +74,7 @@ public final class UpdateScript {
                 List<String> instructions = updateInstructions.get(version);
                 update(version, instructions);
             }
+            Output.print("Successfully updated ply to most recent version [ ^b^%s^r^ ]^green^!^r^", versions.get(versions.size() - 1));
         } catch (Exception e) {
             Output.print(e);
             restore(plyHomeDir, backupTar, currentVersion);
