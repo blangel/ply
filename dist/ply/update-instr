@@ -3,5 +3,8 @@
 # update instructions to upgrade that specified version to the next
 VERSION=1.0_1
 wget -O $PLY_HOME/scripts/ply-update-1.0.jar https://github.com/blangel/ply/raw/a567212d39000acd660a6dc19efb6a445fafa272/dist/ply/scripts/ply-update-1.0.jar
-wget -O $PLY_HOME/version https://raw.github.com/blangel/ply/master/dist/ply/version
+echo "1.0_2" > $PLY_HOME/version
 VERSION=1.0_2
+wget -O $PLY_HOME/scripts/ply-update-1.0.jar https://github.com/blangel/ply/raw/abd67b017b909dbdbbe865c7bb3f15ee99dd11ee/dist/ply/scripts/ply-update-1.0.jar
+echo "1.0_3" > $PLY_HOME/version
+VERSION=1.0_3
