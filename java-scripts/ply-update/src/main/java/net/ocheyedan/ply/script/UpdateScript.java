@@ -74,7 +74,7 @@ public final class UpdateScript {
                 List<String> instructions = updateInstructions.get(version);
                 update(version, instructions);
             }
-            Output.print("Successfully updated ply to most recent version [ ^b^%s^r^ ]^green^!^r^", versions.get(versions.size() - 1));
+            Output.print("Successfully updated ply from ^b^%s^r^ to ^b^%s^r^^green^!^r^", currentVersion, versions.get(versions.size() - 1));
         } catch (Exception e) {
             Output.print(e);
             restore(plyHomeDir, backupTar, currentVersion);
