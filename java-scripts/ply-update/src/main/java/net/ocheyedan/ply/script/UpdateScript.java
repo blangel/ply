@@ -63,13 +63,21 @@ public final class UpdateScript {
         }
         File backupTar = backup(plyHomeDir, currentVersion);
         try {
+            int warnings = 0;
             for (int i = currentVersionIndex; i < versions.size(); i++) {
                 String version = versions.get(i);
                 List<String> instructions = updateInstructions.get(version);
-                update(version, instructions, plyHomeDir);
+                warnings += update(version, instructions, plyHomeDir);
             }
-            Output.print("Successfully updated ply from ^yellow^%s^r^ to ^green^%s^r^%s!", currentVersion,
-                    versions.get(versions.size() - 1), (numberOfUpdates > 1 ? String.format(" (^b^%d^r^ updates)", numberOfUpdates) : ""));
+            String numberOfUpdatesText = (numberOfUpdates > 1 ? String.format(" (^b^%d^r^ updates)", numberOfUpdates) : "");
+            String mostUpToDateVersion = versions.get(versions.size() -1);
+            if (warnings == 0) {
+                Output.print("Successfully updated ply from ^yellow^%s^r^ to ^green^%s^r^%s!", currentVersion,
+                    mostUpToDateVersion, numberOfUpdatesText);
+            } else {
+                Output.print("Updated ply from ^yellow^%s^r^ to ^b^%s^r^%s but need %d manual correction%s.",
+                        currentVersion, mostUpToDateVersion, numberOfUpdatesText, warnings, (warnings == 1 ? "" : "s"));
+            }
         } catch (Exception e) {
             Output.print(e);
             restore(plyHomeDir, backupTar, currentVersion);
@@ -82,8 +90,10 @@ public final class UpdateScript {
      * @param version to update
      * @param instructions the instructions necessary for the update
      * @param plyHomeDir the {@literal PLY_HOME} directory
+     * @return the amount of manual warnings encountered
      */
-    static void update(String version, List<String> instructions, File plyHomeDir) {
+    static int update(String version, List<String> instructions, File plyHomeDir) {
+        int warnings = 0;
         Output.print("^info^ Updating ^b^%s^r^", version);
         for (String instruction : instructions) {
             if (instruction.startsWith("OUTPUT=")) {
@@ -99,7 +109,7 @@ public final class UpdateScript {
                 String method = methodInstruction.substring(0, methodIndex);
                 instruction = methodInstruction.substring(methodIndex + 1);
                 if ("property".equals(method)) {
-                    updateProperty(instruction, FileUtil.fromParts(plyHomeDir.getPath(), "config"));
+                    warnings += updateProperty(instruction, FileUtil.fromParts(plyHomeDir.getPath(), "config"));
                 } else {
                     Output.print("^error^ Unrecognized method [ %s ].", method);
                     throw new SystemExit(1);
@@ -112,6 +122,7 @@ public final class UpdateScript {
                 executeInstruction(filteredInstruction);
             }
         }
+        return warnings;
     }
 
     /**
@@ -262,9 +273,10 @@ public final class UpdateScript {
      * regardless.
      * @param instruction to parse for property update instructions
      * @param configDirectory the directory in which to look for the {@literal context} parsed from {@code instruction}
+     * @return the amount of manual warnings encountered
      */
     @SuppressWarnings("fallthrough")
-    static void updateProperty(String instruction, File configDirectory) {
+    static int updateProperty(String instruction, File configDirectory) {
         int contextIndex = (instruction == null ? -1 : instruction.indexOf("."));
         if (contextIndex == -1) {
             Output.print("^error^ Invalid method instruction [ %s ].", instruction);
@@ -311,18 +323,19 @@ public final class UpdateScript {
         Properties properties = PropertiesFileUtil.load(contextFile, false);
         if (expectedPropValue != null) {
             if (!properties.containsKey(propName) || !expectedPropValue.equals(properties.getProperty(propName))) {
-                Output.print("^error^ Your ply has set ^b^%s^r^=%s but ply wants to set it to ^b^%s^r^. Please manually resolve.",
-                    propName, properties.get(propName), propValue);
-                return;
+                Output.print("^warn^ Your ply has set [ ^b^%s^r^=%s (in context %s) ] but ply wants to set it to [ ^b^%s^r^ ]. Please manually resolve.",
+                    propName, properties.get(propName), context, propValue);
+                return 1;
             }
         } else if (properties.containsKey(propName)) {
-            Output.print("^error^ Your ply has set ^b^%s^r^=%s but ply wants to set it to ^b^%s^r^. Please manually resolve.",
-                    propName, properties.get(propName), propValue);
-            return;
+            Output.print("^warn^ Your ply has set [ ^b^%s^r^=%s (in context %s) ] but ply wants to set it to [ ^b^%s^r^ ]. Please manually resolve.",
+                    propName, properties.get(propName), context, propValue);
+            return 1;
         }
         propValue = propValue.replaceAll("\\\\\\|", "|"); // replace escaped pipe characters
         properties.put(propName, propValue);
         PropertiesFileUtil.store(properties, contextFile, true);
+        return 0;
     }
 
 }
