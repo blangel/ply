@@ -13,3 +13,13 @@ wget -O $PLY_HOME/scripts/ply-dependency-manager-1.0.jar https://github.com/blan
 METHOD=property=aliases.intellij=dep "dep resolve-classifiers sources,javadoc" ply-intellij-1.0.jar|dep ply-intellij-1.0.jar
 echo "1.0_4" > $PLY_HOME/version
 VERSION=1.0_4
+wget -O $PLY_HOME/scripts/ply-compiler-1.0.jar https://github.com/blangel/ply/raw/2de37b8d1b12603b63b3666203af1fe46f47f83e/dist/ply/scripts/ply-compiler-1.0.jar
+wget -O $PLY_HOME/scripts/ply-file-changed-1.0.jar https://github.com/blangel/ply/raw/2de37b8d1b12603b63b3666203af1fe46f47f83e/dist/ply/scripts/ply-file-changed-1.0.jar
+wget -O $PLY_HOME/scripts/ply-intellij-1.0.jar https://github.com/blangel/ply/raw/2de37b8d1b12603b63b3666203af1fe46f47f83e/dist/ply/scripts/ply-intellij-1.0.jar
+wget -O $PLY_HOME/scripts/ply-package-1.0.jar https://github.com/blangel/ply/raw/2de37b8d1b12603b63b3666203af1fe46f47f83e/dist/ply/scripts/ply-package-1.0.jar
+wget -O $PLY_HOME/scripts/ply-print-classpath-1.0.jar https://github.com/blangel/ply/raw/2de37b8d1b12603b63b3666203af1fe46f47f83e/dist/ply/scripts/ply-print-classpath-1.0.jar
+wget -O $PLY_HOME/scripts/ply-repo-install-1.0.jar https://github.com/blangel/ply/raw/2de37b8d1b12603b63b3666203af1fe46f47f83e/dist/ply/scripts/ply-repo-install-1.0.jar
+wget -O $PLY_HOME/lib/ply-1.0.jar https://github.com/blangel/ply/raw/2de37b8d1b12603b63b3666203af1fe46f47f83e/dist/ply/lib/ply-1.0.jar
+wget -O $PLY_HOME/lib/ply-util-1.0.jar https://github.com/blangel/ply/raw/2de37b8d1b12603b63b3666203af1fe46f47f83e/dist/ply/lib/ply-util-1.0.jar
+echo "1.0_5" > $PLY_HOME/version
+VERSION=1.0_5
