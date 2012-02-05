@@ -321,18 +321,20 @@ public final class UpdateScript {
         }
         String contextFile = FileUtil.pathFromParts(configDirectory.getPath(), context + ".properties");
         Properties properties = PropertiesFileUtil.load(contextFile, false);
+        propValue = propValue.replaceAll("\\\\\\|", "|"); // replace escaped pipe characters
         if (expectedPropValue != null) {
-            if (!properties.containsKey(propName) || !expectedPropValue.equals(properties.getProperty(propName))) {
-                Output.print("^warn^ Your ply has set [ ^b^%s^r^=%s (in context %s) ] but ply wants to set it to [ ^b^%s^r^ ]. Please manually resolve.",
-                    propName, properties.get(propName), context, propValue);
+            if (!properties.containsKey(propName) || (!expectedPropValue.equals(properties.getProperty(propName)) && !expectedPropValue.equals(propValue))) {
+                Output.print("^warn^ Your ply has set ^b^%s^r^=\"%s\" (in context ^b^%s^r^) but ply wants to set it to ^b^%s^r^=\"%s\". Please manually resolve.",
+                    propName, properties.get(propName), context, propName, propValue);
                 return 1;
+            } else if (expectedPropValue.equals(propValue)) {
+                return 0; // no need to resave file
             }
         } else if (properties.containsKey(propName)) {
-            Output.print("^warn^ Your ply has set [ ^b^%s^r^=%s (in context %s) ] but ply wants to set it to [ ^b^%s^r^ ]. Please manually resolve.",
-                    propName, properties.get(propName), context, propValue);
+            Output.print("^warn^ Your ply has set ^b^%s^r^=\"%s\" (in context ^b^%s^r^) but ply wants to set it to ^b^%s^r^=\"%s\". Please manually resolve.",
+                    propName, properties.get(propName), context, propName, propValue);
             return 1;
         }
-        propValue = propValue.replaceAll("\\\\\\|", "|"); // replace escaped pipe characters
         properties.put(propName, propValue);
         PropertiesFileUtil.store(properties, contextFile, true);
         return 0;
