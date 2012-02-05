@@ -6,6 +6,7 @@ import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.input.Resource;
 import net.ocheyedan.ply.input.Resources;
+import net.ocheyedan.ply.props.OrderedProperties;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -191,8 +192,8 @@ public class MavenPomParser {
     public MavenPom parsePom(String pomUrlPath, RepositoryAtom repositoryAtom) {
         try {
             ParseResult result = parse(pomUrlPath, repositoryAtom);
-            Properties deps = new Properties();
-            Properties testDeps = new Properties();
+            Properties deps = new OrderedProperties();
+            Properties testDeps = new OrderedProperties();
             Map<String, Map<String, String>> resolvedDeps = result.resolveDeps();
             for (String scope : resolvedDeps.keySet()) {
                 Map<String, String> scopedResolvedDeps = resolvedDeps.get(scope);
@@ -209,12 +210,12 @@ public class MavenPomParser {
                     scopedDeps.put(filteredDependencyKey, filteredDependencyValue);
                 }
             }
-            Properties repos = new Properties();
+            Properties repos = new OrderedProperties();
             for (String repoUrl : result.mavenRepositoryUrls) {
                 RepositoryAtom repoAtom = RepositoryAtom.parse("maven:" + repoUrl);
                 repos.put(repoAtom.getPropertyName(), repoAtom.getPropertyValue());
             }
-            Properties modules = new Properties();
+            Properties modules = new OrderedProperties();
             for (String module : result.modules) {
                 modules.put(module, "");
             }

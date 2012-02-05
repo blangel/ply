@@ -4,6 +4,7 @@ import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.OrderedProperties;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
@@ -263,7 +264,7 @@ public class CompilerScript {
         String suffix = (scope.isEmpty() ? "" : scope + ".");
         File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
         if (!dependenciesFile.exists()) {
-            return new Properties();
+            return new OrderedProperties();
         }
         return PropertiesFileUtil.load(dependenciesFile.getPath());
     }

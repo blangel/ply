@@ -4,10 +4,7 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -93,7 +90,7 @@ public final class JarExec {
                 return null;
             }
             InputStream dependenciesStream = jarFile.getInputStream(dependenciesJarEntry);
-            Properties dependencies = new Properties();
+            Properties dependencies = new OrderedProperties();
             dependencies.load(dependenciesStream);
             // if there are no dependencies, the 'dependencies.properties' may still exist, just empty; so ignore
             if (dependencies.isEmpty()) {

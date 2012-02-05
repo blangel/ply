@@ -11,6 +11,7 @@ import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.mvn.MavenPom;
 import net.ocheyedan.ply.mvn.MavenPomParser;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.OrderedProperties;
 import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 
@@ -326,7 +327,7 @@ public final class Deps {
         Properties dependenciesFile = getDependenciesFile(dependencyAtom, repositoryAtom, repoDirPath);
         if (dependenciesFile == null) {
             Output.print("^dbug^ No dependencies file found for %s.", dependencyAtom.toString());
-            dependenciesFile = new Properties();
+            dependenciesFile = new OrderedProperties();
         }
         storeDependenciesFile(dependenciesFile, saveToRepoDirPath);
         List<DependencyAtom> dependencyAtoms = parse(dependenciesFile);
@@ -383,7 +384,7 @@ public final class Deps {
      *
      */
     public static Properties convertToResolvedPropertiesFile(DirectedAcyclicGraph<Dep> graph) {
-        final Properties props = new Properties();
+        final Properties props = new OrderedProperties();
         Graphs.visit(graph, new Graphs.Visitor<Dep>() {
             @Override public void visit(Vertex<Dep> vertex) {
                 Dep dep = vertex.getValue();
@@ -411,7 +412,7 @@ public final class Deps {
         String suffix = (scope.isEmpty() ? "" : scope + ".");
         File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
         if (!dependenciesFile.exists()) {
-            return new Properties();
+            return new OrderedProperties();
         }
         return PropertiesFileUtil.load(dependenciesFile.getPath());
     }
@@ -541,7 +542,7 @@ public final class Deps {
     private static Properties getDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
         MavenPomParser mavenPomParser = new MavenPomParser();
         MavenPom mavenPom = mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
-        return (mavenPom == null ? new Properties() : mavenPom.dependencies);
+        return (mavenPom == null ? new OrderedProperties() : mavenPom.dependencies);
     }
 
     private static void storeDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {

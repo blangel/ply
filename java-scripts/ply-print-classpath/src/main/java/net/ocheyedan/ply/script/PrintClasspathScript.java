@@ -6,6 +6,7 @@ import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.OrderedProperties;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -61,7 +62,7 @@ public class PrintClasspathScript {
         String suffix = (scope.isEmpty() ? "" : scope + ".");
         File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
         if (!dependenciesFile.exists()) {
-            return new Properties();
+            return new OrderedProperties();
         }
         return PropertiesFileUtil.load(dependenciesFile.getPath());
     }

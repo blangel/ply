@@ -5,6 +5,7 @@ import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.OrderedProperties;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
@@ -54,8 +55,8 @@ public class FileChangeDetector {
 
     private static void computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir,
                                             Properties existing, Scope scope) {
-        Properties changedList = new Properties();
-        Properties properties = new Properties();
+        Properties changedList = new OrderedProperties();
+        Properties properties = new OrderedProperties();
         collectAllFileChanges(srcDir, changedList, properties, existing, scope);
         PropertiesFileUtil.store(changedList, changedPropertiesFile.getPath());
         PropertiesFileUtil.store(properties, lastSrcChanged.getPath());

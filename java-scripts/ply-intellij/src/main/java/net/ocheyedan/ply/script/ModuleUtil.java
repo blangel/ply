@@ -1,7 +1,6 @@
 package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
-import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.input.ClasspathResource;

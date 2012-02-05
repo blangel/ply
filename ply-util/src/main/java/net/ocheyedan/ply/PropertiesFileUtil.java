@@ -1,5 +1,7 @@
 package net.ocheyedan.ply;
 
+import net.ocheyedan.ply.props.OrderedProperties;
+
 import java.io.*;
 import java.util.Properties;
 
@@ -27,7 +29,7 @@ public final class PropertiesFileUtil {
      * @param defaults of the returned {@link Properties} object.
      * @return the loaded {@link Properties} file (which may be empty if loading failed).
      */
-    public static Properties load(String path, Properties defaults) {
+    public static Properties load(String path, OrderedProperties defaults) {
         return load(path, false, defaults);
     }
 
@@ -48,7 +50,7 @@ public final class PropertiesFileUtil {
      * @param defaults of the returned {@link Properties} object.
      * @return the loaded {@link Properties} file (which may be empty if loading failed).
      */
-    public static Properties load(String path, boolean create, Properties defaults) {
+    public static Properties load(String path, boolean create, OrderedProperties defaults) {
         return load(path, create, false, defaults);
     }
 
@@ -71,13 +73,13 @@ public final class PropertiesFileUtil {
      * @param defaults of the returned {@link Properties} object.
      * @return the loaded {@link Properties} file (which may be empty if loading failed).
      */
-    public static Properties load(String path, boolean create, boolean nullOnFNF, Properties defaults) {
+    public static Properties load(String path, boolean create, boolean nullOnFNF, OrderedProperties defaults) {
         if (path == null) {
             return null;
         }
         File propertiesFile = new File(path);
         InputStream inputStream = null;
-        Properties properties = (defaults == null ? new Properties() : new Properties(defaults));
+        Properties properties = (defaults == null ? new OrderedProperties() : new OrderedProperties(defaults));
         try {
             if (create && !propertiesFile.exists()) {
                 propertiesFile.getParentFile().mkdirs();

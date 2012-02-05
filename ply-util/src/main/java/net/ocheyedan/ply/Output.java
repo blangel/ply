@@ -1,12 +1,10 @@
 package net.ocheyedan.ply;
 
 import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;

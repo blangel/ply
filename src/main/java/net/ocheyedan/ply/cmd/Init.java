@@ -6,10 +6,7 @@ import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.mvn.MavenPom;
 import net.ocheyedan.ply.mvn.MavenPomParser;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 
 import java.io.*;
 import java.nio.CharBuffer;
@@ -230,7 +227,7 @@ public final class Init extends Command {
     private static boolean createProperties(File from, MavenPom pom) {
         Map<String, Properties> fileToProps = new HashMap<String, Properties>(3);
 
-        Properties projectProps = new Properties();
+        Properties projectProps = new OrderedProperties();
         projectProps.put("namespace", pom.groupId);
         projectProps.put("name", pom.artifactId);
         projectProps.put("version", pom.version);
@@ -262,19 +259,19 @@ public final class Init extends Command {
         }
 
         if (pom.buildOutputDirectory != null) {
-            Properties compilerProps = new Properties();
+            Properties compilerProps = new OrderedProperties();
             compilerProps.put("build.path", pom.buildOutputDirectory);
             fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "compiler.properties"), compilerProps);
         }
 
         if (pom.buildTestOutputDirectory != null) {
-            Properties compilerTestProps = new Properties();
+            Properties compilerTestProps = new OrderedProperties();
             compilerTestProps.put("build.path", pom.buildTestOutputDirectory);
             fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "compiler.test.properties"), compilerTestProps);
         }
 
         if (pom.buildTestSourceDirectory != null) {
-            Properties projectTestProps = new Properties();
+            Properties projectTestProps = new OrderedProperties();
             projectTestProps.put("src.dir", pom.buildTestSourceDirectory);
             fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.test.properties"), projectTestProps);
         }
@@ -296,7 +293,7 @@ public final class Init extends Command {
      */
     private static boolean createDefaultProperties(File from) {
         Map<String, Properties> projectMap = new HashMap<String, Properties>(1);
-        Properties projectProps = new Properties();
+        Properties projectProps = new OrderedProperties();
         projectMap.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.properties"), projectProps);
         try {
             File projectDirectory = new File(".");

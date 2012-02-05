@@ -3,10 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -190,7 +187,7 @@ public class JarPackageScript extends ZipPackageScript {
      */
     private static File createDependenciesFile(String buildDirPath, Scope scope) {
         // read in resolved-deps.properties file
-        Properties dependencies = new Properties();
+        Properties dependencies = new OrderedProperties();
         Properties resolvedDeps = PropertiesFileUtil.load(buildDirPath + String.format("resolved-deps%s.properties",
                                                           scope.getFileSuffix()), true);
         for (String propertyName : resolvedDeps.stringPropertyNames()) {
