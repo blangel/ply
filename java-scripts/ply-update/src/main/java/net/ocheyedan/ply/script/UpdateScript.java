@@ -50,7 +50,7 @@ public final class UpdateScript {
         int currentVersionIndex = versions.indexOf(currentVersion);
         int numberOfUpdates = (versions.size() - 1) - currentVersionIndex;
         if (numberOfUpdates == 0) {
-            Output.print("No updates found, ply is ^green^up to date^r^!");
+            Output.print("No updates needed, ply is already up to date.");
             return;
         } else {
             Output.print("Found %d updates to ply.", numberOfUpdates);

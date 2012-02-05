@@ -1,6 +1,8 @@
 package net.ocheyedan.ply.dep;
 
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * User: blangel
@@ -17,6 +19,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public class DependencyAtom {
 
     public static final String DEFAULT_PACKAGING = "jar";
+
+    private static final Pattern WHITE_SPACE_REGEX = Pattern.compile("\\s");
 
     public final String namespace;
 
@@ -65,7 +69,7 @@ public class DependencyAtom {
     }
 
     public String getArtifactName() {
-        return (artifactName == null ? name + "-" + version + "." + DEFAULT_PACKAGING : artifactName);
+        return (artifactName == null ? composeArtifact(name, version, null, DEFAULT_PACKAGING) : artifactName);
     }
 
     private String getTransient() {
@@ -73,11 +77,58 @@ public class DependencyAtom {
     }
 
     public DependencyAtom with(String packaging) {
-        return new DependencyAtom(namespace, name, version, name + "-" + version + "." + packaging, transientDep);
+        if ((packaging == null) || DEFAULT_PACKAGING.equals(packaging)) {
+            return new DependencyAtom(namespace, name, version, transientDep);
+        } else if (artifactName == null) {
+            return new DependencyAtom(namespace, name, version, composeArtifact(name, version, null, packaging), transientDep);
+        } else {
+            int index = artifactName.lastIndexOf(".");
+            if (index == -1) {
+                return new DependencyAtom(namespace, name, version, artifactName + "." + packaging, transientDep);
+            } else {
+                String artifactWithoutPackaging = artifactName.substring(0, index);
+                return new DependencyAtom(namespace, name, version, artifactWithoutPackaging + "." + packaging, transientDep);
+            }
+        }
     }
 
+    /**
+     * Appends {@code classifier} to the artifact name aver the version specification and before the packaging.
+     * For instance a dependency of {@literal net.ocheyedan:ply:1.0} (with default jar packaging) normally
+     * has an artifact name of {@literal ply-1.0.jar} but with a classifier (say {@literal sources}) would have an
+     * artifact name of {@literal ply-1.0-sources.jar}.
+     * @param classifier to append to the artifact name after the version but before the packaging
+     * @return a {@link DependencyAtom} the same as this one but with an overridden {@link #artifactName} with
+     *         the appended {@code classifier}
+     */
     public DependencyAtom withClassifier(String classifier) {
-        return new DependencyAtom(namespace, name, version, name + "-" + version + "-" + classifier + "." + getSyntheticPackaging(), transientDep);
+        if ((classifier == null) || classifier.isEmpty()) {
+            return this;
+        }
+        Matcher whiteSpaceMatcher = WHITE_SPACE_REGEX.matcher(classifier);
+        if (whiteSpaceMatcher.find()) {
+            throw new IllegalArgumentException("DependencyAtom objects cannot contain whitespace.");
+        }
+        return new DependencyAtom(namespace, name, version, composeArtifact(name, version, classifier, getSyntheticPackaging()),
+                                  transientDep);
+    }
+
+    /**
+     * If {@literal this} object has a non-null {@link #artifactName} then this method returns a new {@link DependencyAtom}
+     * with the following, composed, {@link #artifactName}: {@link #name} "-" {@link #version} "." {@link #getSyntheticPackaging()}
+     * @return a new {@link DependencyAtom} without classifier information or {@literal this} if {@link #artifactName}
+     *         is null.
+     */
+    public DependencyAtom withoutClassifier() {
+        if (artifactName == null) {
+            return this;
+        }
+        String packaging = getSyntheticPackaging();
+        if (DEFAULT_PACKAGING.equals(packaging)) {
+            return new DependencyAtom(namespace, name, version, transientDep);
+        } else {
+            return new DependencyAtom(namespace, name, version, composeArtifact(name, version, null, packaging), transientDep);
+        }
     }
 
     /**
@@ -186,6 +237,14 @@ public class DependencyAtom {
                     ? new DependencyAtom(parsed[0], parsed[1], parsed[2], true)
                     : new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3])
                   : new DependencyAtom(parsed[0], parsed[1], parsed[2], parsed[3], "transient".equalsIgnoreCase(parsed[4])));
+    }
+
+    private static String composeArtifact(String name, String version, String classifier, String packaging) {
+        if (classifier != null) {
+            return name + "-" + version + "-" + classifier + "." + packaging;
+        } else {
+            return name + "-" + version + "." + packaging;
+        }
     }
 
 }

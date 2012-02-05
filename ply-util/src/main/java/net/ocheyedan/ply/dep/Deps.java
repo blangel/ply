@@ -69,8 +69,21 @@ public final class Deps {
      */
     public static DirectedAcyclicGraph<Dep> getDependencyGraph(List<DependencyAtom> dependencyAtoms,
                                                                RepositoryRegistry repositoryRegistry) {
+        return getDependencyGraph(dependencyAtoms, repositoryRegistry, true);
+    }
+
+    /**
+     * @param dependencyAtoms the direct dependencies from which to create a dependency graph
+     * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
+     * @param failMissingDependency true to fail on missing dependencies; false to ignore and continue resolution
+     * @return a DAG {@link Graph<Dep>} implementation representing the resolved {@code dependencyAtoms} and its tree of
+     *         transitive dependencies.
+     */
+    public static DirectedAcyclicGraph<Dep> getDependencyGraph(List<DependencyAtom> dependencyAtoms,
+                                                               RepositoryRegistry repositoryRegistry,
+                                                               boolean failMissingDependency) {
         DirectedAcyclicGraph<Dep> dependencyDAG = new DirectedAcyclicGraph<Dep>();
-        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG, false);
+        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG, false, failMissingDependency);
         return dependencyDAG;
     }
 
@@ -91,10 +104,12 @@ public final class Deps {
      * @param graph to fill with the resolved {@link Dep} objects of {@code dependencyAtoms}.
      * @param pomSufficient if true, then only the pom from a maven repository is necessary to have successfully
      *                      resolved the {@code dependencyAtom}.
+     * @param failMissingDependency if true indicates that missing dependencies are treated as failures; false, to
+     *                              ignore and continue resolution
      */
     private static void fillDependencyGraph(Vertex<Dep> parentVertex, List<DependencyAtom> dependencyAtoms,
                                             RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph,
-                                            boolean pomSufficient) {
+                                            boolean pomSufficient, boolean failMissingDependency) {
         if (repositoryRegistry.isEmpty()) {
             Output.print("^error^ No repositories found, cannot resolve dependencies.");
             SystemExit.exit(1);
@@ -106,7 +121,18 @@ public final class Deps {
             // pom is sufficient for resolution if this is a transient dependency
             Dep resolvedDep;
             try {
-                resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep));
+                resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep),
+                                                failMissingDependency);
+                if ((resolvedDep == null) && !failMissingDependency) {
+                    if (Output.isInfo()) {
+                        Output.print("^info^ Could not resolve dependency ^b^%s^r^.", dependencyAtom.toString());
+                        String path = getPathAsString(parentVertex, dependencyAtom);
+                        if (path != null) {
+                            Output.print("^info^ path to unresolved dependency [ %s ].", path);
+                        }
+                    }
+                    continue;
+                }
             } catch (Exception e) {
                 Output.print(e);
                 resolvedDep = null; // allow the path to the dependency to be printed
@@ -128,7 +154,7 @@ public final class Deps {
                 }
             }
             if (!dependencyAtom.transientDep) { // direct transient dependencies are not recurred upon
-                fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, true);
+                fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, true, failMissingDependency);
             }
         }
     }
@@ -201,11 +227,12 @@ public final class Deps {
      * @param repositoryRegistry repositories to use when resolving {@code dependencyAtom}
      * @param pomSufficient if true, then only the pom from a maven repository is necessary to have successfully
      *                      resolved the {@code dependencyAtom}.
+     * @param failMissingDependency true to print failure message on missing dependency
      * @return a {@link Dep} representation of {@code dependencyAtom} or null if {@code dependencyAtom} could
      *         not be resolved.
      */
-    public static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry,
-                                        boolean pomSufficient) {
+    static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry,
+                                 boolean pomSufficient, boolean failMissingDependency) {
         // determine the local-repository directory for dependencyAtom; as it is needed regardless of where the dependency
         // if found.
         RepositoryAtom localRepo = repositoryRegistry.localRepository;
@@ -221,11 +248,13 @@ public final class Deps {
             return resolved;
         }
 
-        Output.print("^error^ Dependency ^b^%s^r^ not found in any repository; ensure repositories are accessible.", dependencyAtom.toString());
-        Output.print("^error^ Project's local repository is ^b^%s^r^.", localRepo.toString());
-        int remoteRepoSize = repositoryRegistry.remoteRepositories.size();
-        Output.print("^error^ Project has ^b^%d^r^ other repositor%s %s", remoteRepoSize, (remoteRepoSize != 1 ? "ies" : "y"),
-                (remoteRepoSize > 0 ? repositoryRegistry.remoteRepositories.toString() : ""));
+        if (failMissingDependency) {
+            Output.print("^error^ Dependency ^b^%s^r^ not found in any repository; ensure repositories are accessible.", dependencyAtom.toString());
+            Output.print("^error^ Project's local repository is ^b^%s^r^.", localRepo.toString());
+            int remoteRepoSize = repositoryRegistry.remoteRepositories.size();
+            Output.print("^error^ Project has ^b^%d^r^ other repositor%s %s", remoteRepoSize, (remoteRepoSize != 1 ? "ies" : "y"),
+                    (remoteRepoSize > 0 ? repositoryRegistry.remoteRepositories.toString() : ""));
+        }
         return null;
     }
 
@@ -491,7 +520,10 @@ public final class Deps {
             }
             return getDependenciesFromPlyRepo(FileUtil.pathFromParts(repoDepDir, "dependencies.properties"));
         } else {
-            String pomName = dependencyAtom.getArtifactName().replace("." + dependencyAtom.getSyntheticPackaging(), ".pom");
+            // maven pom files are never saved with classifiers
+            // @see 'classifier' under 'dependencies' in 'Pom Relationships' - http://maven.apache.org/pom.html
+            DependencyAtom pom = dependencyAtom.withoutClassifier().with("pom");
+            String pomName = pom.getArtifactName();
             return getDependenciesFromMavenRepo(FileUtil.pathFromParts(repoDepDir, pomName), repositoryAtom);
         }
     }

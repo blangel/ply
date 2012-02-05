@@ -136,13 +136,19 @@ public class DependencyManager {
             addRepository(args[1], scope);
         } else if ((args.length > 1) && "remove-repo".equals(args[0])) {
             removeRepository(args[1], scope);
+        } else if ((args.length > 1) && "resolve-classifiers".equals(args[0])) {
+            String[] classifiers = args[1].split(",");
+            for (String classifier : classifiers) {
+                Map<String, String> dependencies = getDependencies(scope);
+                resolveDependencies(dependencies, classifier, false);
+            }
         } else if (args.length == 0) {
             Map<String, String> dependencies = getDependencies(scope);
             int size = dependencies.size();
             if (size > 0) {
                 Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^.", size, scope.getPrettyPrint(), (size == 1 ? "y" : "ies"),
                         Props.getValue(projectContext, "name"));
-                Properties dependencyFiles = resolveDependencies(dependencies);
+                Properties dependencyFiles = resolveDependencies(dependencies, null, true);
                 storeResolvedDependenciesFile(dependencyFiles, scope);
             }
         } else {
@@ -273,7 +279,8 @@ public class DependencyManager {
         return new RepositoryRegistry(localRepo, repositoryAtoms, synthetic);
     }
 
-    private static Properties resolveDependencies(Map<String, String> dependencies) {
+    private static Properties resolveDependencies(Map<String, String> dependencies, String classifier,
+                                                  boolean failMissingDependency) {
         // if the project hasn't already resolved these dependencies locally and is not running with 'info' logging
         // it appears that ply has hung if downloading lots of dependencies...print out a warning if not running
         // in 'info' logging and dependency resolution takes longer than 2 seconds.
@@ -286,8 +293,15 @@ public class DependencyManager {
 
         DependencyAtom self = Deps.getProjectDep();
         List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
+        if (classifier != null) {
+            List<DependencyAtom> dependencyAtomWithClassifiers = new ArrayList<DependencyAtom>(dependencyAtoms.size());
+            for (DependencyAtom dependencyAtom : dependencyAtoms) {
+                dependencyAtomWithClassifiers.add(dependencyAtom.withClassifier(classifier));
+            }
+            dependencyAtoms = dependencyAtomWithClassifiers;
+        }
         RepositoryRegistry repositoryRegistry = createRepositoryList(self, dependencyAtoms);
-        DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry);
+        DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry, failMissingDependency);
         Properties deps = Deps.convertToResolvedPropertiesFile(dependencyGraph);
 
         if (printThread != null) {
@@ -384,12 +398,13 @@ public class DependencyManager {
     private static void usage() {
         Output.print("dep [--usage] <^b^command^r^>");
         Output.print("  where ^b^command^r^ is either:");
-        Output.print("    ^b^add <dep-atom>^r^\t: adds dep-atom to the list of dependencies (within scope) (or replacing the version if it already exists).");
-        Output.print("    ^b^remove <dep-atom>^r^\t: removes dep-atom from the list of dependencies (within scope).");
-        Output.print("    ^b^list^r^\t\t\t: list all direct dependencies (within scope excluding transitive dependencies).");
-        Output.print("    ^b^tree^r^\t\t\t: print all dependencies in a tree view (within scope including transitive dependencies).");
-        Output.print("    ^b^add-repo <rep-atom>^r^\t: adds rep-atom to the list of repositories.");
-        Output.print("    ^b^remove-repo <rep-atom>^r^: removes rep-atom from the list of repositories.");
+        Output.print("    ^b^add <dep-atom>^r^ : adds dep-atom to the list of dependencies (within scope) (or replacing the version if it already exists).");
+        Output.print("    ^b^remove <dep-atom>^r^ : removes dep-atom from the list of dependencies (within scope).");
+        Output.print("    ^b^list^r^ : list all direct dependencies (within scope excluding transitive dependencies).");
+        Output.print("    ^b^tree^r^ : print all dependencies in a tree view (within scope including transitive dependencies).");
+        Output.print("    ^b^add-repo <rep-atom>^r^ : adds rep-atom to the list of repositories.");
+        Output.print("    ^b^remove-repo <rep-atom>^r^ : removes rep-atom from the list of repositories.");
+        Output.print("    ^b^resolve-classifiers <classifiers>^r^ : resolves dependencies with each of the (comma delimited) classifiers.");
         Output.print("  ^b^dep-atom^r^ is namespace:name:version[:artifactName] (artifactName is optional and defaults to name-version.jar).");
         Output.print("  ^b^rep-atom^r^ is [type:]repoURI (type is optional and defaults to ply, must be either ply or maven).");
         Output.print("  if no command is passed then dependency resolution is done for all dependencies against the known repositories.");
