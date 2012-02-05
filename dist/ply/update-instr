@@ -8,3 +8,8 @@ VERSION=1.0_2
 wget -O $PLY_HOME/scripts/ply-update-1.0.jar https://github.com/blangel/ply/raw/abd67b017b909dbdbbe865c7bb3f15ee99dd11ee/dist/ply/scripts/ply-update-1.0.jar
 echo "1.0_3" > $PLY_HOME/version
 VERSION=1.0_3
+wget -O $PLY_HOME/scripts/ply-update-1.0.jar https://github.com/blangel/ply/raw/b5869bb5746d793931f59a1e5abcb2ce78d47a97/dist/ply/scripts/ply-update-1.0.jar
+wget -O $PLY_HOME/scripts/ply-dependency-manager-1.0.jar https://github.com/blangel/ply/raw/b5869bb5746d793931f59a1e5abcb2ce78d47a97/dist/ply/scripts/ply-dependency-manager-1.0.jar
+METHOD=property=aliases.update=dep "dep resolve-classifiers sources,javadoc" ply-intellij-1.0.jar|dep ply-intellij-1.0.jar
+echo "1.0_4" > $PLY_HOME/version
+VERSION=1.0_4
