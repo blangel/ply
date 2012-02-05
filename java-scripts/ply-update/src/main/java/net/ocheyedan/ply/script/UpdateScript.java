@@ -94,7 +94,7 @@ public final class UpdateScript {
      */
     static int update(String version, List<String> instructions, File plyHomeDir) {
         int warnings = 0;
-        Output.print("^info^ Updating ^b^%s^r^", version);
+        Output.print("^info^ Updating to ^b^%s^r^", version);
         for (String instruction : instructions) {
             if (instruction.startsWith("OUTPUT=")) {
                 String output = instruction.substring("OUTPUT=".length());
@@ -132,8 +132,8 @@ public final class UpdateScript {
     static void executeInstruction(String instruction) {
         ProcessBuilder builder = createProcess(instruction);
         try {
-            Process tar = builder.start();
-            tar.waitFor();
+            Process process = builder.start();
+            process.waitFor();
         } catch (IOException ioe) {
             Output.print(ioe);
             throw new SystemExit(1, ioe);
