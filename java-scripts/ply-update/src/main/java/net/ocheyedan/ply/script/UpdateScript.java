@@ -323,12 +323,13 @@ public final class UpdateScript {
         Properties properties = PropertiesFileUtil.load(contextFile, false);
         propValue = propValue.replaceAll("\\\\\\|", "|"); // replace escaped pipe characters
         if (expectedPropValue != null) {
+            boolean modifiedAndNewTheSame = (propValue == null ? !properties.containsKey(propName) : propValue.equals(properties.getProperty(propName)));
             if (!properties.containsKey(propName) || (!expectedPropValue.equals(properties.getProperty(propName))
-                    && (propValue == null ? properties.containsKey(propName) : !propValue.equals(properties.getProperty(propName))))) {
+                    && !modifiedAndNewTheSame)) {
                 Output.print("^warn^ Your ply has set ^b^%s^r^=\"%s\" (in context ^b^%s^r^) but ply wants to set it to ^b^%s^r^=\"%s\". Please manually resolve.",
                     propName, properties.get(propName), context, propName, propValue);
                 return 1;
-            } else if (expectedPropValue.equals(propValue)) {
+            } else if (modifiedAndNewTheSame) {
                 return 0; // no need to resave file
             }
         } else if (properties.containsKey(propName)) {

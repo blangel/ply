@@ -41,10 +41,10 @@ public class UpdateScriptTest {
         }
 
         // test an invalid update-instructions file
-        File currentDir = new File("./");
+        String currentDir = FileUtil.getCanonicalPath(new File("./"));
         try {
             String url;
-            if (!currentDir.toURI().toURL().toString().contains("java-scripts")) {
+            if (!currentDir.contains("java-scripts")) {
                 url = (new File("java-scripts/ply-update/src/test/resources/update-instr-test-fail-1")).toURI().toURL().toString();
             } else {
                 url = (new File("src/test/resources/update-instr-test-fail-1")).toURI().toURL().toString();
@@ -57,7 +57,7 @@ public class UpdateScriptTest {
 
         // check empty file
         String url;
-        if (!currentDir.toURI().toURL().toString().contains("java-scripts")) {
+        if (!currentDir.contains("java-scripts")) {
             url = (new File("java-scripts/ply-update/src/test/resources/update-instr-test-empty-1")).toURI().toURL().toString();
         } else {
             url = (new File("src/test/resources/update-instr-test-empty-1")).toURI().toURL().toString();
@@ -66,7 +66,7 @@ public class UpdateScriptTest {
         assertEquals(1, updateInstructions.size());
         assertEquals(0, updateInstructions.get("VERSIONS").size());
 
-        if (!currentDir.toURI().toURL().toString().contains("java-scripts")) {
+        if (!currentDir.contains("java-scripts")) {
             url = (new File("java-scripts/ply-update/src/test/resources/update-instr-test-1")).toURI().toURL().toString();
         } else {
             url = (new File("src/test/resources/update-instr-test-1")).toURI().toURL().toString();
@@ -77,7 +77,7 @@ public class UpdateScriptTest {
         assertEquals(1, updateInstructions.get("VERSIONS").size());
         assertEquals("1.0_1", updateInstructions.get("VERSIONS").get(0));
 
-        if (!currentDir.toURI().toURL().toString().contains("java-scripts")) {
+        if (!currentDir.contains("java-scripts")) {
             url = (new File("java-scripts/ply-update/src/test/resources/update-instr-test-2")).toURI().toURL().toString();
         } else {
             url = (new File("src/test/resources/update-instr-test-2")).toURI().toURL().toString();
@@ -93,7 +93,7 @@ public class UpdateScriptTest {
         assertEquals("1.0_1", updateInstructions.get("VERSIONS").get(0));
         assertEquals("1.0_2", updateInstructions.get("VERSIONS").get(1));
 
-        if (!currentDir.toURI().toURL().toString().contains("java-scripts")) {
+        if (!currentDir.contains("java-scripts")) {
             url = (new File("java-scripts/ply-update/src/test/resources/update-instr-test-3")).toURI().toURL().toString();
         } else {
             url = (new File("src/test/resources/update-instr-test-3")).toURI().toURL().toString();
@@ -113,9 +113,9 @@ public class UpdateScriptTest {
 
     @Test
     public void updateProperty() {
-        File currentDir = new File("./");
+        String currentDir = FileUtil.getCanonicalPath(new File("./"));
         File configDir;
-        if (!currentDir.getPath().contains("java-scripts")) {
+        if (!currentDir.contains("java-scripts")) {
             configDir = new File("java-scripts/ply-update/src/test/resources/config");
         } else {
             configDir = new File("src/test/resources/config");
@@ -152,74 +152,87 @@ public class UpdateScriptTest {
         }
 
         // test property name with invalid expected value
-        UpdateScript.updateProperty("aliases.update=ply-update-2.0.jar|something-else", configDir);
+        int warnings = UpdateScript.updateProperty("aliases.update=ply-update-2.0.jar|something-else", configDir);
+        assertEquals(1, warnings);
         Properties aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
         assertEquals("ply-update-1.0.jar", aliases.getProperty("update"));
         // test property name with valid expected value
-        UpdateScript.updateProperty("aliases.update=ply-update-2.0.jar|ply-update-1.0.jar", configDir);
+        warnings = UpdateScript.updateProperty("aliases.update=ply-update-2.0.jar|ply-update-1.0.jar", configDir);
+        assertEquals(0, warnings);
         aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
         assertEquals("ply-update-2.0.jar", aliases.getProperty("update"));
 
         // test property name with invalid expected value
-        UpdateScript.updateProperty("aliases.update=ply-update-3.0.jar|", configDir);
+        warnings = UpdateScript.updateProperty("aliases.update=ply-update-3.0.jar|", configDir);
+        assertEquals(1, warnings);
         aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
         assertEquals("ply-update-2.0.jar", aliases.getProperty("update"));
 
         // test property name with a period in it
         // test property name with invalid expected value
-        UpdateScript.updateProperty("aliases.user.modified=testing|blah", configDir);
+        warnings = UpdateScript.updateProperty("aliases.user.modified=testing|blah", configDir);
+        assertEquals(1, warnings);
         aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
         assertEquals("something-else", aliases.getProperty("user.modified"));
         // test property name with valid expected value
-        UpdateScript.updateProperty("aliases.user.modified=testing|something-else", configDir);
+        warnings = UpdateScript.updateProperty("aliases.user.modified=testing|something-else", configDir);
+        assertEquals(0, warnings);
         aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
         assertEquals("testing", aliases.getProperty("user.modified"));
 
         // test property value with pipe in it
-        UpdateScript.updateProperty("aliases.user.modified=with\\| character|testing", configDir);
+        warnings = UpdateScript.updateProperty("aliases.user.modified=with\\| character|testing", configDir);
+        assertEquals(0, warnings);
         aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
         assertEquals("with| character", aliases.getProperty("user.modified"));
-        UpdateScript.updateProperty("aliases.user.modified=\\|pipe!|with| character", configDir);
+        warnings = UpdateScript.updateProperty("aliases.user.modified=\\|pipe!|with| character", configDir);
+        assertEquals(0, warnings);
         aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
         assertEquals("|pipe!", aliases.getProperty("user.modified"));
 
         // test property where the user has deleted the existing
-        UpdateScript.updateProperty("aliases.user.deleted=something|dne", configDir);
+        warnings = UpdateScript.updateProperty("aliases.user.deleted=something|dne", configDir);
+        assertEquals(1, warnings);
         aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
         assertFalse(aliases.containsKey("user.deleted"));
 
         // test add a new property
-        UpdateScript.updateProperty("aliases.system.created=something|", configDir);
+        warnings = UpdateScript.updateProperty("aliases.system.created=something|", configDir);
+        assertEquals(0, warnings);
         aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
         assertEquals("something", aliases.getProperty("system.created"));
 
         // test the properties file dne
-        UpdateScript.updateProperty("project.prop=newvalue|oldvalue", configDir);
+        warnings = UpdateScript.updateProperty("project.prop=newvalue|oldvalue", configDir);
+        assertEquals(1, warnings);
         Properties project = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "project.properties"), false, true);
         assertNull(project);
 
         // test the properties file dne but is created
-        UpdateScript.updateProperty("project.prop=newvalue|", configDir);
+        warnings = UpdateScript.updateProperty("project.prop=newvalue|", configDir);
+        assertEquals(0, warnings);
         project = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "project.properties"));
         assertEquals("newvalue", project.getProperty("prop"));
 
         // test scoped properties file, creation
-        UpdateScript.updateProperty("project#test.testprop=newvalue|", configDir);
+        warnings = UpdateScript.updateProperty("project#test.testprop=newvalue|", configDir);
+        assertEquals(0, warnings);
         project = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "project.test.properties"));
         assertEquals("newvalue", project.getProperty("testprop"));
     }
 
     @After
     public void teardown() {
-        File currentDir = new File("./");
+        String currentDir = FileUtil.getCanonicalPath(new File("./"));
         File configDir;
-        if (!currentDir.getPath().contains("java-scripts")) {
+        if (!currentDir.contains("java-scripts")) {
             configDir = new File("java-scripts/ply-update/src/test/resources/config");
         } else {
             configDir = new File("src/test/resources/config");
         }
         String aliasesFile = FileUtil.pathFromParts(configDir.getPath(), "aliases.properties");
         Properties aliases = PropertiesFileUtil.load(aliasesFile);
+        aliases.clear();
         aliases.put("update", "ply-update-1.0.jar");
         aliases.put("user.modified", "something-else");
         PropertiesFileUtil.store(aliases, aliasesFile);
