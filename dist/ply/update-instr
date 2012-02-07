@@ -36,3 +36,9 @@ OUTPUT=Downloading new version of ^b^ply-util^r^ library...
 wget -O $PLY_HOME/lib/ply-util-1.0.jar https://github.com/blangel/ply/raw/2de37b8d1b12603b63b3666203af1fe46f47f83e/dist/ply/lib/ply-util-1.0.jar
 echo "1.0_5" > $PLY_HOME/version
 VERSION=1.0_5
+OUTPUT=Downloading new version of ^b^ply-util^r^ library...
+wget -O $PLY_HOME/lib/ply-util-1.0.jar https://github.com/blangel/ply/raw/0c9a83a750c02a2c5f63b74746f0d6c69547fa63/dist/ply/lib/ply-util-1.0.jar
+OUTPUT=Downloading new version of ^b^ply-dependency-manager^r^ script...
+wget -O $PLY_HOME/scripts/ply-dependency-manager-1.0.jar https://github.com/blangel/ply/raw/0c9a83a750c02a2c5f63b74746f0d6c69547fa63/dist/ply/scripts/ply-dependency-manager-1.0.jar
+echo "1.0_6" > $PLY_HOME/version
+VERSION=1.0_6
