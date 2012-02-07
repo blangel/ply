@@ -24,27 +24,27 @@ public class DependencyAtomTest {
         AtomicReference<String> error = new AtomicReference<String>();
         atom = DependencyAtom.parse("", error);
         assertNull(atom);
-        assertEquals("namespace, name and version", error.get());
+        assertEquals("missing namespace, name and version", error.get());
 
         error.set(null);
         atom = DependencyAtom.parse("test", error);
         assertNull(atom);
-        assertEquals("name and version", error.get());
+        assertEquals("missing name and version", error.get());
 
         error.set(null);
         atom = DependencyAtom.parse("test and more", error);
         assertNull(atom);
-        assertEquals("Spaces not allowed in dependency atoms.", error.get());
+        assertEquals("has spaces which are not allowed in dependency atoms.", error.get());
 
         error.set(null);
         atom = DependencyAtom.parse(" test ", error); // will trim though
         assertNull(atom);
-        assertEquals("name and version", error.get());
+        assertEquals("missing name and version", error.get());
 
         error.set(null);
         atom = DependencyAtom.parse("namespace:name", error);
         assertNull(atom);
-        assertEquals("version", error.get());
+        assertEquals("missing version", error.get());
 
         error.set(null);
         atom = DependencyAtom.parse("namespace:name:version:artifact-name.zip:nottransient", error);

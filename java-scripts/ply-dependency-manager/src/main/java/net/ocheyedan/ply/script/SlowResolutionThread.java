@@ -24,9 +24,12 @@ public final class SlowResolutionThread extends Thread {
 
         final AtomicBoolean responded;
 
-        Runner(Lock lock, AtomicBoolean responded) {
+        final String message;
+
+        Runner(Lock lock, AtomicBoolean responded, String message) {
             this.lock = lock;
             this.responded = responded;
+            this.message = message;
         }
 
         @Override public void run() {
@@ -35,8 +38,7 @@ public final class SlowResolutionThread extends Thread {
                 Thread.sleep(2000);
                 if (lock.tryLock()) {
                     try {
-                        Output.print(
-                                "^b^Hang tight,^r^ your project needs a lot of dependencies. ^b^Ply^r^'s downloading them...");
+                        Output.print(message);
                         // shouldn't be run if headless; but just in case.
                         if (PlyUtil.isHeadless()) {
                             Output.print("You can always run with ^b^-Pply.log.levels=info^r^ to see more log messages.");
@@ -111,12 +113,12 @@ public final class SlowResolutionThread extends Thread {
 
     final AtomicBoolean responded;
 
-    public SlowResolutionThread(Lock lock) {
-        this(lock, new AtomicBoolean(true));
+    public SlowResolutionThread(Lock lock, String message) {
+        this(lock, new AtomicBoolean(true), message);
     }
 
-    private SlowResolutionThread(Lock lock, AtomicBoolean responded) {
-        super(new Runner(lock, responded));
+    private SlowResolutionThread(Lock lock, AtomicBoolean responded, String message) {
+        super(new Runner(lock, responded, message));
         setDaemon(true);
         this.responded = responded;
     }

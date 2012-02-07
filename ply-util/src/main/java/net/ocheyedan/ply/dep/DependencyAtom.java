@@ -209,7 +209,7 @@ public class DependencyAtom {
         atom = atom.trim();
         if (atom.contains(" ")) {
             if (error != null) {
-                error.set("Spaces not allowed in dependency atoms.");
+                error.set("has spaces which are not allowed in dependency atoms.");
             }
             return null;
         }
@@ -220,9 +220,9 @@ public class DependencyAtom {
                     parsed = new String[0];
                 }
                 switch (parsed.length) {
-                    case 0: error.set("namespace, name and version"); break;
-                    case 1: error.set("name and version"); break;
-                    default: error.set("version");
+                    case 0: error.set("missing namespace, name and version"); break;
+                    case 1: error.set("missing name and version"); break;
+                    default: error.set("missing version");
                 }
             }
             return null;

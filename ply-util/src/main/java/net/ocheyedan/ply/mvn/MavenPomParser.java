@@ -284,14 +284,14 @@ public class MavenPomParser {
                     parseRepositories(child, parseResult);
                 } else if ("properties".equals(nodeName)) {
                     parseProperties(child, parseResult);
-                } else if ("groupId".equals(nodeName) && !"${parent.groupId}".equals(child.getTextContent())) {
-                    localGroupId = child.getTextContent();
+                } else if ("groupId".equals(nodeName) && !"${parent.groupId}".equals(child.getTextContent().trim())) {
+                    localGroupId = child.getTextContent().trim();
                 } else if ("artifactId".equals(nodeName)) {
-                    localArtifactId = child.getTextContent();
-                } else if ("version".equals(nodeName) && !"${parent.version}".equals(child.getTextContent())) {
-                    localVersion = Version.resolve(child.getTextContent(), getMetadataBaseUrl(pomUrlPath));
+                    localArtifactId = child.getTextContent().trim();
+                } else if ("version".equals(nodeName) && !"${parent.version}".equals(child.getTextContent().trim())) {
+                    localVersion = Version.resolve(child.getTextContent().trim(), getMetadataBaseUrl(pomUrlPath));
                 } else if ("packaging".equals(nodeName)) {
-                    packaging = child.getTextContent();
+                    packaging = child.getTextContent().trim();
                 } else if ("parent".equals(nodeName)) { // parent
                     parentPomUri = parseParentPomUrlPath(child, repositoryAtom, pomUri, parentGroupId, parentVersion);
                 } else if ("build".equals(nodeName)) {
@@ -371,19 +371,19 @@ public class MavenPomParser {
             for (int j = 0; j < dependencyNode.getLength(); j++) {
                 Node child = dependencyNode.item(j);
                 if ("groupId".equals(child.getNodeName())) {
-                    groupId = child.getTextContent();
+                    groupId = child.getTextContent().trim();
                 } else if ("artifactId".equals(child.getNodeName())) {
-                    artifactId = child.getTextContent();
+                    artifactId = child.getTextContent().trim();
                 } else if ("version".equals(child.getNodeName())) {
-                    version = child.getTextContent();
+                    version = child.getTextContent().trim();
                 } else if ("classifier".equals(child.getNodeName())) {
-                    classifier = child.getTextContent();
+                    classifier = child.getTextContent().trim();
                 } else if ("type".equals(child.getNodeName())) {
-                    type = child.getTextContent();
+                    type = child.getTextContent().trim();
                 } else if ("scope".equals(child.getNodeName())) {
-                    scope = child.getTextContent();
+                    scope = child.getTextContent().trim();
                 } else if ("optional".equals(child.getNodeName())) {
-                    optional = child.getTextContent();
+                    optional = child.getTextContent().trim();
                 } else if ("systemPath".equals(child.getNodeName())) {
                     systemPath = true;
                 }
@@ -416,9 +416,9 @@ public class MavenPomParser {
             for (int j = 0; j < repositoryNode.getLength(); j++) {
                 Node child = repositoryNode.item(j);
                 if ("url".equals(child.getNodeName())) {
-                    repoUrl = child.getTextContent();
+                    repoUrl = child.getTextContent().trim();
                 } else if ("layout".equals(child.getNodeName())) {
-                    layout = child.getTextContent();
+                    layout = child.getTextContent().trim();
                 }
             }
             if (!repoUrl.isEmpty() && (layout.isEmpty() || "default".equals(layout))) {
@@ -436,17 +436,17 @@ public class MavenPomParser {
             String nodeName = child.getNodeName();
             // TODO - all the following need to be filtered (but should be after all other parsing).
             if ("directory".equals(nodeName)) {
-                parseResult.mavenProperties.put("project.build.directory", child.getTextContent());
+                parseResult.mavenProperties.put("project.build.directory", child.getTextContent().trim());
             } else if ("outputDirectory".equals(nodeName)) {
-                parseResult.mavenProperties.put("project.build.outputDirectory", child.getTextContent());
+                parseResult.mavenProperties.put("project.build.outputDirectory", child.getTextContent().trim());
             } else if ("sourceDirectory".equals(nodeName)) {
-                parseResult.mavenProperties.put("project.build.sourceDirectory", child.getTextContent());
+                parseResult.mavenProperties.put("project.build.sourceDirectory", child.getTextContent().trim());
             } else if ("testOutputDirectory".equals(nodeName)) {
-                parseResult.mavenProperties.put("project.build.testOutputDirectory", child.getTextContent());
+                parseResult.mavenProperties.put("project.build.testOutputDirectory", child.getTextContent().trim());
             } else if ("testSourceDirectory".equals(nodeName)) {
-                parseResult.mavenProperties.put("project.build.testSourceDirectory", child.getTextContent());
+                parseResult.mavenProperties.put("project.build.testSourceDirectory", child.getTextContent().trim());
             } else if ("finalName".equals(nodeName)) {
-                parseResult.mavenProperties.put("project.build.finalName", child.getTextContent());
+                parseResult.mavenProperties.put("project.build.finalName", child.getTextContent().trim());
             }
             // TODO - resources / testResources [ requires ply to support multiple-resource dirs ]
         }
@@ -524,7 +524,7 @@ public class MavenPomParser {
             Node child = properties.item(i);
             // iterating child->parent, per maven, child overrides parent, only place in if not already exists.
             if (!parseResult.mavenProperties.containsKey(child.getNodeName())) {
-                parseResult.mavenProperties.put(child.getNodeName(), child.getTextContent());
+                parseResult.mavenProperties.put(child.getNodeName(), child.getTextContent().trim());
             }
         }
     }
@@ -536,15 +536,15 @@ public class MavenPomParser {
         for (int i = 0; i < children.getLength(); i++) {
             Node child = children.item(i);
             if ("groupId".equals(child.getNodeName())) {
-                groupId = child.getTextContent();
+                groupId = child.getTextContent().trim();
                 parentGroupId.set(groupId);
             } else if ("artifactId".equals(child.getNodeName())) {
-                artifactId = child.getTextContent();
+                artifactId = child.getTextContent().trim();
             } else if ("version".equals(child.getNodeName())) {
-                version = child.getTextContent();
+                version = child.getTextContent().trim();
                 parentVersion.set(version);
             } else if ("relativePath".equals(child.getNodeName())) {
-                relativePath = child.getTextContent();
+                relativePath = child.getTextContent().trim();
             }
         }
 

@@ -14,6 +14,7 @@ import net.ocheyedan.ply.props.Scope;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -160,7 +161,7 @@ public class DependencyManager {
         AtomicReference<String> error = new AtomicReference<String>(null);
         DependencyAtom atom = DependencyAtom.parse(dependency, error);
         if (atom == null) {
-            Output.print("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace:name:version[:artifactName]).",
+            Output.print("^error^ Dependency ^b^%s^r^ ^b^%s^r^ (format namespace:name:version[:artifactName]).",
                     dependency, error.get());
             throw new SystemExit(1);
         }
@@ -170,9 +171,14 @@ public class DependencyManager {
                     dependencies.getProperty(atom.getPropertyName()), atom.getPropertyValue());
         }
         dependencies.put(atom.getPropertyName(), atom.getPropertyValue());
-        List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
-        RepositoryRegistry repositoryRegistry = createRepositoryList(Deps.getProjectDep(), dependencyAtoms);
-        if (Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry) != null) { // getDependencyGraph returns => ok
+        final List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
+        final RepositoryRegistry repositoryRegistry = createRepositoryList(Deps.getProjectDep(), dependencyAtoms);
+        DirectedAcyclicGraph<Dep> resolvedDeps = invokeWithSlowResolutionThread(new Callable<DirectedAcyclicGraph<Dep>>() {
+            @Override public DirectedAcyclicGraph<Dep> call() throws Exception {
+                return Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry);
+            }
+        }, String.format("^b^Hang tight,^r^ %s has a lot of dependencies    . ^b^Ply^r^'s downloading them...", dependency));
+        if (resolvedDeps != null) { // getDependencyGraph returns => ok
             storeDependenciesFile(dependencies, scope);
         }
         Output.print("Added dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
@@ -185,7 +191,7 @@ public class DependencyManager {
             // allow non-version specification.
             String[] split = dependency.split(":");
             if (split.length < 2) {
-                Output.print("^error^ Dependency ^b^%s^r^ missing ^b^%s^r^ (format namespace:name[:version:artifactName]).",
+                Output.print("^error^ Dependency ^b^%s^r^ ^b^%s^r^ (format namespace:name[:version:artifactName]).",
                         dependency, (split.length == 1 ? "name" : "namespace and name"));
                 System.exit(1);
             }
@@ -279,36 +285,47 @@ public class DependencyManager {
         return new RepositoryRegistry(localRepo, repositoryAtoms, synthetic);
     }
 
-    private static Properties resolveDependencies(Map<String, String> dependencies, String classifier,
-                                                  boolean failMissingDependency) {
+    private static Properties resolveDependencies(final Map<String, String> dependencies, final String classifier,
+                                                  final boolean failMissingDependency) {
+        return invokeWithSlowResolutionThread(new Callable<Properties>() {
+            @Override public Properties call() throws Exception {
+                DependencyAtom self = Deps.getProjectDep();
+                List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
+                if (classifier != null) {
+                    List<DependencyAtom> dependencyAtomWithClassifiers = new ArrayList<DependencyAtom>(dependencyAtoms.size());
+                    for (DependencyAtom dependencyAtom : dependencyAtoms) {
+                        dependencyAtomWithClassifiers.add(dependencyAtom.withClassifier(classifier));
+                    }
+                    dependencyAtoms = dependencyAtomWithClassifiers;
+                }
+                RepositoryRegistry repositoryRegistry = createRepositoryList(self, dependencyAtoms);
+                DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry, failMissingDependency);
+                return Deps.convertToResolvedPropertiesFile(dependencyGraph);
+            }
+        }, "^b^Hang tight,^r^ your project needs a lot of dependencies. ^b^Ply^r^'s downloading them...");
+    }
+
+    private static <T> T invokeWithSlowResolutionThread(Callable<T> callable, String message) {
         // if the project hasn't already resolved these dependencies locally and is not running with 'info' logging
         // it appears that ply has hung if downloading lots of dependencies...print out a warning if not running
         // in 'info' logging and dependency resolution takes longer than 2 seconds.
         final Lock lock = new ReentrantLock();
         Thread printThread = null;
         if (!Output.isInfo() && !PlyUtil.isHeadless()) {
-            printThread = new SlowResolutionThread(lock);
+            printThread = new SlowResolutionThread(lock, message);
             printThread.start();
         }
-
-        DependencyAtom self = Deps.getProjectDep();
-        List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
-        if (classifier != null) {
-            List<DependencyAtom> dependencyAtomWithClassifiers = new ArrayList<DependencyAtom>(dependencyAtoms.size());
-            for (DependencyAtom dependencyAtom : dependencyAtoms) {
-                dependencyAtomWithClassifiers.add(dependencyAtom.withClassifier(classifier));
-            }
-            dependencyAtoms = dependencyAtomWithClassifiers;
+        T result = null;
+        try {
+            result = callable.call();
+        } catch (Exception e) {
+            Output.print(e);
         }
-        RepositoryRegistry repositoryRegistry = createRepositoryList(self, dependencyAtoms);
-        DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry, failMissingDependency);
-        Properties deps = Deps.convertToResolvedPropertiesFile(dependencyGraph);
-
         if (printThread != null) {
             printThread.interrupt();
             lock.lock(); // never release, one-time-lock; the print-thread should always release after print if it holds the lock
         }
-        return deps;
+        return result;
     }
 
     private static Map<String, String> getDependencies(Scope scope) {

@@ -134,8 +134,8 @@ public final class Deps {
                     }
                     continue;
                 }
-            } catch (Exception e) {
-                Output.print(e);
+            } catch (Throwable t) {
+                Output.print(t);
                 resolvedDep = null; // allow the path to the dependency to be printed
             }
             if (resolvedDep == null) {
@@ -343,7 +343,7 @@ public final class Deps {
             String dependencyValue = dependencyProp.value;
             DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + ":" + dependencyValue, error);
             if (dependencyAtom == null) {
-                Output.print("^warn^ Invalid dependency %s:%s; missing %s", dependencyKey, dependencyValue,
+                Output.print("^warn^ Invalid dependency %s:%s; %s", dependencyKey, dependencyValue,
                         error.get());
                 continue;
             }
@@ -365,7 +365,7 @@ public final class Deps {
             Object dependencyValue = dependencies.get(dependencyKey);
             DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + ":" + dependencyValue, error);
             if (dependencyAtom == null) {
-                Output.print("^warn^ Invalid dependency %s:%s; missing %s", dependencyKey, dependencyValue,
+                Output.print("^warn^ Invalid dependency %s:%s; %s", dependencyKey, dependencyValue,
                         error.get());
                 continue;
             }
