@@ -116,15 +116,17 @@ public class CompilerScript {
 
     private final Set<String> sourceFilePaths;
 
+    private final File errorsPropertiesFile;
+
     private CompilerScript() {
+        if (!isSupportedJavaVersion(getJavaVersion())) {
+            System.exit(1);
+        }
         Scope scope = new Scope(Props.getValue(Context.named("ply"), "scope"));
         String srcDir = Props.getValue(Context.named("project"), "src.dir");
         String buildDir = Props.getValue(Context.named("project"), "build.dir");
         if ((srcDir.isEmpty()) || (buildDir.isEmpty())) {
             Output.print("^error^ could not determine source or build directory for compilation.");
-            System.exit(1);
-        }
-        if (!isSupportedJavaVersion(getJavaVersion())) {
             System.exit(1);
         }
         this.srcDir = srcDir;
@@ -145,12 +147,17 @@ public class CompilerScript {
                 }
             }
         }
+        this.errorsPropertiesFile = FileUtil.fromParts(buildDir, "compiler-errors" + scope.getFileSuffix() + ".properties");
     }
 
     private void invoke() {
         if (sourceFilePaths.isEmpty()) {
-            Output.print("Nothing to compile, everything is up to date.");
-            return;
+            if (handleExistingErrors()) {
+                System.exit(1);
+            } else {
+                Output.print("Nothing to compile, everything is up to date.");
+                return;
+            }
         }
         File sourceDir = new File(srcDir);
         String srcPath;
@@ -174,21 +181,59 @@ public class CompilerScript {
                                                                        (sourceFilePaths.size() == 1 ? "" : "s"),
                                                                        Props.getValue(Context.named("project"), "name"));
         boolean result = compilationTask.call();
-        for (String error : diagnosticListener.getErrors()) {
-            Output.print(error);
+        for (String notes : diagnosticListener.getNotes()) {
+            Output.print(notes);
         }
         for (String warning : diagnosticListener.getWarnings()) {
             Output.print(warning);
         }
-        for (String notes : diagnosticListener.getNotes()) {
-            Output.print(notes);
+        for (String error : diagnosticListener.getErrors()) {
+            Output.print(error);
         }
         if (extraPrintStatements.getBuffer().length() > 0) {
             Output.print(extraPrintStatements.toString());
         }
+        handleFilesWithError(diagnosticListener.getErrors(), this.errorsPropertiesFile);
         if (!result) {
             System.exit(1);
         }
+    }
+
+    /**
+     * Saves all values within {@code errors} into {@code errorsPropertiesFile}.
+     * This method will clear {@code errorsPropertiesFile} and if {@code errors} is empty then {@code errorsPropertiesFile}
+     * will be deleted.
+     * @param errors the set of error statements
+     * @param errorsPropertiesFile the location of the properties file which manages errors between invocations.
+     */
+    private void handleFilesWithError(Set<String> errors, File errorsPropertiesFile) {
+        if (errors.isEmpty()) {
+            if (errorsPropertiesFile.exists()) {
+                FileUtil.delete(errorsPropertiesFile);
+            }
+            return;
+        }
+        Properties errorsProperties = PropertiesFileUtil.load(errorsPropertiesFile.getPath(), true);
+        errorsProperties.clear();
+        for (String error : errors) {
+            errorsProperties.put(error, "error");
+        }
+        PropertiesFileUtil.store(errorsProperties, errorsPropertiesFile.getPath());
+    }
+
+    /**
+     * Prints each key within {@link #errorsPropertiesFile}
+     * @return true if {@link #errorsPropertiesFile} was not empty
+     */
+    private boolean handleExistingErrors() {
+        Properties errorsProperties = PropertiesFileUtil.load(errorsPropertiesFile.getPath(), false, true);
+        if (errorsProperties == null) {
+            return false;
+        }
+        for (String error : errorsProperties.stringPropertyNames()) {
+            Output.print(error);
+        }
+        return true;
     }
 
     private List<String> getCompilerArgs() {

@@ -36,4 +36,14 @@ public class OrderedProperties extends Properties {
         return super.put(key, value);
     }
 
+    @Override public void clear() {
+        super.clear();
+        keys.clear();
+    }
+
+    @Override public Object remove(Object key) {
+        Object oldKey = super.remove(key);
+        keys.remove(key);
+        return oldKey;
+    }
 }

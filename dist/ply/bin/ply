@@ -135,7 +135,7 @@ if [ -e $PLY_HOME/version ]; then
 fi
 
 exec "$JAVACMD" \
-  -client -Xms32M -Xmx32M -dsa -XX:+UseCompressedStrings -XX:+UseFastAccessorMethods \
+  -client -Xms32M -Xmx32M -d32 -XX:+UseCompressedStrings -XX:+UseFastAccessorMethods \
   -classpath "${PLY_HOME}"/lib/ply-1.0.jar:"${PLY_HOME}"/lib/ply-util-1.0.jar \
   "-Dply.home=${PLY_HOME}" \
   "-Dply.version=${PLY_VERSION}" \

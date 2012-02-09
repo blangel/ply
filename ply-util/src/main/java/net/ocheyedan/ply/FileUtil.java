@@ -20,11 +20,25 @@ public final class FileUtil {
      * @return true on success; false otherwise
      */
     public static boolean copyDir(File fromDir, File toDir) {
+        return copyDir(fromDir, toDir, null);
+    }
+
+    /**
+     * Copies the contents of {@code fromDir} to {@code toDir} recursively, excluding any matches from {@code excluding}.
+     * @param fromDir from which to copy
+     * @param toDir to which to copy
+     * @param excluding if true will skip copy.  If the value is null, no files/directories will be excluded.
+     * @return true on success; false otherwise
+     */
+    public static boolean copyDir(File fromDir, File toDir, FilenameFilter excluding) {
         if (!fromDir.isDirectory() || !fromDir.exists()) {
             return false;
         }
         toDir.mkdirs();
         for (File subFile : fromDir.listFiles()) {
+            if ((excluding != null) && excluding.accept(subFile.getParentFile(), subFile.getName())) {
+                continue;
+            }
             File toDirSubFile = new File(toDir.getPath() + File.separator + subFile.getName());
             if (subFile.isDirectory()) {
                 if (!copyDir(subFile, toDirSubFile)) {

@@ -25,7 +25,7 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
 
     public FormattedDiagnosticListener(String srcPath) {
         this.srcPath = srcPath;
-        this.statements = new HashMap<Type, Set<String>>();
+        this.statements = new HashMap<Type, Set<String>>(3, 1.0f);
     }
 
     @Override public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
@@ -84,7 +84,7 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
 
         Set<String> messages = statements.get(type);
         if (messages == null) {
-            messages = new HashSet<String>();
+            messages = new HashSet<String>(5);
             statements.put(type, messages);
         }
         messages.add(String.format("^%s^^i^%s%s%s^r^ %s^r^ @ line ^b^%s^r^ in ^b^%s^r^", color, pad, kind, pad,

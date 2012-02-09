@@ -2,10 +2,7 @@ package net.ocheyedan.ply;
 
 import org.junit.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -71,7 +68,7 @@ public class FileUtilTest {
         File from = new File("/tmp/" + stamp);
         File to = new File("/tmp/copyOf" + stamp);
 
-        File fromTmpDir = new File(from.getPath() + File.separator + "recur");
+        final File fromTmpDir = new File(from.getPath() + File.separator + "recur");
         fromTmpDir.mkdirs();
 
         File tmp = File.createTempFile("one", ".txt", from);
@@ -108,6 +105,28 @@ public class FileUtilTest {
                 stream.close();
                 assertEquals(content, copied);
             }
+        }
+
+        to = new File("/tmp/copyOf" + stamp + stamp);
+
+        FileUtil.copyDir(from, to, new FilenameFilter() {
+            @Override public boolean accept(File dir, String name) {
+                return (name.equals(fromTmpDir.getName()));
+            }
+        });
+
+        to = new File("/tmp/copyOf" + stamp + stamp);
+
+        toFiles = to.listFiles();
+        assertEquals(1, toFiles.length);
+
+        for (File subFile : toFiles) {
+            FileInputStream stream = new FileInputStream(subFile);
+            FileChannel fc = stream.getChannel();
+            MappedByteBuffer bb = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
+            String copied = Charset.defaultCharset().decode(bb).toString();
+            stream.close();
+            assertEquals(content, copied);
         }
     }
 
