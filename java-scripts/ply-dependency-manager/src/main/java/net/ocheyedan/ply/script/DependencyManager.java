@@ -1,9 +1,6 @@
 package net.ocheyedan.ply.script;
 
-import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.PlyUtil;
-import net.ocheyedan.ply.PropertiesFileUtil;
-import net.ocheyedan.ply.SystemExit;
+import net.ocheyedan.ply.*;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Vertex;
@@ -309,23 +306,7 @@ public class DependencyManager {
         // if the project hasn't already resolved these dependencies locally and is not running with 'info' logging
         // it appears that ply has hung if downloading lots of dependencies...print out a warning if not running
         // in 'info' logging and dependency resolution takes longer than 2 seconds.
-        final Lock lock = new ReentrantLock();
-        Thread printThread = null;
-        if (!Output.isInfo() && !PlyUtil.isHeadless()) {
-            printThread = new SlowResolutionThread(lock, message);
-            printThread.start();
-        }
-        T result = null;
-        try {
-            result = callable.call();
-        } catch (Exception e) {
-            Output.print(e);
-        }
-        if (printThread != null) {
-            printThread.interrupt();
-            lock.lock(); // never release, one-time-lock; the print-thread should always release after print if it holds the lock
-        }
-        return result;
+        return SlowTaskThread.<T>after(2000).warn(message).onlyIfNotLoggingInfo().whenDoing(callable).start();
     }
 
     private static Map<String, String> getDependencies(Scope scope) {

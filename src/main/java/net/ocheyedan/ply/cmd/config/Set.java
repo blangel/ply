@@ -5,7 +5,7 @@ import net.ocheyedan.ply.OutputExt;
 import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.cmd.Args;
-import net.ocheyedan.ply.cmd.ReliantCommand;
+import net.ocheyedan.ply.cmd.Command;
 import net.ocheyedan.ply.cmd.Usage;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Scope;
@@ -19,7 +19,7 @@ import java.util.Properties;
  *
  * A {@link net.ocheyedan.ply.cmd.Command} to set a property value within the project's configuration.
  */
-public final class Set extends ReliantCommand {
+public final class Set extends Command.ProjectReliant {
 
     static class Opts {
         final Scope scope;
@@ -39,7 +39,7 @@ public final class Set extends ReliantCommand {
         super(args);
     }
 
-    @Override public void run() {
+    @Override protected void runAfterAssumptionsCheck() {
         OutputExt.init(); // dis-regard ad-hoc props and defined properties, simply init
         super.run();
         Opts opts = parse(args);

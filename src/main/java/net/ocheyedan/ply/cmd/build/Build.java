@@ -2,7 +2,7 @@ package net.ocheyedan.ply.cmd.build;
 
 import net.ocheyedan.ply.*;
 import net.ocheyedan.ply.cmd.Args;
-import net.ocheyedan.ply.cmd.ReliantCommand;
+import net.ocheyedan.ply.cmd.Command;
 import net.ocheyedan.ply.exec.Exec;
 import net.ocheyedan.ply.exec.Execution;
 import net.ocheyedan.ply.props.Context;
@@ -24,13 +24,13 @@ import java.util.Map;
  * This is where arguments are translated to scripts and resolved against aliases.  After this translation,
  * the scripts are turned into executions and invoked.
  */
-public final class Build extends ReliantCommand {
+public final class Build extends Command.ProjectReliant {
 
     public Build(Args args) {
         super(args);
     }
 
-    @Override public void run() {
+    @Override protected void runAfterAssumptionsCheck() {
         long start = System.currentTimeMillis();
         super.run();
         List<Execution> executions = Module.resolve(args, PlyUtil.LOCAL_CONFIG_DIR);
