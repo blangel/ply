@@ -34,7 +34,7 @@ public final class Update extends Command.SystemReliant {
             final String currentVersion = getCurrentVersion();
             Output.print("Ply is at version ^b^%s^r^, checking for updates.", currentVersion);
             final String updateUrl = Props.getValue(Context.named("ply"), "update.url");
-            Map<String, List<String>> updateInstructions = null;
+            Map<String, List<String>> updateInstructions;
             updateInstructions = SlowTaskThread.<Map<String, List<String>>>after(2000)
                 .warn("It's taking longer than expected to download the update instructions. Still trying...")
                 .onlyIfNotLoggingInfo()
@@ -107,29 +107,55 @@ public final class Update extends Command.SystemReliant {
             Output.print("^info^ Updating from ^b^%s^r^", version);
         }
         for (String instruction : instructions) {
-            if (instruction.startsWith("OUTPUT=")) {
-                String output = instruction.substring("OUTPUT=".length());
-                Output.print("^dbug^ %s", output);
-            } else if (instruction.startsWith("METHOD=")) {
-                String methodInstruction = instruction.substring("METHOD=".length());
-                int methodIndex = methodInstruction.indexOf("=");
-                if (methodIndex == -1) {
-                    Output.print("^error^ Invalid method instruction [ %s ].", methodInstruction);
-                    throw new SystemExit(1);
-                }
-                String method = methodInstruction.substring(0, methodIndex);
-                instruction = methodInstruction.substring(methodIndex + 1);
-                if ("property".equals(method)) {
-                    warnings += updateProperty(instruction, FileUtil.fromParts(plyHomeDir.getPath(), "config"));
-                } else if ("download".equals(method)) {
-                    warnings += download(instruction, plyHomeDir);
-                } else {
-                    Output.print("^error^ Unrecognized method [ %s ].", method);
-                    throw new SystemExit(1);
+            warnings += update(instruction, plyHomeDir);
+        }
+        return warnings;
+    }
+
+    /**
+     * Parses {@code instruction} and performs the appropriate update.
+     * @param instruction to parse and execute
+     * @param plyHomeDir the ply home directory
+     * @return the number of warnings which occurred when executing the parsed {@code instruction}
+     */
+    private int update(String instruction, final File plyHomeDir) {
+        int warnings = 0;
+        if (instruction.startsWith("OUTPUT=")) {
+            String output = instruction.substring("OUTPUT=".length());
+            Output.print("^dbug^ %s", output);
+        } else if (instruction.startsWith("METHOD=")) {
+            String methodInstruction = instruction.substring("METHOD=".length());
+            int methodIndex = methodInstruction.indexOf("=");
+            if (methodIndex == -1) {
+                Output.print("^error^ Invalid method instruction [ %s ].", methodInstruction);
+                throw new SystemExit(1);
+            }
+            String method = methodInstruction.substring(0, methodIndex);
+            instruction = methodInstruction.substring(methodIndex + 1);
+            if ("property".equals(method)) {
+                warnings += updateProperty(instruction, FileUtil.fromParts(plyHomeDir.getPath(), "config"));
+            } else if ("download".equals(method)) {
+                final String parsedInstruction = instruction;
+                try {
+                    warnings += SlowTaskThread.<Integer>after(2000)
+                            .warn("It's taking longer than expected to download an update. Still trying...")
+                            .onlyIfNotLoggingDebug()
+                            .whenDoing(new Callable<Integer>() {
+                                @Override public Integer call() throws Exception {
+                                    return download(parsedInstruction, plyHomeDir);
+                                }
+                            }).start();
+                } catch (SystemExit se) {
+                    throw se;
+                } catch (Exception e) {
+                    throw new AssertionError(e);
                 }
             } else {
-                throw new AssertionError(String.format("Unknown instruction ^b^%s^r^.", instruction));
+                Output.print("^error^ Unrecognized method [ %s ].", method);
+                throw new SystemExit(1);
             }
+        } else {
+            throw new AssertionError(String.format("Unknown instruction ^b^%s^r^.", instruction));
         }
         return warnings;
     }
