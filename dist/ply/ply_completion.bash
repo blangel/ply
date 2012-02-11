@@ -70,7 +70,7 @@ _ply_completion() {
     fi
     aliases="${defaultaliases} ${projectaliases}"
     configtasks="get get-all set append prepend remove"
-    tasks="init --version --usage --help ${configtasks} ${aliases}"
+    tasks="init --version --usage --help update ${configtasks} ${aliases}"
     defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" | \
     sed 's/\(\/.*\/\)\(.*\)\.properties/-P\2/' | sed 's/\./#/')
     if [ -d ${projectdir}/config/ ]; then
