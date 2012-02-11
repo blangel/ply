@@ -22,6 +22,8 @@ public final class Usage extends Command {
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^init^r^");
         Output.print("        initializes the current directory as a ply project");
+        Output.print("    ^b^update^r^");
+        Output.print("        checks for updates to the ply system itself");
         Output.print("    ^b^get^r^ [propName] [from ^b^context^r^] [--unfiltered]");
         Output.print("        lists all project properties or, if specified, those like '^b^propName^r^' within '^b^context^r^'");
         Output.print("    ^b^get-all^r^ [propName] [from ^b^context^r^] [--unfiltered]");

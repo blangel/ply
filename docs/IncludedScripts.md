@@ -25,6 +25,4 @@ __ply-exec-1.0.jar__ - executes the current project using the specified main cla
 
 __ply-print-classpath-1.0.jar__ - prints the project's classpath (especially useful in conjunction with `-Pply.decorated=false`)
 
-__ply-update-1.0.jar__ - updates ply to the most recent version of itself.
-
 __ply-intellij-1.0.jar__ - creates _Intellij IDEA_ project (.ipr) and module (.iml) files for the project (the files will point to the resolved dependencies and correctly setup the JDK and source and output directories based on ply properties).
