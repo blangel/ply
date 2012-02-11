@@ -19,7 +19,7 @@ import java.util.Properties;
  *
  * A {@link net.ocheyedan.ply.cmd.Command} to remove a property from a project's configuration.
  */
-public final class Remove extends Command.ProjectReliant {
+public final class Remove extends Config {
 
     static class Opts {
         final Scope scope;
@@ -38,8 +38,6 @@ public final class Remove extends Command.ProjectReliant {
     }
 
     @Override protected void runAfterAssumptionsCheck() {
-        OutputExt.init(); // dis-regard ad-hoc props and defined properties, simply init
-        super.run();
         Opts opts = parse(args);
         if (opts == null) {
             new Usage(args).run();

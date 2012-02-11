@@ -14,10 +14,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * Date: 2/10/12
  * Time: 1:45 PM
  * 
- * Some tasks can be slow (i.e., downloading a large dependency graph).  These tasks can make it seem that ply is
+ * Some tasks can be slow (e.g., downloading a large dependency graph).  These tasks can make it seem that ply is
  * hung when in fact it is working, its just that no log messages are being printed.  For such tasks, this
  * thread can be invoked where a warning appears to the user after a set number of seconds to alert the user of
- * what is happening.
+ * what is happening and, optionally, ask the user if it wants to enable more logging.
  */
 public final class SlowTaskThread {
     
@@ -158,8 +158,9 @@ public final class SlowTaskThread {
          * Note, the {@link BuilderOngoing#warning} will be printed after {@link net.ocheyedan.ply.SlowTaskThread.BuilderStart#ms} only if
          * the task, {@link BuilderEnd#task}, has not already completed.
          * @return the result of executing the task.
+         * @throws Exception from issuing {@link Callable#call()}
          */
-        public T start() {
+        public T start() throws Exception {
             Thread slowTaskThread = null;
             if (!builder.logging.get().isLoggingEnabled()
                     // if not ignoring headless (so both headless and not headless are valid) or if not headless
@@ -170,8 +171,6 @@ public final class SlowTaskThread {
             T result = null;
             try {
                 result = task.call();
-            } catch (Exception e) {
-                Output.print(e);
             } finally {
                 if (slowTaskThread != null) {
                     slowTaskThread.interrupt();
@@ -186,11 +185,6 @@ public final class SlowTaskThread {
      */
     private static final class Runner implements Runnable {
 
-        /**
-         * Indicates whether the user has responded to the log-prompt (if !PlyUtil.isHeadless())
-         */
-        private final AtomicBoolean responded;
-
         private final String message;
 
         private final long wait;
@@ -200,7 +194,6 @@ public final class SlowTaskThread {
         private final BuilderOngoing.Logging logging;
 
         Runner(BuilderOngoing<?> builder) {
-            this.responded = new AtomicBoolean(true);
             this.message = builder.warning;
             this.wait = builder.builder.ms;
             this.logMessage = builder.logging.get().message;
@@ -208,18 +201,23 @@ public final class SlowTaskThread {
         }
 
         @Override public void run() {
+            final boolean invokedByPly = "ply".equals(System.getenv("ply$ply.invoker"));
             try {
                 Thread.sleep(wait);
                 if (!Thread.currentThread().isInterrupted()) {
                     Output.print(message);
-                    // shouldn't be run if headless; but just in case.
+                    final AtomicBoolean printedNewLine = new AtomicBoolean(false); // @see {@link #setupOutput()}
                     if (PlyUtil.isHeadless()) {
                         Output.print(logMessage);
                     } else {
-                        responded.set(false);
-                        // need to go directly to stdout to avoid Output parsing prior to Exec handling
-                        System.out.println(String.format("^no_line^%s Enable now? [Y/n] ", logMessage));
-                        setupOutput(); // cursor's hanging on the last line of output, if more output comes need to prefix with newline
+                        if (invokedByPly) {
+                            // need to go directly to stdout to avoid Output parsing prior to Exec handling
+                            System.out.println(String.format("^no_line^%s Enable now? [Y/n] ", logMessage));
+                        } else {
+                            Output.printNoLine("%s Enable now? [Y/n] ", logMessage);
+                        }
+                        // cursor's hanging on the last line of output, if more output comes need to prefix with newline
+                        setupOutput(printedNewLine, invokedByPly);
                     }
                     // io-read doesn't interrupt, so need to continuously poll availability of bytes on the stdin
                     // socket via InterruptibleInputReader.
@@ -227,7 +225,7 @@ public final class SlowTaskThread {
                         InterruptibleInputReader reader = new InterruptibleInputReader(System.in);
                         try {
                             String answer = reader.readLine();
-                            responded.set(true);
+                            printedNewLine.set(true); // the user's response echoes a newline
                             if ((answer != null) && "y".equalsIgnoreCase(answer.trim())) {
                                 logging.enableLogging();
                             }
@@ -246,37 +244,39 @@ public final class SlowTaskThread {
         }
 
         /**
-         * Causes first output to be printed on a newline .
+         * Causes first output to be printed on a newline.
+         * @param printedNewLine true if a new line has already been printed after ply's question to the user (this
+         *                       would happen either by the user answering the question or within the delegate below).
+         * @param invokedByPly true to indicate the execution is being invoked by ply (false implies this is ply itself)
          * @return the current {@link System#out} at time of this call.
          */
-        private PrintStream setupOutput() {
+        private PrintStream setupOutput(final AtomicBoolean printedNewLine, final boolean invokedByPly) {
             final PrintStream old = System.out;
-            final AtomicBoolean revertedOut = new AtomicBoolean(false);
             PrintStream tabbed = new PrintStream(new ByteArrayOutputStream() /* spurious as calls are delegated to 'old' */) {
                 final Object[] nil = new Object[0];
                 @Override public void print(String out) {
-                    if (revertedOut.getAndSet(true)) { // only print newline once
-                        old.print(out);
-                        return;
-                    }
-                    if (responded.get()) {
+                    if (printedNewLine.getAndSet(true)) {
                         old.print(out);
                     } else {
-                        old.print(String.format("^no_prefix^%n%s", out));
+                        if (invokedByPly) {
+                            old.print(String.format("^no_prefix^%n%s", out));
+                        } else {
+                            Output.printNoLine(String.format("%n%s", out));
+                        }
+                        System.setOut(old);
                     }
-                    System.setOut(old);
                 }
                 @Override public void println(String out) {
-                    if (revertedOut.getAndSet(true)) { // only print newline once
-                        old.println(out);
-                        return;
-                    }
-                    if (responded.get()) {
+                    if (printedNewLine.getAndSet(true)) {
                         old.println(out);
                     } else {
-                        old.println(String.format("^no_prefix^%n%s", out));
+                        if (invokedByPly) {
+                            old.println(String.format("^no_prefix^%n%s", out));
+                        } else {
+                            Output.print(String.format("%n%s", out));
+                        }
+                        System.setOut(old);
                     }
-                    System.setOut(old);
                 }
             };
             System.setOut(tabbed);
@@ -284,16 +284,13 @@ public final class SlowTaskThread {
         }
 
         /**
-         * Ensures a new line has been printed.  There might not be a new line if 
-         * {@link #responded} is false as this implies the user hasn't responded to the question asked by ply
-         * about enabling more log levels.
+         * Ensures a new line has been printed.  There might not be a new line if the user hasn't responded to
+         * the question asked by ply about enabling more log levels.
          */
         private void ensureNewLine() {
-            if (!responded.get()) {
-                // user hasn't responded, need to jump lines for all future output
-                // note, at this point {@link System#out} is the delegate setup by {@link #setupOutput()}
-                System.out.print("");
-            }
+            // either the delegate hasn't been called in which case the empty-string print will result in
+            // the delegate printing '^no_prefix^%n' or that has already happened and so this is basically a no-op
+            System.out.print("");
         }
     }
 

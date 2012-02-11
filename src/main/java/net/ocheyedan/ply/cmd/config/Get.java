@@ -19,7 +19,7 @@ import java.util.*;
  *
  * A {@link net.ocheyedan.ply.cmd.Command} to print property values from the project's configuration.
  */
-public class Get extends Command.ProjectReliant {
+public class Get extends Config {
 
     static class Opts {
         final Scope scope;
@@ -40,8 +40,6 @@ public class Get extends Command.ProjectReliant {
     }
 
     @Override protected void runAfterAssumptionsCheck() {
-        OutputExt.init(); // dis-regard ad-hoc props and defined properties, simply init
-        super.run();
         Opts opts = parse(args);
         if (opts == null) {
             new Usage(args).run();

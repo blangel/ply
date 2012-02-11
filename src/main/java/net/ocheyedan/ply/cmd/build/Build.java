@@ -30,9 +30,12 @@ public final class Build extends Command.ProjectReliant {
         super(args);
     }
 
+    @Override protected void runBeforeAssumptionsCheck() {
+        // nothing to do
+    }
+
     @Override protected void runAfterAssumptionsCheck() {
         long start = System.currentTimeMillis();
-        super.run();
         List<Execution> executions = Module.resolve(args, PlyUtil.LOCAL_CONFIG_DIR);
         // enough has been resolved to allow printing, so init the output
         OutputExt.init();

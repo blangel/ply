@@ -253,7 +253,7 @@ public final class Output {
     private static boolean isPrintFromPly() {
         // skip ply/ply-util print statements
         StackTraceElement[] stackTrace = new RuntimeException().getStackTrace(); // TODO - better (generic) way?
-        if (stackTrace.length > 2) {
+        if (stackTrace.length > 2) { // two internal calls within Output to get to this point
             String className = stackTrace[2].getClassName();
             if (className.startsWith("net.ocheyedan.ply") && !className.startsWith("net.ocheyedan.ply.script")) {
                 return true;

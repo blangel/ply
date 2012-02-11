@@ -306,7 +306,12 @@ public class DependencyManager {
         // if the project hasn't already resolved these dependencies locally and is not running with 'info' logging
         // it appears that ply has hung if downloading lots of dependencies...print out a warning if not running
         // in 'info' logging and dependency resolution takes longer than 2 seconds.
-        return SlowTaskThread.<T>after(2000).warn(message).onlyIfNotLoggingInfo().whenDoing(callable).start();
+        try {
+            return SlowTaskThread.<T>after(2000).warn(message).onlyIfNotLoggingInfo().whenDoing(callable).start();
+        } catch (Exception e) {
+            Output.print(e);
+            throw new AssertionError(e);
+        }
     }
 
     private static Map<String, String> getDependencies(Scope scope) {

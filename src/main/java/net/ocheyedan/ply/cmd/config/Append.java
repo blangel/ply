@@ -22,7 +22,7 @@ import java.util.Properties;
  *
  * A {@link net.ocheyedan.ply.cmd.Command} to append a value to a property value within the project's configuration.
  */
-public class Append extends Command.ProjectReliant {
+public class Append extends Config {
 
     static class Opts {
         final Scope scope;
@@ -43,8 +43,6 @@ public class Append extends Command.ProjectReliant {
     }
 
     @Override protected void runAfterAssumptionsCheck() {
-        OutputExt.init(); // dis-regard ad-hoc props and defined properties, simply init
-        super.run();
         Opts opts = parse(args);
         if (opts == null) {
             new Usage(args).run();

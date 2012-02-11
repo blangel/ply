@@ -24,6 +24,7 @@ public abstract class Command implements Runnable {
         }
 
         @Override public final void run() {
+            runBeforeAssumptionsCheck();
             checkAssumptions();
             runAfterAssumptionsCheck();
         }
@@ -33,6 +34,11 @@ public abstract class Command implements Runnable {
          * to call {@link super#run()} which will likely circumvent the {@link #checkAssumptions()} call.
          */
         protected abstract void runAfterAssumptionsCheck();
+
+        /**
+         * The implementations' hook into doing something before the {@link #checkAssumptions()} is done.
+         */
+        protected abstract void runBeforeAssumptionsCheck();
 
         /**
          * Performs sanity checks that the ply system configuration directory exists.
@@ -46,7 +52,7 @@ public abstract class Command implements Runnable {
     }
 
     /**
-     * Represents {@link SystemReliantCommand} implementations which has an additional assumption.  This class
+     * Represents {@link Command.SystemReliant} implementations which has an additional assumption.  This class
      * ensures that the {@link net.ocheyedan.ply.PlyUtil#SYSTEM_CONFIG_DIR} and
      * {@link net.ocheyedan.ply.PlyUtil#LOCAL_CONFIG_DIR} directories exist.
      */
