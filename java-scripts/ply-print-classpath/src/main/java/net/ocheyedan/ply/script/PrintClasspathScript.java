@@ -31,8 +31,7 @@ public class PrintClasspathScript {
             Output.print("Packaged artifact [ %s ] not found, run `ply compile package` first.", artifactName);
             System.exit(1);
         }
-        String classpath = createClasspath(artifactFile.getPath(),
-                                           addDependenciesToClasspathArgs());
+        String classpath = createClasspath(artifactFile.getPath(), Deps.getResolvedProperties(false));
         Output.print(classpath);
     }
 
@@ -50,21 +49,6 @@ public class PrintClasspathScript {
             buffer.append(dependencies.getProperty(dependency));
         }
         return buffer.toString();
-    }
-
-    /**
-     * @return the contents of ${project.build.dir}/${resolved-deps.properties}
-     */
-    private static Properties addDependenciesToClasspathArgs() {
-        String buildDir = Props.getValue(Context.named("project"), "build.dir");
-        // load the resolved-deps.properties file from the build directory.
-        String scope = Props.getValue(Context.named("ply"), "scope");
-        String suffix = (scope.isEmpty() ? "" : scope + ".");
-        File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
-        if (!dependenciesFile.exists()) {
-            return new OrderedProperties();
-        }
-        return PropertiesFileUtil.load(dependenciesFile.getPath());
     }
 
 }

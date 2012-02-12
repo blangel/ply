@@ -29,7 +29,7 @@ public class ExecScript {
         String artifactName = Props.getValue(Context.named("package"), "name");
         String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
         String artifactPath = FileUtil.pathFromParts(buildDirPath, artifactName);
-        Properties deps = Deps.getResolvedProperties();
+        Properties deps = Deps.getResolvedProperties(false);
         String classpath = Deps.getClasspath(deps, artifactPath);
         String java = Props.getValue(Context.named("ply"), "java");
         String[] javaArgs = new String[] { java, "-cp", classpath, mainClass };

@@ -81,7 +81,7 @@ public class ZipPackageScript implements PackagingScript {
      */
     protected int postprocess(int exitCode) {
         if (getBoolean(Props.getValue(Context.named("package"), "includeDeps"))) {
-            Properties deps = Deps.getResolvedProperties();
+            Properties deps = Deps.getResolvedProperties(false);
             if (deps.isEmpty()) {
                 return exitCode;
             }

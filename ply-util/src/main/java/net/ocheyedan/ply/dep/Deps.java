@@ -1,19 +1,13 @@
 package net.ocheyedan.ply.dep;
 
-import net.ocheyedan.ply.FileUtil;
-import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.PropertiesFileUtil;
-import net.ocheyedan.ply.SystemExit;
+import net.ocheyedan.ply.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Graph;
 import net.ocheyedan.ply.graph.Graphs;
 import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.mvn.MavenPom;
 import net.ocheyedan.ply.mvn.MavenPomParser;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.OrderedProperties;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.props.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -402,19 +396,39 @@ public final class Deps {
         return props;
     }
 
-    /**
-     * @return the contents of ${project.build.dir}/${resolved-deps.properties}
-     */
     public static Properties getResolvedProperties() {
-        String buildDir = Props.getValue(Context.named("project"), "build.dir");
+        return getResolvedProperties(false);
+    }
+
+    /**
+     * @param nullOnFNF if true then null is returned if the file is not found; otherwise, an empty {@link Properties}
+     *                  is returned
+     * @return the contents of ${project.build.dir}/${resolved-deps.properties} or an empty {@link Properties} if no
+     *         such file is found and {@code nullOnFNF} is false otherwise null if no such file is found and
+     *         {@code nullOnFNF} is true.
+     */
+    public static Properties getResolvedProperties(boolean nullOnFNF) {
+        return getResolvedProperties(PlyUtil.LOCAL_CONFIG_DIR, nullOnFNF);
+    }
+
+    /**
+     * @param projectConfigDir the configuration directory from which to load properties like {@literal project.build.dir}
+     * @param nullOnFNF if true then null is returned if the file is not found; otherwise, an empty {@link Properties}
+     *                  is returned
+     * @return the contents of ${project.build.dir}/${resolved-deps.properties} relative to {@code projectConfigDir} or
+     *         an empty {@link Properties} if no such file is found and {@code nullOnFNF} is false otherwise null if no
+     *         such file is found and {@code nullOnFNF} is true.
+     */
+    public static Properties getResolvedProperties(File projectConfigDir, boolean nullOnFNF) {
+        String buildDir = Props.getValue(Context.named("project"), "build.dir", projectConfigDir);
         // load the resolved-deps.properties file from the build directory.
-        String scope = Props.getValue(Context.named("ply"), "scope");
-        String suffix = (scope.isEmpty() ? "" : scope + ".");
-        File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
+        Scope scope = Scope.named(Props.getValue(Context.named("ply"), "scope", projectConfigDir));
+        File dependenciesFile = FileUtil.fromParts(FileUtil.getCanonicalPath(FileUtil.fromParts(projectConfigDir.getPath(), "..", "..")),
+                                                   buildDir, "resolved-deps" + scope.getFileSuffix() + ".properties");
         if (!dependenciesFile.exists()) {
             return new OrderedProperties();
         }
-        return PropertiesFileUtil.load(dependenciesFile.getPath());
+        return PropertiesFileUtil.load(dependenciesFile.getPath(), false, nullOnFNF);
     }
 
     /**

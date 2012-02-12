@@ -68,7 +68,7 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
             FileUtil.copyDir(resBuildPathDir, FileUtil.fromParts(explodedWarDir.getPath(), "WEB-INF", "classes"));
         }
         // copy the dependencies to the WEB-INF/lib directory
-        Properties resolvedProperties = Deps.getResolvedProperties();
+        Properties resolvedProperties = Deps.getResolvedProperties(false);
         Output.print("^info^ Copying dependencies for war file.");
         copyDependencies(resolvedProperties, FileUtil.fromParts(explodedWarDir.getPath(), "WEB-INF", "lib"));
     }

@@ -174,7 +174,7 @@ public class DependencyManager {
             @Override public DirectedAcyclicGraph<Dep> call() throws Exception {
                 return Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry);
             }
-        }, String.format("^b^Hang tight,^r^ %s has a lot of dependencies    . ^b^Ply^r^'s downloading them...", dependency));
+        }, String.format("^b^Hang tight,^r^ %s has a lot of dependencies. ^b^Ply^r^'s downloading them...", dependency));
         if (resolvedDeps != null) { // getDependencyGraph returns => ok
             storeDependenciesFile(dependencies, scope);
         }

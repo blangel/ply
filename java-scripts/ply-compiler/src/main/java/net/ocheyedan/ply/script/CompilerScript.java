@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PropertiesFileUtil;
+import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.OrderedProperties;
 import net.ocheyedan.ply.props.Props;
@@ -291,27 +292,12 @@ public class CompilerScript {
         }
 
         args.add("-classpath");
-        args.add(createClasspath(Props.getValue(compileContext, "build.path"), addDependenciesToClasspathArgs()));
+        args.add(createClasspath(Props.getValue(compileContext, "build.path"), Deps.getResolvedProperties(false)));
 
         args.add("-sourcepath");
         args.add(srcDir);
 
         return args;
-    }
-
-    /**
-     * @return the contents of ${project.build.dir}/${resolved-deps.properties}
-     */
-    private static Properties addDependenciesToClasspathArgs() {
-        String buildDir = Props.getValue(Context.named("project"), "build.dir");
-        // load the resolved-deps.properties file from the build directory.
-        String scope = Props.getValue(Context.named("ply"), "scope");
-        String suffix = (scope.isEmpty() ? "" : scope + ".");
-        File dependenciesFile = FileUtil.fromParts(buildDir, "resolved-deps." + suffix + "properties");
-        if (!dependenciesFile.exists()) {
-            return new OrderedProperties();
-        }
-        return PropertiesFileUtil.load(dependenciesFile.getPath());
     }
 
     /**

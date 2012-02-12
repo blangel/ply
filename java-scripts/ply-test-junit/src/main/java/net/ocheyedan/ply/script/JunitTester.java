@@ -53,12 +53,9 @@ public class JunitTester {
         }
 
         // load the resolved dependencies file from the ply-dependency-manager script
-        Scope scope = new Scope(Props.getValue(Context.named("ply"), "scope"));
-        String resolvedDepFileName = "resolved-deps" + scope.getFileSuffix() + ".properties";
-        Properties resolvedDepProps = PropertiesFileUtil.load(FileUtil.fromParts(buildDirProp.value, resolvedDepFileName).getPath(),
-                                                              false, true);
+        Properties resolvedDepProps = Deps.getResolvedProperties(true);
         if (resolvedDepProps == null) {
-            Output.print("^warn^ No %s file found, skipping test execution.", resolvedDepFileName);
+            Output.print("^warn^ No resolved-deps.properties file found, skipping test execution.");
             return;
         }
 
