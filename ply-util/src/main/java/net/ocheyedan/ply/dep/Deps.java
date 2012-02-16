@@ -396,10 +396,6 @@ public final class Deps {
         return props;
     }
 
-    public static Properties getResolvedProperties() {
-        return getResolvedProperties(false);
-    }
-
     /**
      * @param nullOnFNF if true then null is returned if the file is not found; otherwise, an empty {@link Properties}
      *                  is returned
@@ -408,21 +404,21 @@ public final class Deps {
      *         {@code nullOnFNF} is true.
      */
     public static Properties getResolvedProperties(boolean nullOnFNF) {
-        return getResolvedProperties(PlyUtil.LOCAL_CONFIG_DIR, nullOnFNF);
+        Scope scope = Scope.named(Props.getValue(Context.named("ply"), "scope", PlyUtil.LOCAL_CONFIG_DIR));
+        return getResolvedProperties(PlyUtil.LOCAL_CONFIG_DIR, scope, nullOnFNF);
     }
 
     /**
      * @param projectConfigDir the configuration directory from which to load properties like {@literal project.build.dir}
+     * @param scope the scope of the resolved-deps property file.
      * @param nullOnFNF if true then null is returned if the file is not found; otherwise, an empty {@link Properties}
      *                  is returned
      * @return the contents of ${project.build.dir}/${resolved-deps.properties} relative to {@code projectConfigDir} or
      *         an empty {@link Properties} if no such file is found and {@code nullOnFNF} is false otherwise null if no
      *         such file is found and {@code nullOnFNF} is true.
      */
-    public static Properties getResolvedProperties(File projectConfigDir, boolean nullOnFNF) {
+    public static Properties getResolvedProperties(File projectConfigDir, Scope scope, boolean nullOnFNF) {
         String buildDir = Props.getValue(Context.named("project"), "build.dir", projectConfigDir);
-        // load the resolved-deps.properties file from the build directory.
-        Scope scope = Scope.named(Props.getValue(Context.named("ply"), "scope", projectConfigDir));
         File dependenciesFile = FileUtil.fromParts(FileUtil.getCanonicalPath(FileUtil.fromParts(projectConfigDir.getPath(), "..", "..")),
                                                    buildDir, "resolved-deps" + scope.getFileSuffix() + ".properties");
         if (!dependenciesFile.exists()) {
