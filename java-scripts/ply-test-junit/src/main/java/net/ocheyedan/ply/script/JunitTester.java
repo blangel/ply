@@ -2,6 +2,7 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.dep.RepositoryAtom;
@@ -179,15 +180,15 @@ public class JunitTester {
         String localRepoDirectoryPath = Deps.getDirectoryPathForRepo(localRepo);
         // TODO - how to resolve own namespace/name/version and dependencies
         if (!includesPlyUtil) {
-            URL plyUtil = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "ply-util", "ply-util", "1.0", "ply-util-1.0.jar"));
+            URL plyUtil = getUrl(FileUtil.fromParts(PlyUtil.INSTALL_DIRECTORY, "lib", "ply-util-1.0.jar"));
             if (plyUtil == null) {
-                throw new AssertionError("Could not find ^b^ply-util-1.0.jar^r^ in local repository.");
+                throw new AssertionError("Could not find ^b^ply-util-1.0.jar^r^ in the installation lib directory.");
             }
             urls.add(plyUtil);
         }
-        URL plyJunitTester = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "ply-test-junit", "ply-test-junit", "1.0", "ply-test-junit-1.0.jar"));
+        URL plyJunitTester = getUrl(FileUtil.fromParts(PlyUtil.INSTALL_DIRECTORY, "scripts", "ply-test-junit-1.0.jar"));
         if (plyJunitTester == null) {
-            throw new AssertionError("Could not find ^b^ply-test-junit-1.0.jar^r^ in local repository.");
+            throw new AssertionError("Could not find ^b^ply-test-junit-1.0.jar^r^ in the installation scripts directory.");
         }
         urls.add(plyJunitTester);
         URL hamcrest = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "org.hamcrest", "hamcrest-core", "1.1", "hamcrest-core-1.1.jar"));
