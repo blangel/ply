@@ -29,16 +29,21 @@ import java.util.concurrent.atomic.AtomicReference;
  * file-path=timestamp,sha1-hash
  * and the format of the {@literal changed[.${suffix}].properties} is simply a listing of file paths which have changed.
  *
+ * By default only the files' timestamps are consulted.  Call this script with the {@link --compute-hash} to
+ * perform a {@literal SHA1} hash of the file to assist in determining whether the file has been updated.  Clearly
+ * this is a more expensive operation but may save time if dependent actions are time-intensive and having
+ * the hash would reduce the amount of processing by dependent actions.
  */
 public class FileChangeDetector {
 
     public static void main(String[] args) {
+        boolean computeSha1Hash = false;
+        if ((args != null) && (args.length > 0) && "--compute-hash".equals(args[0])) {
+            computeSha1Hash = true;
+        }
         Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
         String srcDirPath = Props.get("src.dir", Context.named("project")).value();
         String buildDirPath = Props.get("build.dir", Context.named("project")).value();
-        if (buildDirPath.isEmpty()) {
-            Output.print("build.dir is empty!");
-        }
         File lastSrcChanged = FileUtil.fromParts(buildDirPath, "changed-meta" + scope.getFileSuffix() + ".properties");
         File changedPropertiesFile = FileUtil.fromParts(buildDirPath, "changed" + scope.getFileSuffix() + ".properties");
         File srcDir = new File(srcDirPath);
@@ -49,35 +54,38 @@ public class FileChangeDetector {
         } catch (IOException ioe) {
             Output.print(ioe);
         }
-        computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing, scope);
+        computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing, scope, computeSha1Hash);
     }
 
     private static void computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir,
-                                            PropFile existing, Scope scope) {
+                                            PropFile existing, Scope scope, boolean computeSha1Hash) {
         PropFile changedList = new PropFile(Context.named("changed"), PropFile.Loc.Local);
         PropFile properties = new PropFile(Context.named("changed-meta"), PropFile.Loc.Local);
-        collectAllFileChanges(srcDir, changedList, properties, existing, scope);
+        collectAllFileChanges(srcDir, changedList, properties, existing, scope, computeSha1Hash);
         PropFiles.store(changedList, changedPropertiesFile.getPath());
         PropFiles.store(properties, lastSrcChanged.getPath());
     }
 
     private static void collectAllFileChanges(File from, PropFile changedList, PropFile into, PropFile existing,
-                                              Scope scope) {
-        String epochTime = String.valueOf(System.currentTimeMillis());
+                                              Scope scope, boolean computeSha1Hash) {
         File[] subfiles = from.listFiles();
         if (subfiles == null) {
             return;
         }
         for (File file : subfiles) {
             if (file.isDirectory()) {
-                collectAllFileChanges(file, changedList, into, existing, scope);
+                collectAllFileChanges(file, changedList, into, existing, scope, computeSha1Hash);
             } else {
                 try {
                     AtomicReference<String> sha1HashRef = new AtomicReference<String>();
                     String path = file.getCanonicalPath();
-                    if (hasChanged(file, existing, sha1HashRef, scope) && file.exists()) {
-                        String sha1Hash = (sha1HashRef.get() == null ? computeSha1Hash(file) : sha1HashRef.get());
-                        into.add(path, epochTime + "," + sha1Hash);
+                    if (hasChanged(file, existing, sha1HashRef, scope, computeSha1Hash) && file.exists()) {
+                        String timeFileLastChanged = String.valueOf(file.lastModified());
+                        String sha1Hash =
+                                (computeSha1Hash
+                                        ? (sha1HashRef.get() == null ? computeSha1Hash(file) : sha1HashRef.get())
+                                        : "not-computed");
+                        into.add(path, timeFileLastChanged + "," + sha1Hash);
                         changedList.add(path, "");
                     } else if (file.exists()) {
                         into.add(path, existing.get(path).value());
@@ -89,7 +97,8 @@ public class FileChangeDetector {
         }
     }
 
-    private static boolean hasChanged(File file, PropFile existing, AtomicReference<String> computedSha1, Scope scope) {
+    private static boolean hasChanged(File file, PropFile existing, AtomicReference<String> computedSha1, Scope scope,
+                                      boolean computeSha1Hash) {
         try {
             String propertyValue;
             if ((propertyValue = existing.get(file.getCanonicalPath()).value()).isEmpty()) {
@@ -104,10 +113,15 @@ public class FileChangeDetector {
             if (file.lastModified() == timestamp) {
                 return false;
             }
-            String oldHashAsHex = split[1];
-            String asHex = computeSha1Hash(file);
-            computedSha1.set(asHex);
-            return !asHex.equals(oldHashAsHex);
+            if (computeSha1Hash) {
+                String oldHashAsHex = split[1];
+                String asHex = computeSha1Hash(file);
+                computedSha1.set(asHex);
+                return !asHex.equals(oldHashAsHex);
+            } else {
+                computedSha1.set("not-computed");
+                return true;
+            }
         } catch (IOException ioe) {
             throw new AssertionError(ioe);
         } catch (NumberFormatException nfe) {
