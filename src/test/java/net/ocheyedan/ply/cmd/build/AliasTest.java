@@ -1,10 +1,7 @@
 package net.ocheyedan.ply.cmd.build;
 
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 import org.junit.Test;
 
 import java.io.File;
@@ -14,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import static junit.framework.Assert.*;
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -27,7 +25,8 @@ public class AliasTest {
         // test alias, no expansion
         String name = "clean", value = "\"rm -rf target\"";
         Map<String, Prop> unparsedAliases = new HashMap<String, Prop>();
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        PropFile container = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        unparsedAliases.put(name, container.add(name, value));
         Alias alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
                                        new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("clean", alias.name);
@@ -41,7 +40,8 @@ public class AliasTest {
         name = "clean";
         value = "\"rm -rf target\" clean";
         unparsedAliases.clear();
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        container = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        unparsedAliases.put(name, container.add(name, value));
         try {
             resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
                     new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
@@ -53,10 +53,11 @@ public class AliasTest {
         name = "clean";
         value = "\"rm -rf target\"";
         unparsedAliases.clear();
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        container = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        unparsedAliases.put(name, container.add(name, value));
         name = "compile";
         value = "clean compiler.jar";
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        unparsedAliases.put(name, container.add(name, value));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
                                  new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("compile", alias.name);
@@ -77,10 +78,11 @@ public class AliasTest {
         // augment clean for double-alias expansion
         name = "clean";
         value = "\"rm -rf target\" remove";
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        container = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        unparsedAliases.put(name, container.add(name, value));
         name = "remove";
         value = "remove-1.0.jar";
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        unparsedAliases.put(name, container.add(name, value));
         name = "compile";
         value = "clean compiler.jar";
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
@@ -111,7 +113,8 @@ public class AliasTest {
         // circular exception from double-alias expansion
         name = "remove";
         value = "remove-1.0.jar clean";
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        container = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        unparsedAliases.put(name, container.add(name, value));
         name = "compile";
         value = "clean compiler.jar";
         try {
@@ -123,19 +126,21 @@ public class AliasTest {
         }
         // pre-seed cache with 'test' scope for this test
         Map<String, Prop> testAliases = new HashMap<String, Prop>(1);
-        testAliases.put("remove", new Prop(new Context("aliases"), "remove", "remove-1.0.jar", "remove-1.0.jar", Prop.Loc.Local));
-        resolver.mappedPropCache.put(new Scope("test"), testAliases);
+        PropFile testContainer = new PropFile(Context.named("aliases"), Scope.named("test"), PropFile.Loc.Local);
+        testAliases.put("remove", testContainer.add("remove", "remove-1.0.jar"));
+        resolver.mappedPropCache.put(Scope.named("test"), testAliases);
         // test alias/script mapped to different scope
         name = "clean";
         value = "\"rm -rf target\" test:remove";
         unparsedAliases.clear();
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        container = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        unparsedAliases.put(name, container.add(name, value));
         name = "remove"; // since clean references this alias from a scope, needs to be part of ply's own aliases
         value = "remove-1.0.jar";
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        unparsedAliases.put(name, container.add(name, value));
         name = "compile";
         value = "clean test:compiler.jar";
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        unparsedAliases.put(name, container.add(name, value));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
                                  new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("compile", alias.name);
@@ -172,13 +177,14 @@ public class AliasTest {
         name = "clean";
         value = "resolve clean-1.0.jar";
         unparsedAliases.clear();
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        container = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        unparsedAliases.put(name, container.add(name, value));
         name = "resolve";
         value = "resolve-1.0.jar";
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        unparsedAliases.put(name, container.add(name, value));
         name = "compile";
         value = "clean resolve compiler.jar";
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        unparsedAliases.put(name, container.add(name, value));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
                                  new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("compile", alias.name);
@@ -219,13 +225,15 @@ public class AliasTest {
 
         // test that ad-hoc props defined within an alias are recognized.
         String scope = String.valueOf(System.currentTimeMillis());
-        assertTrue(Props.get(new Context(scope), new File("./ply/config"), new Scope(scope)).isEmpty());
+        PropFileChain chain = Props.get(Context.named(scope), Scope.named(scope),  new File("./ply/config"));
+        assertEquals(Prop.Empty, chain.get("clean"));
         name = "clean";
         value = "\"rm -rf target\" -Pply.color=false";
         unparsedAliases.clear();
         List<String> adHocProps = new ArrayList<String>(1);
         adHocProps.add(scope + "#" + scope + ".test=hello");
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        container = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        unparsedAliases.put(name, container.add(name, value));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
                                  new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), adHocProps);
         assertEquals("clean", alias.name);
@@ -246,7 +254,8 @@ public class AliasTest {
         name = "example";
         value = "dep add foo:bar:1.0";
         unparsedAliases.clear();
-        unparsedAliases.put(name, new Prop(new Context("aliases"), name, value, "", Prop.Loc.Local));
+        container = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        unparsedAliases.put(name, container.add(name, value));
         alias = resolver.parseAlias(Scope.Default, Script.parse(name, Scope.Default), value, unparsedAliases,
                                  new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(), new ArrayList<String>());
         assertEquals("example", alias.name);

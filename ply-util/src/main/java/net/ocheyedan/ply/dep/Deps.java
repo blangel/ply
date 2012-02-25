@@ -1,6 +1,9 @@
 package net.ocheyedan.ply.dep;
 
-import net.ocheyedan.ply.*;
+import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PlyUtil;
+import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Graph;
 import net.ocheyedan.ply.graph.Graphs;
@@ -16,6 +19,8 @@ import java.io.InputStream;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -318,10 +323,10 @@ public final class Deps {
      */
     private static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
                                          String repoDirPath, String saveToRepoDirPath) {
-        Properties dependenciesFile = getDependenciesFile(dependencyAtom, repositoryAtom, repoDirPath);
+        PropFile dependenciesFile = getDependenciesFile(dependencyAtom, repositoryAtom, repoDirPath);
         if (dependenciesFile == null) {
             Output.print("^dbug^ No dependencies file found for %s.", dependencyAtom.toString());
-            dependenciesFile = new OrderedProperties();
+            dependenciesFile = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
         }
         storeDependenciesFile(dependenciesFile, saveToRepoDirPath);
         List<DependencyAtom> dependencyAtoms = parse(dependenciesFile);
@@ -334,7 +339,7 @@ public final class Deps {
         for (Prop dependencyProp : dependenciesProps) {
             error.set(null);
             String dependencyKey = dependencyProp.name;
-            String dependencyValue = dependencyProp.value;
+            String dependencyValue = dependencyProp.value();
             DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + ":" + dependencyValue, error);
             if (dependencyAtom == null) {
                 Output.print("^warn^ Invalid dependency %s:%s; %s", dependencyKey, dependencyValue,
@@ -351,15 +356,15 @@ public final class Deps {
      * @param dependencies to convert
      * @return the converted {@code dependencies}
      */
-    public static List<DependencyAtom> parse(Map dependencies) {
-        List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>(dependencies.size());
+    public static List<DependencyAtom> parse(PropFile dependencies) {
+        List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>();
         AtomicReference<String> error = new AtomicReference<String>();
-        for (Object dependencyKey : dependencies.keySet()) {
+        for (Prop dependency : dependencies.props()) {
             error.set(null);
-            Object dependencyValue = dependencies.get(dependencyKey);
-            DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + ":" + dependencyValue, error);
+            String dependencyValue = dependency.value();
+            DependencyAtom dependencyAtom = DependencyAtom.parse(dependency.name + ":" + dependencyValue, error);
             if (dependencyAtom == null) {
-                Output.print("^warn^ Invalid dependency %s:%s; %s", dependencyKey, dependencyValue,
+                Output.print("^warn^ Invalid dependency %s:%s; %s", dependency.name, dependencyValue,
                         error.get());
                 continue;
             }
@@ -370,15 +375,15 @@ public final class Deps {
 
     /**
      * @param graph to convert into a resolved properties file
-     * @return a {@link Properties} object mapping each {@link Vertex<Dep>} (reachable from {@code graph}) object's
+     * @return a {@link PropFile} object mapping each {@link Vertex<Dep>} (reachable from {@code graph}) object's
      *         {@link DependencyAtom} object's key (which is {@link Dep#dependencyAtom#getPropertyName()} + ":"
      *         + {@link Dep#dependencyAtom#getPropertyName()}) to the local repository location (which is
      *         {@link Dep#localRepositoryDirectory} + {@link File#separator}
      *         + {@link Dep#dependencyAtom#getArtifactName()}).
      *
      */
-    public static Properties convertToResolvedPropertiesFile(DirectedAcyclicGraph<Dep> graph) {
-        final Properties props = new OrderedProperties();
+    public static PropFile convertToResolvedPropertiesFile(DirectedAcyclicGraph<Dep> graph) {
+        final PropFile props = new PropFile(Context.named("resolved-deps"), PropFile.Loc.Local);
         Graphs.visit(graph, new Graphs.Visitor<Dep>() {
             @Override public void visit(Vertex<Dep> vertex) {
                 Dep dep = vertex.getValue();
@@ -388,8 +393,8 @@ public final class Deps {
                 }
                 String dependencyAtomKey = dep.dependencyAtom.getPropertyName() + ":" + dep.dependencyAtom.getPropertyValue();
                 String location = FileUtil.pathFromParts(dep.localRepositoryDirectory, dep.dependencyAtom.getArtifactName());
-                if (!props.containsKey(dependencyAtomKey)) {
-                    props.put(dependencyAtomKey, location);
+                if (!props.contains(dependencyAtomKey)) {
+                    props.add(dependencyAtomKey, location);
                 }
             }
         });
@@ -403,8 +408,8 @@ public final class Deps {
      *         such file is found and {@code nullOnFNF} is false otherwise null if no such file is found and
      *         {@code nullOnFNF} is true.
      */
-    public static Properties getResolvedProperties(boolean nullOnFNF) {
-        Scope scope = Scope.named(Props.getValue(Context.named("ply"), "scope", PlyUtil.LOCAL_CONFIG_DIR));
+    public static PropFile getResolvedProperties(boolean nullOnFNF) {
+        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
         return getResolvedProperties(PlyUtil.LOCAL_CONFIG_DIR, scope, nullOnFNF);
     }
 
@@ -417,14 +422,19 @@ public final class Deps {
      *         an empty {@link Properties} if no such file is found and {@code nullOnFNF} is false otherwise null if no
      *         such file is found and {@code nullOnFNF} is true.
      */
-    public static Properties getResolvedProperties(File projectConfigDir, Scope scope, boolean nullOnFNF) {
-        String buildDir = Props.getValue(Context.named("project"), "build.dir", projectConfigDir);
+    public static PropFile getResolvedProperties(File projectConfigDir, Scope scope, boolean nullOnFNF) {
+        String buildDir = Props.get("build.dir", Context.named("project"), Props.getScope(), projectConfigDir).value();
         File dependenciesFile = FileUtil.fromParts(FileUtil.getCanonicalPath(FileUtil.fromParts(projectConfigDir.getPath(), "..", "..")),
                                                    buildDir, "resolved-deps" + scope.getFileSuffix() + ".properties");
+        PropFile resolvedDeps = new PropFile(Context.named("resolved-deps"), PropFile.Loc.Local);
         if (!dependenciesFile.exists()) {
-            return new OrderedProperties();
+            return (nullOnFNF ? null : resolvedDeps);
         }
-        return PropertiesFileUtil.load(dependenciesFile.getPath(), false, nullOnFNF);
+        if (PropFiles.load(dependenciesFile.getPath(), resolvedDeps, false, nullOnFNF) || !nullOnFNF) {
+            return resolvedDeps;
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -433,13 +443,13 @@ public final class Deps {
      * @param supplemental file references to add to the classpath
      * @return the classpath made up of {@code resolvedDependencies} and {@code supplemental}.
      */
-    public static String getClasspath(Properties resolvedDependencies, String ... supplemental) {
+    public static String getClasspath(PropFile resolvedDependencies, String ... supplemental) {
         StringBuilder classpath = new StringBuilder();
-        for (String resolvedDependency : resolvedDependencies.stringPropertyNames()) {
-            if (DependencyAtom.isTransient(resolvedDependency)) {
+        for (Prop resolvedDependency : resolvedDependencies.props()) {
+            if (DependencyAtom.isTransient(resolvedDependency.name)) {
                 continue;
             }
-            classpath.append(resolvedDependencies.getProperty(resolvedDependency));
+            classpath.append(resolvedDependency.value());
             classpath.append(File.pathSeparator);
         }
         for (String sup : supplemental) {
@@ -453,10 +463,10 @@ public final class Deps {
      */
     public static DependencyAtom getProjectDep() {
         Context projectContext = Context.named("project");
-        String namespace = Props.getValue(projectContext, "namespace");
-        String name = Props.getValue(projectContext, "name");
-        String version = Props.getValue(projectContext, "version");
-        String artifactName = Props.getValue(projectContext, "artifact.name");
+        String namespace = Props.get("namespace", projectContext).value();
+        String name = Props.get("name", projectContext).value();
+        String version = Props.get("version", projectContext).value();
+        String artifactName = Props.get("artifact.name", projectContext).value();
         String defaultArtifactName = name + "-" + version + "." + DependencyAtom.DEFAULT_PACKAGING;
         // don't pollute by placing artifactName explicitly even though it's the default
         if (artifactName.equals(defaultArtifactName)) {
@@ -516,7 +526,7 @@ public final class Deps {
         return null;
     }
 
-    private static Properties getDependenciesFile(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
+    private static PropFile getDependenciesFile(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
                                                   String repoDepDir) {
         if (repositoryAtom.getResolvedType() == RepositoryAtom.Type.ply) {
             // no dependencies file just means no dependencies, skip.
@@ -539,24 +549,29 @@ public final class Deps {
         }
     }
 
-    private static Properties getDependenciesFromPlyRepo(String urlPath) {
+    private static PropFile getDependenciesFromPlyRepo(String urlPath) {
         try {
             URL url = new URL(urlPath);
-            return PropertiesFileUtil.load(url.getFile(), false, true);
+            PropFile propFile = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
+            if (PropFiles.load(url.getFile(), propFile)) {
+                return propFile;
+            } else {
+                return null;
+            }
         } catch (MalformedURLException murle) {
             Output.print(murle);
         }
         return null;
     }
 
-    private static Properties getDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
+    private static PropFile getDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
         MavenPomParser mavenPomParser = new MavenPomParser();
         MavenPom mavenPom = mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
-        return (mavenPom == null ? new OrderedProperties() : mavenPom.dependencies);
+        return (mavenPom == null ? new PropFile(Context.named("dependencies"), PropFile.Loc.Local) : mavenPom.dependencies);
     }
 
-    private static void storeDependenciesFile(Properties transitiveDependencies, String localRepoDepDirPath) {
-        PropertiesFileUtil.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, "dependencies.properties"), true);
+    private static void storeDependenciesFile(PropFile transitiveDependencies, String localRepoDepDirPath) {
+        PropFiles.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, "dependencies.properties"), true);
     }
 
     private Deps() { }

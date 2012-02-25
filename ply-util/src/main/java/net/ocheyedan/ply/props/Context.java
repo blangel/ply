@@ -1,7 +1,7 @@
 package net.ocheyedan.ply.props;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * User: blangel
@@ -12,7 +12,7 @@ import java.util.Map;
  */
 public final class Context implements Comparable<Context> {
 
-    private static final Map<String, Context> interned = new HashMap<String, Context>();
+    private static final Map<String, Context> interned = new ConcurrentHashMap<String, Context>();
 
     public static Context named(String name) {
         if (interned.containsKey(name)) {

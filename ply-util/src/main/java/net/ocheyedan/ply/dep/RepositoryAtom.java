@@ -1,12 +1,13 @@
 package net.ocheyedan.ply.dep;
 
 import net.ocheyedan.ply.FileUtil;
-import net.ocheyedan.ply.props.Prop;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Comparator;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -74,7 +75,7 @@ public class RepositoryAtom {
     }
 
     public static String atomFromProp(Prop repositoryProp) {
-        String value = ((repositoryProp.value != null) && !repositoryProp.value.isEmpty()) ? repositoryProp.value + ":" : "";
+        String value = (!repositoryProp.value().isEmpty()) ? repositoryProp.value() + ":" : "";
         return value + repositoryProp.name;
     }
 
@@ -82,7 +83,7 @@ public class RepositoryAtom {
         if ((atom == null) || atom.isEmpty()) {
             return null;
         }
-        Type type = null;
+        Type type;
         if (atom.startsWith(MAVEN_REPO_TYPE_PREFIX)) {
             type = Type.maven;
             atom = atom.substring(MAVEN_REPO_TYPE_PREFIX.length());

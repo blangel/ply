@@ -1,7 +1,6 @@
 package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.script.print.PrivilegedOutput;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -21,6 +20,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -236,12 +237,12 @@ public class MavenReporter extends RunListener {
             }
         }
         // save the reports.
-        Prop reportDirProp = Props.get(Context.named("project"), "reports.dir");
-        if (reportDirProp == null) {
+        Prop reportDirProp = Props.get("reports.dir", Context.named("project"));
+        if (Prop.Empty.equals(reportDirProp)) {
             PrivilegedOutput.print("^warn^ Could not find property project.reports.dir, skipping report save.");
             return;
         }
-        File reportDir = new File(reportDirProp.value);
+        File reportDir = new File(reportDirProp.value());
         reportDir.mkdirs();
         for (ReportTestSuite testSuite : testSuites.values()) {
             String fileName = getReportName(testSuite.name);

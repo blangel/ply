@@ -15,6 +15,8 @@ import net.ocheyedan.ply.props.*;
 import java.io.File;
 import java.util.*;
 
+import static net.ocheyedan.ply.props.PropFile.Prop;
+
 /**
  * User: blangel
  * Date: 1/2/12
@@ -66,7 +68,7 @@ public final class Alias extends Script {
             for (Prop prop : unparsedAliases.values()) {
                 try {
                     Script parsed = Script.parse(prop.name, scope);
-                    parseAlias(scope, parsed, prop.value, unparsedAliases, new DirectedAcyclicGraph<String>(), map, Collections.<String>emptyList());
+                    parseAlias(scope, parsed, prop.value(), unparsedAliases, new DirectedAcyclicGraph<String>(), map, Collections.<String>emptyList());
                 } catch (CircularReference cr) {
                     Output.print("^error^ Alias (^b^%s^r^) contains a circular reference (run '^b^ply get %s from aliases^r^' to analyze).", cr.alias, cr.alias);
                     throw new SystemExit(1);
@@ -105,7 +107,7 @@ public final class Alias extends Script {
                 if (!parsed.scope.equals(originalScope)) {
                     Map<String, Prop> scopedUnparsedAliases = getUnparsedAliases(parsed.scope);
                     if (scopedUnparsedAliases.containsKey(parsed.name)) {
-                        Alias alias = parseAlias(parsed.scope, parsed, scopedUnparsedAliases.get(parsed.name).value,
+                        Alias alias = parseAlias(parsed.scope, parsed, scopedUnparsedAliases.get(parsed.name).value(),
                                 scopedUnparsedAliases, new DirectedAcyclicGraph<String>(), new HashMap<String, Alias>(),
                                 Collections.<String>emptyList());
                         parsedScripts.add(alias.augment(parsed.arguments, parsed.unparsedName));
@@ -116,7 +118,7 @@ public final class Alias extends Script {
                     if (parsedAliases.containsKey(parsed.name)) {
                         parsedScripts.add(parsedAliases.get(parsed.name).augment(parsed.arguments, parsed.unparsedName));
                     } else if (unparsedAliases.containsKey(parsed.name)) {
-                        Alias alias = parseAlias(parsed.scope, parsed, unparsedAliases.get(parsed.name).value,
+                        Alias alias = parseAlias(parsed.scope, parsed, unparsedAliases.get(parsed.name).value(),
                                 unparsedAliases, cycleDetector, parsedAliases, Collections.<String>emptyList());
                         parsedScripts.add(alias.augment(parsed.arguments, parsed.unparsedName));
                     } else {
@@ -131,9 +133,9 @@ public final class Alias extends Script {
             if (mappedPropCache.containsKey(scope)) {
                 return mappedPropCache.get(scope);
             }
-            Collection<Prop> props = Props.get(new Context("aliases"), configDirectory, scope);
-            Map<String, Prop> map = new HashMap<String, Prop>(props.size());
-            for (Prop prop : props) {
+            PropFileChain chain = Props.get(Context.named("aliases"), scope, configDirectory);
+            Map<String, Prop> map = new HashMap<String, Prop>();
+            for (Prop prop : chain.props()) {
                 map.put(prop.name, prop);
             }
             mappedPropCache.put(scope, map);
@@ -202,16 +204,15 @@ public final class Alias extends Script {
             executions.addAll(script.convert(name));
         }
         // TODO - set alias's arguments via policy. currently only the last script gets the alias's arguments, policy
-        // TODO - could dictate all scripts get alias's arguments
+        // TODO - could dictate all scripts get alias's arguments, etc
         if (!this.arguments.isEmpty()) {
             Execution last = executions.get(executions.size() - 1);
             last = last.augment(this.arguments.toArray(new String[this.arguments.size()]));
             executions.set(executions.size() - 1, last);
         }
-        // merge this alias's ad-hoc properties if any
+        // add this alias's ad-hoc properties if any
         if (!adHocProps.isEmpty()) {
             AdHoc.add(adHocProps);
-            AdHoc.merge();
         }
         return executions;
     }

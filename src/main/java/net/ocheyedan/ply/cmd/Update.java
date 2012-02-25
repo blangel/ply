@@ -2,14 +2,18 @@ package net.ocheyedan.ply.cmd;
 
 import net.ocheyedan.ply.*;
 import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Filter;
+import net.ocheyedan.ply.props.PropFile;
+import net.ocheyedan.ply.props.PropFiles;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
@@ -33,7 +37,7 @@ public final class Update extends Command.SystemReliant {
         try {
             final String currentVersion = getCurrentVersion();
             Output.print("Ply is at version ^b^%s^r^, checking for updates.", currentVersion);
-            final String updateUrl = Props.getValue(Context.named("ply"), "update.url");
+            final String updateUrl = Props.get("update.url", Context.named("ply")).value();
             Map<String, List<String>> updateInstructions;
             updateInstructions = SlowTaskThread.<Map<String, List<String>>>after(2000)
                 .warn("It's taking longer than expected to download the update instructions. Still trying...")
@@ -215,11 +219,13 @@ public final class Update extends Command.SystemReliant {
             throw new SystemExit(1);
         }
         String contextFile = FileUtil.pathFromParts(configDirectory.getPath(), context + ".properties");
-        Properties properties = PropertiesFileUtil.load(contextFile, false);
+        PropFile properties = new PropFile(Context.named(context), PropFile.Loc.Local);
+        PropFiles.load(contextFile, properties, false);
         propValue = propValue.replaceAll("\\\\\\|", "|"); // replace escaped pipe characters
         if (expectedPropValue != null) {
-            boolean modifiedAndNewTheSame = (propValue == null ? !properties.containsKey(propName) : propValue.equals(properties.getProperty(propName)));
-            if (!properties.containsKey(propName) || (!expectedPropValue.equals(properties.getProperty(propName))
+            boolean modifiedAndNewTheSame = (propValue == null ? !properties.contains(propName) :
+                                                                 propValue.equals(properties.get(propName).value()));
+            if (!properties.contains(propName) || (!expectedPropValue.equals(properties.get(propName).value())
                     && !modifiedAndNewTheSame)) {
                 Output.print("^warn^ Your ply has set ^b^%s^r^=\"%s\" (in context ^b^%s^r^) but ply wants to set it to ^b^%s^r^=\"%s\". Please manually resolve.",
                         propName, properties.get(propName), context, propName, propValue);
@@ -227,13 +233,14 @@ public final class Update extends Command.SystemReliant {
             } else if (modifiedAndNewTheSame) {
                 return 0; // no need to resave file
             }
-        } else if (properties.containsKey(propName)) {
+        } else if (properties.contains(propName)) {
             Output.print("^warn^ Your ply has set ^b^%s^r^=\"%s\" (in context ^b^%s^r^) but ply wants to set it to ^b^%s^r^=\"%s\". Please manually resolve.",
                     propName, properties.get(propName), context, propName, propValue);
             return 1;
         }
-        properties.put(propName, propValue);
-        PropertiesFileUtil.store(properties, contextFile, true);
+        properties.remove(propName);
+        properties.add(propName, propValue);
+        PropFiles.store(properties, contextFile, true);
         return 0;
     }
 

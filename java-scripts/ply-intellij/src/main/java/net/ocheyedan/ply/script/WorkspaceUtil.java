@@ -20,7 +20,7 @@ public class WorkspaceUtil {
 
     public static void updateWorkspace(File projectDir) {
 
-        String projectName = Props.getValue(Context.named("project"), "name");
+        String projectName = Props.get("name", Context.named("project")).value();
         String iwsFileName = projectName + ".iws";
         File iwsFile = FileUtil.fromParts(projectDir.getPath(), iwsFileName);
         Document iwsDocument = IntellijUtil.readXmlDocument(new FileResource(iwsFile.getPath()),

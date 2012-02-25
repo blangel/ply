@@ -7,13 +7,11 @@ import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.cmd.Args;
 import net.ocheyedan.ply.exec.Execution;
 import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -150,13 +148,8 @@ final class Module {
         if (scriptsPath.get() != null) {
             return scriptsPath.get();
         }
-        Collection<Prop> props = Props.get(new Context("project"), configDirectory);
-        String scriptsDir = FileUtil.pathFromParts(".", "scripts");
-        for (Prop prop : props) {
-            if ("scripts.dir".equals(prop.name)) {
-                scriptsDir = prop.value;
-            }
-        }
+        String projectScriptsDir = Props.get("scripts.dir", Context.named("project"), Props.getScope(), configDirectory).value();
+        String scriptsDir = (projectScriptsDir.isEmpty() ? FileUtil.pathFromParts(".", "scripts") : projectScriptsDir);
         String projectConfigPath = FileUtil.getCanonicalPath(configDirectory);
         String projectScriptPath = FileUtil.getCanonicalPath(
                 FileUtil.fromParts(projectConfigPath, "..", "..", scriptsDir));

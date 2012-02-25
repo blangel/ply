@@ -5,7 +5,7 @@ import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Filter;
-import net.ocheyedan.ply.props.Prop;
+import net.ocheyedan.ply.props.PropFileChain;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -18,6 +18,8 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.regex.Pattern;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -92,20 +94,20 @@ public final class FilterScript {
     }
 
     public static void main(String[] args) {
-        Prop filterDirProp = Props.get(Context.named("project"), "filter.dir");
-        if (filterDirProp == null) {
+        Prop filterDirProp = Props.get("filter.dir", Context.named("project"));
+        if (Prop.Empty.equals(filterDirProp)) {
             Output.print("^error^ Could not find project.filter.dir property.");
             System.exit(1);
         }
-        Collection<Prop> filterFiles = Props.get(Context.named("filter-files"));
-        if ((filterFiles == null) || filterFiles.isEmpty()) {
+        PropFileChain filterFiles = Props.get(Context.named("filter-files"));
+        if ((filterFiles == null) || !filterFiles.props().iterator().hasNext()) {
             Output.print("^dbug^ No filter sets specified, nothing to filter.");
             return;
         }
-        File filterDir = new File(filterDirProp.value);
+        File filterDir = new File(filterDirProp.value());
 
-        List<FilterPattern> filterPatterns = new ArrayList<FilterPattern>(filterFiles.size());
-        for (Prop filterProp : filterFiles) {
+        List<FilterPattern> filterPatterns = new ArrayList<FilterPattern>();
+        for (Prop filterProp : filterFiles.props()) {
             String filterExp = filterProp.name;
             // if the filterExp is not prefixed with a directory, hard-code to be the filter.dir
             if (!filterExp.startsWith("**")) {
@@ -113,7 +115,7 @@ public final class FilterScript {
             }
             Pattern filterPattern = AntStyleWildcardUtil.regex(filterExp);
             boolean include = false;
-            if ("include".equalsIgnoreCase(filterProp.value)) {
+            if ("include".equalsIgnoreCase(filterProp.value())) {
                 include = true;
             }
             filterPatterns.add(new FilterPattern(filterPattern, include));
@@ -146,7 +148,7 @@ public final class FilterScript {
             fc = stream.getChannel();
             MappedByteBuffer mappedByteBuffer = fc.map(FileChannel.MapMode.READ_WRITE, 0, fc.size());
             String text = Charset.defaultCharset().decode(mappedByteBuffer).toString();
-            text = Filter.filter(Context.named("ply"), text, Props.get());
+            text = Filter.filter(text, Context.named("ply"), String.valueOf(System.identityHashCode(file)), Props.get());
             fc.position(0);
             ByteBuffer filtered = ByteBuffer.wrap(text.getBytes());
             long currentSize = fc.size();

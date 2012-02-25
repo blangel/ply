@@ -124,11 +124,6 @@ public final class Output {
     private static final List<Message> queue = new ArrayList<Message>();
 
     /**
-     * Set to true when {@link #init()} has been called.
-     */
-    private static volatile boolean inited = false;
-
-    /**
      * Configurable log level variables.
      */
     private static final AtomicBoolean warnLevel = new AtomicBoolean(true);
@@ -152,66 +147,69 @@ public final class Output {
      */
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
 
+    /**
+     * Set to true when {@link #init()} has been called.
+     */
+    private static AtomicBoolean inited = new AtomicBoolean(false);
+    static {
+        // if this is not ply itself - init straight-away
+        if ("ply".equals(System.getenv("ply$ply.invoker"))) {
+            init();
+        }
+    }
+
     static void init() {
         Context plyContext = Context.named("ply");
-        init(Props.getValue(plyContext, "color"), Props.getValue(plyContext, "decorated"),
-             Props.getValue(plyContext, "log.levels"));
+        init(Props.get("color", plyContext).value(), Props.get("decorated", plyContext).value(),
+             Props.get("log.levels", plyContext).value());
     }
 
     static void init(String coloredOutput, String decorated, String logLevels) {
-        if (inited) {
+        if (inited.getAndSet(true)) {
             return;
         }
-        try {
-            String terminal = System.getenv("TERM");
-            if (!logLevels.contains("warn")) {
-                warnLevel.set(false);
-            }
-            if (!logLevels.contains("info")) {
-                infoLevel.set(false);
-            }
-            if (!logLevels.contains("debug") && !logLevels.contains("dbug")) {
-                dbugLevel.set(false);
-            }
-            if ("false".equalsIgnoreCase(decorated)) {
-                Output.decorated.set(false);
-            }
-            withinTerminal.set(terminal != null);
-            boolean useColor = withinTerminal.get() && !"false".equalsIgnoreCase(coloredOutput);
-            Output.coloredOutput.set(useColor);
-            // TODO - what are the range of terminal values and what looks best for each?
-            String terminalBold = ("xterm".equals(terminal) ? "1" : "0");
-            TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), "[\u001b[0;33mply\u001b[0m]", "[ply]"));
-            TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), "[\u001b[1;31merr!\u001b[0m]", "[err!]"));
-            TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), "[\u001b[1;33mwarn\u001b[0m]", "[warn]"));
-            TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), "[\u001b[1;34minfo\u001b[0m]", "[info]"));
-            TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), "[\u001b[1;30mdbug\u001b[0m]", "[dbug]"));
-            TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), "\u001b[0m", ""));
-            TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), "\u001b[1m", ""));
-            TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), "\u001b[2m", ""));
-            TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), "\u001b[7m", ""));
-            TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), "\u001b[" + terminalBold + ";30m", ""));
-            TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"),  "\u001b[" + terminalBold + ";31m", ""));
-            TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), "\u001b[" + terminalBold + ";32m", ""));
-            TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), "\u001b[" + terminalBold + ";33m", ""));
-            TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), "\u001b[" + terminalBold + ";34m", ""));
-            TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), "\u001b[" + terminalBold + ";35m", ""));
-            TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), "\u001b[" + terminalBold + ";36m", ""));
-            TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), "\u001b[" + terminalBold + ";37m", ""));
-            drainQueue();
-        } finally {
-            inited = true;
+        String terminal = System.getenv("TERM");
+        if (!logLevels.contains("warn")) {
+            warnLevel.set(false);
         }
+        if (!logLevels.contains("info")) {
+            infoLevel.set(false);
+        }
+        if (!logLevels.contains("debug") && !logLevels.contains("dbug")) {
+            dbugLevel.set(false);
+        }
+        if ("false".equalsIgnoreCase(decorated)) {
+            Output.decorated.set(false);
+        }
+        withinTerminal.set(terminal != null);
+        boolean useColor = withinTerminal.get() && !"false".equalsIgnoreCase(coloredOutput);
+        Output.coloredOutput.set(useColor);
+        // TODO - what are the range of terminal values and what looks best for each?
+        String terminalBold = ("xterm".equals(terminal) ? "1" : "0");
+        TERM_CODES.put("ply", new TermCode(Pattern.compile("\\^ply\\^"), "[\u001b[0;33mply\u001b[0m]", "[ply]"));
+        TERM_CODES.put("error", new TermCode(Pattern.compile("\\^error\\^"), "[\u001b[1;31merr!\u001b[0m]", "[err!]"));
+        TERM_CODES.put("warn", new TermCode(Pattern.compile("\\^warn\\^"), "[\u001b[1;33mwarn\u001b[0m]", "[warn]"));
+        TERM_CODES.put("info", new TermCode(Pattern.compile("\\^info\\^"), "[\u001b[1;34minfo\u001b[0m]", "[info]"));
+        TERM_CODES.put("dbug", new TermCode(Pattern.compile("\\^dbug\\^"), "[\u001b[1;30mdbug\u001b[0m]", "[dbug]"));
+        TERM_CODES.put("reset", new TermCode(Pattern.compile("\\^r\\^"), "\u001b[0m", ""));
+        TERM_CODES.put("bold", new TermCode(Pattern.compile("\\^b\\^"), "\u001b[1m", ""));
+        TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), "\u001b[2m", ""));
+        TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), "\u001b[7m", ""));
+        TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), "\u001b[" + terminalBold + ";30m", ""));
+        TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"),  "\u001b[" + terminalBold + ";31m", ""));
+        TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), "\u001b[" + terminalBold + ";32m", ""));
+        TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), "\u001b[" + terminalBold + ";33m", ""));
+        TERM_CODES.put("blue", new TermCode(Pattern.compile("\\^blue\\^"), "\u001b[" + terminalBold + ";34m", ""));
+        TERM_CODES.put("magenta", new TermCode(Pattern.compile("\\^magenta\\^"), "\u001b[" + terminalBold + ";35m", ""));
+        TERM_CODES.put("cyan", new TermCode(Pattern.compile("\\^cyan\\^"), "\u001b[" + terminalBold + ";36m", ""));
+        TERM_CODES.put("white", new TermCode(Pattern.compile("\\^white\\^"), "\u001b[" + terminalBold + ";37m", ""));
+        drainQueue();
     }
 
     /**
      * Takes all the messages from {@link #queue} and calls the appropriate print method based on its {@link Message.Type}
      */
     private static void drainQueue() {
-        if (inited) {
-            return;
-        }
-        inited = true; // so that the re-call of the print methods actually prints
         for (Message message : queue) {
             switch (message.type) {
                 case Line:
@@ -227,7 +225,7 @@ public final class Output {
     }
 
     public static void print(String message, Object ... args) {
-        if (!inited) {
+        if (!inited.get()) {
             queue.add(new Message(message, Message.Type.Line, args));
             return;
         }
@@ -239,7 +237,7 @@ public final class Output {
     }
 
     public static void printNoLine(String message, Object ... args) {
-        if (!inited) {
+        if (!inited.get()) {
             queue.add(new Message(message, Message.Type.NoLine, args));
             return;
         }
@@ -263,7 +261,7 @@ public final class Output {
     }
 
     static void printFromExec(String message, Object ... args) {
-        if (!inited) {
+        if (!inited.get()) {
             queue.add(new Message(message, Message.Type.Exec, args));
             return;
         }

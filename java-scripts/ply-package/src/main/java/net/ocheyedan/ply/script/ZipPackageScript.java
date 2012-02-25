@@ -6,12 +6,12 @@ import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.jna.JnaAccessor;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.PropFile;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Properties;
 import java.util.Set;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -34,8 +34,8 @@ import java.util.zip.ZipOutputStream;
 public class ZipPackageScript implements PackagingScript {
 
     @Override public void invoke() throws IOException, InterruptedException {
-        String buildPath = Props.getValue(Context.named("compiler"), "build.path");
-        String resBuildPath = Props.getValue(Context.named("project"), "res.build.dir");
+        String buildPath = Props.get("build.path", Context.named("compiler")).value();
+        String resBuildPath = Props.get("res.build.dir", Context.named("project")).value();
         File buildPathDir = new File(buildPath);
         File resBuildPathDir = new File(resBuildPath);
         if (!buildPathDir.exists() && !resBuildPathDir.exists()) {
@@ -45,7 +45,13 @@ public class ZipPackageScript implements PackagingScript {
         preprocess();
         String[] cmdArgs = createArgs(getType(), getIncludes(buildPath, resBuildPath));
         ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true);
-        Process process = processBuilder.start();
+        Process process;
+        try {
+            process = processBuilder.start();
+        } catch (IOException ioe) {
+            Output.print("^error^ Error creating %s file %s", getType(), Arrays.toString(cmdArgs));
+            throw ioe;
+        }
         InputStream processStdout = process.getInputStream();
         BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
         String processStdoutLine;
@@ -80,8 +86,8 @@ public class ZipPackageScript implements PackagingScript {
      * @return an exit code (which should be {@code exitCode} unless an exception occurs).
      */
     protected int postprocess(int exitCode) {
-        if (getBoolean(Props.getValue(Context.named("package"), "includeDeps"))) {
-            Properties deps = Deps.getResolvedProperties(false);
+        if (getBoolean(Props.get("includeDeps", Context.named("package")).value())) {
+            PropFile deps = Deps.getResolvedProperties(false);
             if (deps.isEmpty()) {
                 return exitCode;
             }
@@ -98,11 +104,11 @@ public class ZipPackageScript implements PackagingScript {
                 Set<String> existing = new HashSet<String>();
                 output = new ZipOutputStream(new FileOutputStream(nameWithDepsFile));
                 ZipFiles.append(new ZipInputStream(new FileInputStream(name)), output, existing);
-                for (String dep : deps.stringPropertyNames()) {
-                    if (DependencyAtom.isTransient(dep)) {
+                for (PropFile.Prop dep : deps.props()) {
+                    if (DependencyAtom.isTransient(dep.name)) {
                         continue;
                     }
-                    String depFile = deps.getProperty(dep);
+                    String depFile = dep.value();
                     ZipFiles.append(new ZipInputStream(new FileInputStream(depFile)), output, existing);
                 }
                 output.close();
@@ -163,13 +169,13 @@ public class ZipPackageScript implements PackagingScript {
      * @return the arguments to the {@literal jar} executable.
      */
     protected String[] createArgs(String packaging, String[] includes) {
-        String jarScript = Props.getValue(Context.named("ply"), "java").replace("bin" + File.separator + "java",
+        String jarScript = Props.get("java", Context.named("ply")).value().replace("bin" + File.separator + "java",
                 "bin" + File.separator + "jar");
         String options = getBaseOptions();
-        if (getBoolean(Props.getValue(Context.named("package"), "verbose"))) {
+        if (getBoolean(Props.get("verbose", Context.named("package")).value())) {
             options += "v";
         }
-        if (!getBoolean(Props.getValue(Context.named("package"), "compress"))) {
+        if (!getBoolean(Props.get("compress", Context.named("package")).value())) {
             options += "0";
         }
         String name = getPackageName(packaging);
@@ -187,14 +193,14 @@ public class ZipPackageScript implements PackagingScript {
     }
 
     protected String getPackageName(String packaging, String suffix) {
-        String name = Props.getValue(Context.named("package"), "name");
-        if (isEmpty(name)) {
+        String name = Props.get("name", Context.named("package")).value();
+        if (name.isEmpty()) {
             Output.print("^warn^ Property 'package.name' was empty, defaulting to value of ${project.artifact.name}.");
-            name = Props.getValue(Context.named("project"), "artifact.name");
-            if (isEmpty(name)) {
+            name = Props.get("artifact.name", Context.named("project")).value();
+            if (name.isEmpty()) {
                 Output.print("^warn^ Property 'project.artifact.name' was empty, defaulting to value of ${project.name}.");
-                name = Props.getValue(Context.named("project"), "name");
-                if (isEmpty(name)) {
+                name = Props.get("name", Context.named("project")).value();
+                if (name.isEmpty()) {
                     Output.print("^warn^ Property 'project.name' was empty, defaulting to 'no-name'.");
                     name = "no-name";
                 }
@@ -212,12 +218,8 @@ public class ZipPackageScript implements PackagingScript {
     }
 
     static String getPackageFilePath(String name) {
-        String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
+        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
         return FileUtil.pathFromParts(buildDirPath, name);
-    }
-
-    static boolean isEmpty(String value) {
-        return ((value == null) || value.isEmpty());
     }
 
     static boolean getBoolean(String value) {

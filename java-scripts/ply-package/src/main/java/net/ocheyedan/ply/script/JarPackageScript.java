@@ -2,17 +2,16 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.props.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -44,7 +43,7 @@ public class JarPackageScript extends ZipPackageScript {
     @Override protected void preprocess() {
         createManifestFile();
         String buildDir = getBuildDir();
-        File dependenciesFile = createDependenciesFile(buildDir, new Scope(Props.getValue(Context.named("ply"), "scope")));
+        File dependenciesFile = createDependenciesFile(buildDir);
         if (dependenciesFile == null) {
             Output.print("^error^ Error creating the %sMETA-INF/ply/dependencies.properties file.", buildDir);
             System.exit(1);
@@ -78,7 +77,7 @@ public class JarPackageScript extends ZipPackageScript {
     }
 
     protected String getBuildDir() {
-        String buildDir = Props.getValue(Context.named("project"), "build.dir");
+        String buildDir = Props.get("build.dir", Context.named("project")).value();
         return buildDir + (buildDir.endsWith(File.separator) ? "" : File.separator);
     }
 
@@ -89,27 +88,27 @@ public class JarPackageScript extends ZipPackageScript {
         Map<String, Prop> manifestProps = getManifestProps();
         Context packageContext = Context.named("package");
         // filter out and handle the short-named manifest properties
-        String version = Props.getValue(packageContext, "manifest.version");
+        String version = Props.get("manifest.version", packageContext).value();
         manifestProps.remove("manifest.version");
-        if (isEmpty(version)) {
+        if (version.isEmpty()) {
             version = "1.0";
         }
-        String createdBy = Props.getValue(packageContext, "manfiest.createdBy");
+        String createdBy = Props.get("manfiest.createdBy", packageContext).value();
         manifestProps.remove("manfiest.createdBy");
-        if (isEmpty(createdBy)) {
+        if (createdBy.isEmpty()) {
             createdBy = "Ply";
         }
-        String mainClass = Props.getValue(packageContext, "manifest.mainClass");
+        String mainClass = Props.get("manifest.mainClass", packageContext).value();
         manifestProps.remove("manifest.mainClass");
-        String classPath = Props.getValue(packageContext, "manifest.classPath");
+        String classPath = Props.get("manifest.classPath", packageContext).value();
         manifestProps.remove("manifest.classPath");
-        String specTitle = Props.getValue(packageContext, "manifest.spec.title");
+        String specTitle = Props.get("manifest.spec.title", packageContext).value();
         manifestProps.remove("manifest.spec.title");
-        String specVersion = Props.getValue(packageContext, "manifest.spec.version");
+        String specVersion = Props.get("manifest.spec.version", packageContext).value();
         manifestProps.remove("manifest.spec.version");
-        String implTitle = Props.getValue(packageContext, "manifest.impl.title");
+        String implTitle = Props.get("manifest.impl.title", packageContext).value();
         manifestProps.remove("manifest.impl.title");
-        String implVersion = Props.getValue(packageContext, "manifest.impl.version");
+        String implVersion = Props.get("manifest.impl.version", packageContext).value();
         manifestProps.remove("manifest.impl.version");
 
         StringBuilder buffer = new StringBuilder();
@@ -124,7 +123,7 @@ public class JarPackageScript extends ZipPackageScript {
 
         // add user defined information, if any.
         for (String property : manifestProps.keySet()) {
-            appendManifestInformation(property, manifestProps.get(property).value, buffer);
+            appendManifestInformation(property, manifestProps.get(property).value(), buffer);
         }
         File manifestFile = new File(getManifestFilePath());
         PrintWriter writer = null;
@@ -147,7 +146,7 @@ public class JarPackageScript extends ZipPackageScript {
     }
 
     private static void appendManifestInformation(String name, String value, StringBuilder buffer) {
-        if (!isEmpty(value)) {
+        if (!value.isEmpty()) {
             buffer.append(name);
             buffer.append(": ");
             buffer.append(value);
@@ -160,9 +159,9 @@ public class JarPackageScript extends ZipPackageScript {
      *         within context {@literal package}
      */
     protected static Map<String, Prop> getManifestProps() {
-        Collection<Prop> packageProps = Props.get(Context.named("package"));
+        PropFileChain packageProps = Props.get(Context.named("package"));
         Map<String, Prop> manifestProps = new HashMap<String, Prop>();
-        for (Prop prop : packageProps) {
+        for (Prop prop : packageProps.props()) {
             if (prop.name.startsWith("manifest.")) {
                 manifestProps.put(prop.name, prop);
             }
@@ -171,7 +170,7 @@ public class JarPackageScript extends ZipPackageScript {
     }
 
     protected static String getManifestFilePath() {
-        String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
+        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
         File metaInfDir = FileUtil.fromParts(buildDirPath, "META-INF");
         metaInfDir.mkdirs();
         return FileUtil.pathFromParts(metaInfDir.getPath(), "Manifest.mf");
@@ -183,18 +182,17 @@ public class JarPackageScript extends ZipPackageScript {
      * the values are the resolved local-repo paths to the dependencies).  If there is no {@literal resolved-deps.properties}
      * file then a blank file will be copied to {@literal project[.scope].build.dir}/META-INF/ply/dependencies.properties.
      * @param buildDirPath the build directory path (assumed to end in {@link File#separator}).
-     * @param scope of the execution
      * @return the handle to the created dependencies.properties file or null if an error occurred while creating the file.
      */
-    private static File createDependenciesFile(String buildDirPath, Scope scope) {
+    private static File createDependenciesFile(String buildDirPath) {
         // read in resolved-deps.properties file
-        Properties dependencies = new OrderedProperties();
-        Properties resolvedDeps = Deps.getResolvedProperties(false);
-        for (String propertyName : resolvedDeps.stringPropertyNames()) {
-            dependencies.put(propertyName, "");
+        PropFile dependencies = new PropFile(Context.named("dependencies"), PropFile.Loc.System);
+        PropFile resolvedDeps = Deps.getResolvedProperties(false);
+        for (PropFile.Prop resolvedDep : resolvedDeps.props()) {
+            dependencies.add(resolvedDep.name, "");
         }
         File metaInfPlyDepFile = FileUtil.fromParts(buildDirPath, "META-INF", "ply", "dependencies.properties");
-        PropertiesFileUtil.store(dependencies, metaInfPlyDepFile.getPath(), true);
+        PropFiles.store(dependencies, metaInfPlyDepFile.getPath(), true);
         return metaInfPlyDepFile;
     }
 

@@ -1,16 +1,18 @@
 package net.ocheyedan.ply.cmd.config;
 
 import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.OutputExt;
+import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.cmd.Args;
-import net.ocheyedan.ply.cmd.Command;
 import net.ocheyedan.ply.cmd.Usage;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 
-import java.util.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -45,41 +47,41 @@ public class Get extends Config {
             new Usage(args).run();
             return;
         }
-        Map<Context, Collection<Prop>> contextMap = getProps(opts);
-        if (opts.context == null) {
+        print(PlyUtil.LOCAL_CONFIG_DIR, opts.context, opts.scope, opts.propName, opts.unfiltered);
+    }
+
+    /**
+     * Prints properties (those which pass {@link #accept(net.ocheyedan.ply.props.PropFile.Prop)}) from directory
+     * {@code configurationDirectory}.
+     * @param configurationDirectory from which to get properties to print
+     * @param context if null, all contexts are printed, otherwise only properties matching this context are printed
+     * @param scope if null, the {@link Scope#Default} properties are printed otherwise the properties from the scope are printed
+     * @param propName if null, all properties are printed, otherwise, only those properties matching this name are printed
+     * @param unfiltered if true, the unfiltered properties values are printed, otherwise the filtered values are printed.
+     */
+    public void print(File configurationDirectory, Context context, Scope scope, String propName, boolean unfiltered) {
+        Map<Context, PropFileChain> contextMap = Props.get(scope, configurationDirectory);
+        if (context == null) {
             List<Context> contexts = new ArrayList<Context>(contextMap.keySet());
             Collections.sort(contexts);
             boolean printed = false;
-            for (Context context : contexts) {
-                if (printContext(context, opts.scope, contextMap.get(context), opts.propName, opts.unfiltered)) {
+            for (Context currentContext : contexts) {
+                if (printContext(currentContext, scope, contextMap.get(currentContext).props(), propName, unfiltered)) {
                     printed = true;
                 }
             }
             if (printed) {
-                printAppendix(opts.scope);
+                printAppendix(scope);
             } else {
-                printNothingMessage(opts);
+                printNothingMessage(context, propName);
             }
         } else {
-            if (printContext(opts.context, opts.scope, contextMap.get(opts.context), opts.propName, opts.unfiltered)) {
-                printAppendix(opts.scope);
+            if (contextMap.containsKey(context)
+                    && printContext(context, scope, contextMap.get(context).props(), propName, unfiltered)) {
+                printAppendix(scope);
             } else {
-                printNothingMessage(opts);
+                printNothingMessage(context, propName);
             }
-        }
-    }
-
-    /**
-     * Prints {@code contextMap} as it {@link Get} were invoked from the directory in which they were extracted.
-     * @param contextMap the properties to print mapped by their {@link Context}
-     * @param scope from which {@code contextMap} was retrieved.
-     * @param unfiltered true to print the unfiltered value of the property
-     */
-    public void print(Map<Context, Collection<Prop>> contextMap, Scope scope, boolean unfiltered) {
-        List<Context> contexts = new ArrayList<Context>(contextMap.keySet());
-        Collections.sort(contexts);
-        for (Context context : contexts) {
-            printContext(context, scope, contextMap.get(context), null, unfiltered);
         }
     }
 
@@ -129,11 +131,11 @@ public class Get extends Config {
         }
     }
 
-    protected boolean printContext(Context context, Scope scope, Collection<Prop> props, String likePropName, boolean unfiltered) {
-        if ((props == null) || props.isEmpty()) {
+    protected boolean printContext(Context context, Scope scope, Iterable<Prop> props, String likePropName, boolean unfiltered) {
+        if (props == null) {
             return false;
         }
-        List<Prop> properties = new ArrayList<Prop>(props);
+        List<Prop> properties = collect(props);
         Collections.sort(properties);
         boolean printedHeader = false;
         boolean printedSomething = false;
@@ -143,12 +145,22 @@ public class Get extends Config {
                     Output.print("Properties from ^b^%s^r^", context.name);
                     printedHeader = true;
                 }
-                Output.print("   ^b^%s^r^ = ^cyan^%s^r^%s", prop.name, (unfiltered ? prop.unfilteredValue : prop.value),
+                Output.print("   ^b^%s^r^ = ^cyan^%s^r^%s", prop.name, (unfiltered ? prop.unfilteredValue : prop.value()),
                         getSuffix(prop, scope));
                 printedSomething = true;
             }
         }
         return printedSomething;
+    }
+    
+    protected List<Prop> collect(Iterable<Prop> props) {
+        List<Prop> properties = new ArrayList<Prop>();
+        for (Prop prop : props) {
+            if (accept(prop)) {
+                properties.add(prop);
+            }
+        }
+        return properties;
     }
 
     protected boolean matches(Prop prop, String likePropName) {
@@ -162,12 +174,12 @@ public class Get extends Config {
         return false;
     }
 
-    protected Map<Context, Collection<Prop>> getProps(Opts opts) {
-        return Props.getLocal(opts.scope);
+    protected boolean accept(Prop prop) {
+        return (prop.loc() != PropFile.Loc.System);
     }
 
     protected String getSuffix(Prop prop, Scope scope) {
-        if (!Scope.Default.equals(scope) && !prop.type.isScoped()) {
+        if (!Scope.Default.equals(scope) && !Scope.Default.equals(prop.scope())) { // TODO - is this AND or OR?
             return " ^magenta^**^r^";
         }
         return "";
@@ -179,21 +191,21 @@ public class Get extends Config {
 
     protected void printAppendix(Scope scope) {
         if (!Scope.Default.equals(scope)) {
-            Output.print("^magenta^**^r^ indicates default-scoped property.");
+            Output.print("^magenta^**^r^ indicates %s-scoped property.", scope.name);
         }
     }
 
-    protected void printNothingMessage(Opts opts) {
-        if (opts.context == null) {
-            if (opts.propName == null) {
-                Output.print("No properties in any context found %s.", getNothingMessageSuffix());
+    protected void printNothingMessage(Context context, String propName) {
+        if (context == null) {
+            if (propName == null) {
+                Output.print("No properties in any context found%s.", getNothingMessageSuffix());
             } else {
-                Output.print("No property like ^b^%s^r^ found in any context%s.", opts.propName, getNothingMessageSuffix());
+                Output.print("No property like ^b^%s^r^ found in any context%s.", propName, getNothingMessageSuffix());
             }
-        } else if (opts.propName == null) {
-            Output.print("No context ^b^%s^r^ found%s.", opts.context, getNothingMessageSuffix());
+        } else if (propName == null) {
+            Output.print("No context ^b^%s^r^ found%s.", context, getNothingMessageSuffix());
         } else {
-            Output.print("No property like ^b^%s^r^ found in context ^b^%s^r^%s.", opts.propName, opts.context, getNothingMessageSuffix());
+            Output.print("No property like ^b^%s^r^ found in context ^b^%s^r^%s.", propName, context, getNothingMessageSuffix());
         }
     }
 

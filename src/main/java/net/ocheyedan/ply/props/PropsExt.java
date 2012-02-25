@@ -3,9 +3,10 @@ package net.ocheyedan.ply.props;
 import net.ocheyedan.ply.FileUtil;
 
 import java.io.File;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -38,17 +39,18 @@ public final class PropsExt {
         if (RESOLVED_ENV_CACHE.containsKey(cacheKey)) {
             return RESOLVED_ENV_CACHE.get(cacheKey);
         }
-        Map<Context, Collection<Prop>> props = Props.get(configDirectory, scope);
+        Map<Context, PropFileChain> props = Props.get(scope, configDirectory);
         Map<String, String> envProps = new HashMap<String, String>(props.size() * 5); // assume avg of 5 props per context?
         for (Context context : props.keySet()) {
-            Collection<Prop> contextProps = props.get(context);
-            for (Prop prop : contextProps) {
+            PropFileChain contextProps = props.get(context);
+            for (Prop prop : contextProps.props()) {
                 String envKey = "ply$" + context + "." + prop.name;
-                envProps.put(envKey, prop.value);
+                envProps.put(envKey, prop.value());
             }
         }
         // now add some synthetic properties like the local ply directory location.
-        envProps.put("ply$ply.project.dir", FileUtil.getCanonicalPath(FileUtil.fromParts(configDirectory.getPath(), "..")));
+        envProps.put("ply$ply.project.dir",
+                FileUtil.getCanonicalPath(FileUtil.fromParts(configDirectory.getPath(), "..")));
         envProps.put("ply$ply.java", System.getProperty("ply.java"));
         // scripts are always executed from the '.ply/../' directory, allow them to know where the 'ply' invocation
         // actually occurred.

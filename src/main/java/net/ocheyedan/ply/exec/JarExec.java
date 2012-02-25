@@ -6,15 +6,17 @@ import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.props.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -90,8 +92,8 @@ public final class JarExec {
                 return null;
             }
             InputStream dependenciesStream = jarFile.getInputStream(dependenciesJarEntry);
-            Properties dependencies = new OrderedProperties();
-            dependencies.load(dependenciesStream);
+            PropFile dependencies = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
+            PropFileReader.Default.load(new BufferedReader(new InputStreamReader(dependenciesStream)), dependencies);
             // if there are no dependencies, the 'dependencies.properties' may still exist, just empty; so ignore
             if (dependencies.isEmpty()) {
                 return null;
@@ -99,7 +101,7 @@ public final class JarExec {
             List<DependencyAtom> deps = Deps.parse(dependencies);
             RepositoryRegistry repos = createRepositoryList(projectConfigDir, scope);
             DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(deps, repos);
-            Properties resolvedDependencies = Deps.convertToResolvedPropertiesFile(depGraph);
+            PropFile resolvedDependencies = Deps.convertToResolvedPropertiesFile(depGraph);
             return Deps.getClasspath(resolvedDependencies, jarPath);
         } catch (IOException ioe) {
             Output.print(ioe);
@@ -116,27 +118,25 @@ public final class JarExec {
     }
 
     private static RepositoryRegistry createRepositoryList(File configDirectory, Scope scope) {
-        Prop prop = Props.get(Context.named("depmngr"), "localRepo", configDirectory, scope);
-        RepositoryAtom localRepo = RepositoryAtom.parse((prop == null ? null : prop.value));
+        String localRepoValue = Props.get("localRepo", Context.named("depmngr"), scope, configDirectory).value();
+        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoValue.isEmpty() ? null : localRepoValue);
         if (localRepo == null) {
             Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
             throw new SystemExit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
-        Collection<Prop> repositoryProps = Props.get(Context.named("repositories"), configDirectory, scope);
-        if (repositoryProps != null) {
-            for (Prop repositoryProp : repositoryProps) {
-                if (localRepo.getPropertyName().equals(repositoryProp.name)) {
-                    continue;
-                }
-                String repoType = repositoryProp.value;
-                String repoAtom = repoType + ":" + repositoryProp.name;
-                RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
-                if (repo == null) {
-                    Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);
-                } else {
-                    repositoryAtoms.add(repo);
-                }
+        PropFileChain repositoryProps = Props.get(Context.named("repositories"), scope, configDirectory);
+        for (Prop repositoryProp : repositoryProps.props()) {
+            if (localRepo.getPropertyName().equals(repositoryProp.name)) {
+                continue;
+            }
+            String repoType = repositoryProp.value();
+            String repoAtom = repoType + ":" + repositoryProp.name;
+            RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
+            if (repo == null) {
+                Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);
+            } else {
+                repositoryAtoms.add(repo);
             }
         }
         Collections.sort(repositoryAtoms, RepositoryAtom.LOCAL_COMPARATOR);
@@ -158,9 +158,9 @@ public final class JarExec {
         if (index != -1) {
             executable = executable.substring(index + 1);
         }
-        String options = Props.getValue(Context.named("scripts-jar"), "options." + executable, configDirectory, execution.script.scope);
+        String options = Props.get("options." + executable, Context.named("scripts-jar"), execution.script.scope, configDirectory).value();
         if (options.isEmpty()) {
-            options = Props.getValue(Context.named("scripts-jar"), "options.default", configDirectory, execution.script.scope);
+            options = Props.get("options.default", Context.named("scripts-jar"), execution.script.scope, configDirectory).value();
         }
         if (options.contains("-cp") || options.contains("-classpath")) {
             staticClasspath.set(true);

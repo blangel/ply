@@ -2,13 +2,10 @@ package net.ocheyedan.ply.cmd.config;
 
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.cmd.Args;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.props.PropFile;
 import net.ocheyedan.ply.props.Scope;
 
-import java.util.Collection;
-import java.util.Map;
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -23,13 +20,13 @@ public class GetAll extends Get {
         super(args);
     }
 
-    @Override protected Map<Context, Collection<Prop>> getProps(Opts opts) {
-        return Props.get(opts.scope);
+    @Override protected boolean accept(Prop prop) {
+        return true;
     }
 
     @Override protected String getSuffix(Prop prop, Scope scope) {
         String superSuffix = super.getSuffix(prop, scope);
-        if (prop.type == Prop.Loc.System) {
+        if (prop.loc() == PropFile.Loc.System) {
             return superSuffix + " ^green^*^r^";
         }
         return superSuffix;

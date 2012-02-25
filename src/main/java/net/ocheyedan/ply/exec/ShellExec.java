@@ -24,8 +24,8 @@ public final class ShellExec {
      */
     static Execution createShellExecutable(Execution execution, File configDirectory) {
         String executable = execution.executionArgs[0];
-        String shell = Props.getValue(Context.named("scripts-sh"), "shell", configDirectory, execution.script.scope);
-        String shellArgs = Props.getValue(Context.named("scripts-sh"), "shell.args", configDirectory, execution.script.scope);
+        String shell = Props.get("shell", Context.named("scripts-sh"), execution.script.scope, configDirectory).value();
+        String shellArgs = Props.get("shell.args", Context.named("scripts-sh"), execution.script.scope, configDirectory).value();
         if (shell.isEmpty()) {
             Output.print("^error^ Cannot run '^b^%s^r^'. No ^b^shell^r^ property defined (^b^ply set shell=xxxx in scripts-sh^r^).",
                     executable);

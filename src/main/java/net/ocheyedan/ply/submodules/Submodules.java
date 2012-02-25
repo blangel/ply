@@ -3,12 +3,14 @@ package net.ocheyedan.ply.submodules;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
+import net.ocheyedan.ply.props.PropFileChain;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
 import java.io.File;
 import java.util.*;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -34,8 +36,8 @@ public final class Submodules {
      * @return all {@link Submodule} based on {@code localConfigDir} mapped to their own {@link Submodule} objects.
      */
     public static List<Submodule> getSubmodules(File configDirectory) {
-        Prop submodulesScopeProp = Props.get(Context.named("project"), "submodules.scope", configDirectory);
-        Scope submodulesScope = (submodulesScopeProp == null ? Scope.Default : Scope.named(submodulesScopeProp.value));
+        Prop submodulesScopeProp = Props.get("submodules.scope", Context.named("project"), Props.getScope(), configDirectory);
+        Scope submodulesScope = (submodulesScopeProp == null ? Scope.Default : Scope.named(submodulesScopeProp.value()));
         Map<String, Submodule> submodules = new HashMap<String, Submodule>();
         getSubmodules(configDirectory, submodulesScope, "", submodules);
         return sortSubmodules(submodules, configDirectory, submodulesScope);
@@ -53,12 +55,12 @@ public final class Submodules {
      */
     private static void getSubmodules(File configDirectory, Scope scope, String parentName,
                                       Map<String, Submodule> submodules) {
-        Collection<Prop> submodulesProps = Props.get(Context.named("submodules"), configDirectory, scope);
-        if ((submodulesProps == null) || submodulesProps.isEmpty()) {
+        PropFileChain submodulesProps = Props.get(Context.named("submodules"), scope, configDirectory);
+        if (submodulesProps == null) {
             return;
         }
-        for (Prop submoduleProp : submodulesProps) {
-            if ("exclude".equals(submoduleProp.value)) {
+        for (Prop submoduleProp : submodulesProps.props()) {
+            if ("exclude".equals(submoduleProp.value())) {
                 continue;
             }
             String key = submoduleProp.name;
@@ -96,7 +98,7 @@ public final class Submodules {
             orderedSubmodules.add(submodule);
             File submoduleConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(configDirectory), "..", "..",
                                                          submodule.name, ".ply", "config");
-            Collection<Prop> depProps = Props.get(Context.named("dependencies"), submoduleConfigDir, scope);
+            PropFileChain depProps = Props.get(Context.named("dependencies"), scope, submoduleConfigDir);
             Set<String> deps = convertDeps(depProps, submodules);
             submoduleDepMap.put(submodule, deps);
         }
@@ -157,10 +159,10 @@ public final class Submodules {
 
     private static String getSubmoduleResolvedDepName(File submoduleConfigDir, Scope scope) {
         Context projectContext = Context.named("project");
-        String namespace = Props.getValue(projectContext, "namespace", submoduleConfigDir, scope);
-        String name = Props.getValue(projectContext, "name", submoduleConfigDir, scope);
-        String version = Props.getValue(projectContext, "version", submoduleConfigDir, scope);
-        String artifactName = Props.getValue(projectContext, "artifact.name", submoduleConfigDir, scope);
+        String namespace = Props.get("namespace", projectContext, scope, submoduleConfigDir).value();
+        String name = Props.get("name", projectContext, scope, submoduleConfigDir).value();
+        String version = Props.get("version", projectContext, scope, submoduleConfigDir).value();
+        String artifactName = Props.get("artifact.name", projectContext, scope, submoduleConfigDir).value();
         String defaultArtifactName = name + "-" + version + "." + DependencyAtom.DEFAULT_PACKAGING;
         // don't pollute by placing artifactName explicitly even though it's the default
         if (artifactName.equals(defaultArtifactName)) {
@@ -170,13 +172,13 @@ public final class Submodules {
         }
     }
 
-    private static Set<String> convertDeps(Collection<Prop> depProps, Map<String, Submodule> submodules) {
-        if ((depProps == null) || depProps.isEmpty()) {
+    private static Set<String> convertDeps(PropFileChain depProps, Map<String, Submodule> submodules) {
+        if (depProps == null) {
             return Collections.emptySet();
         }
-        Set<String> deps = new HashSet<String>(depProps.size());
-        for (Prop depProp : depProps) {
-            String dep = depProp.name + ":" + depProp.value;
+        Set<String> deps = new HashSet<String>();
+        for (Prop depProp : depProps.props()) {
+            String dep = depProp.name + ":" + depProp.value();
             if (submodules.containsKey(dep)) {
                 deps.add(dep);
             }

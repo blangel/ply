@@ -2,7 +2,6 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
-import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.input.ClasspathResource;
 import net.ocheyedan.ply.input.FileResource;
 import net.ocheyedan.ply.props.Context;
@@ -34,7 +33,7 @@ public class ModuleUtil {
     public static void updateModule(File projectDir, String subdirectory) {
         Context projectContext = Context.named("project");
         File projectRootDir = (subdirectory.isEmpty() ? projectDir : FileUtil.fromParts(FileUtil.getCanonicalPath(projectDir), subdirectory));
-        String projectName = (subdirectory.isEmpty() ? Props.getValue(Context.named("project"), "name") : projectRootDir.getName());
+        String projectName = (subdirectory.isEmpty() ? Props.get("name", Context.named("project")).value() : projectRootDir.getName());
         // use the directory name to keep modules in-sync with those referenced in the .ipr file.
         String imlFileName = projectName + ".iml";
         File imlFile = FileUtil.fromParts(projectRootDir.getPath(), imlFileName);
@@ -119,13 +118,13 @@ public class ModuleUtil {
      *        if this is the module file for the project itself
      */
     private static void addDependencies(Element to, File projectDir, String subdirectory) {
-        Scope scope = Props.getScope();
+        Scope defaultScope = Scope.named(Props.get("scope", Context.named("ply")).value());
         Scope testScope = Scope.named("test");
-        String canonicalProjectDirPath = FileUtil.getCanonicalPath(projectDir);
-        String[] modules = IntellijUtil.getModules();
+        File projectConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(projectDir), ".ply", "config");
+        List<String> modules = IntellijUtil.getModules();
         Set<DependencyAtom> excludes = new HashSet<DependencyAtom>();
-        excludes.addAll(addDependencies(to, canonicalProjectDirPath, subdirectory, scope, "", modules, Collections.<DependencyAtom>emptySet()));
-        addDependencies(to, canonicalProjectDirPath, subdirectory, testScope, "TEST", modules, excludes);
+        excludes.addAll(addDependencies(to, projectConfigDir, defaultScope, "", modules, Collections.<DependencyAtom>emptySet()));
+        addDependencies(to, projectConfigDir, testScope, "TEST", modules, excludes);
     }
 
     /**
@@ -136,25 +135,17 @@ public class ModuleUtil {
      * <orderEntry type="library" scope="TEST" name="Maven: junit:junit:4.10" level="project" />
      * }
      * @param to is the element into which to insert {@literal orderEntry} elements
-     * @param canonicalProjectDirPath is the base directory from which the script was executed in canonical form
-     * @param subdirectory the sub-directory for which the module file is being made or the empty string
-     *        if this is the module file for the project itself
-     * @param scope for which to extract dependencies
+     * @param projectConfigDir the project configuration directory from which to get resolved dependencies.
+     * @param scope of the dependencies to load
      * @param intellijScope if not the emptry string then a {@literal scope} attribute will be added to
      *        the {@literal orderEntry} element
      * @param modules the array of modules for the project
      * @param excludes set of dependencies to exclude from addition
      * @return the list of dependencies added
      */
-    private static List<DependencyAtom> addDependencies(Element to, String canonicalProjectDirPath, String subdirectory,
-                                        Scope scope, String intellijScope, String[] modules, Set<DependencyAtom> excludes) {
-        List<DependencyAtom> dependencies;
-        if (subdirectory.isEmpty() && Scope.Default.equals(scope)) {
-            dependencies = Deps.parse(Props.get(Context.named("dependencies")));
-        } else {
-            File submoduleConfigDir = FileUtil.fromParts(canonicalProjectDirPath, subdirectory, ".ply", "config");
-            dependencies = Deps.parse(Props.getForceResolution(Context.named("dependencies"), submoduleConfigDir, scope));
-        }
+    private static Set<DependencyAtom> addDependencies(Element to, File projectConfigDir, Scope scope, String intellijScope, 
+                                                       List<String> modules, Set<DependencyAtom> excludes) {
+        Set<DependencyAtom> dependencies = IntellijUtil.collectDependencies(projectConfigDir, scope);
         for (DependencyAtom dep : dependencies) {
             if (excludes.contains(dep)) {
                 continue;
@@ -180,7 +171,7 @@ public class ModuleUtil {
      * @param modules the project's module from which to check
      * @return true if {@code dep}'s {@link DependencyAtom#name} is within {@code modules}
      */
-    private static boolean isModule(DependencyAtom dep, String[] modules) {
+    private static boolean isModule(DependencyAtom dep, List<String> modules) {
         if (modules == null) {
             return false;
         }
@@ -200,9 +191,9 @@ public class ModuleUtil {
     }
 
     /**
-     * Calls {@link Props#getValue(Context, String)} with {@code context} and {@code name} if {@code subdirectory}
+     * Calls {@link Props#get(String, Context)} with {@code context} and {@code name} if {@code subdirectory}
      * is the empty-string.  Otherwise determines the current config-dir based on {@code projectDir} and {@code subdirectory}
-     * and calls {@link Props#getValue(Context, String, File, Scope)} with {@code context}
+     * and calls {@link Props#get(String, Context, Scope, File)} with {@code context}
      * {@code named} the resolved config directory (composed from {@code projectDir} and {@code subdirectory}) and the
      * value of {@link Props#getScope()}
      * @param projectDir of the project from which the script was run
@@ -217,9 +208,9 @@ public class ModuleUtil {
     }
 
     /**
-     * Calls {@link Props#getValue(Context, String)} with {@code context} and {@code name} if {@code subdirectory}
+     * Calls {@link Props#get(String, Context)} with {@code context} and {@code name} if {@code subdirectory}
      * is the empty-string.  Otherwise determines the current config-dir based on {@code projectDir} and {@code subdirectory}
-     * and calls {@link Props#getValue(Context, String, File, Scope)} with {@code context}
+     * and calls {@link Props#get(String, Context, Scope, File)} with {@code context}
      * {@code named} the resolved config directory (composed from {@code projectDir} and {@code subdirectory}) and the
      * value of {@code scope}.
      * Note, if {@code scope} is {@literal test} then resolution is done against the property files as we need
@@ -234,11 +225,11 @@ public class ModuleUtil {
      */
     private static String getPropValue(File projectDir, String subdirectory, Context context, Scope scope, String named) {
         if (subdirectory.isEmpty() && !Scope.named("test").equals(scope)) {
-            return Props.getValue(context, named);
+            return Props.get(named, context).value();
         }
         String canonicalProjectDirPath = FileUtil.getCanonicalPath(projectDir);
         File submoduleConfigDir = FileUtil.fromParts(canonicalProjectDirPath, subdirectory, ".ply", "config");
-        return Props.getValueForceResolution(context, named, submoduleConfigDir, scope);
+        return Props.get(named, context, scope, submoduleConfigDir).value();
     }
 
 }

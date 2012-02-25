@@ -6,7 +6,9 @@ import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.input.Resource;
 import net.ocheyedan.ply.input.Resources;
-import net.ocheyedan.ply.props.OrderedProperties;
+import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.PropFile;
+import net.ocheyedan.ply.props.Scope;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -17,7 +19,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -192,12 +197,12 @@ public class MavenPomParser {
     public MavenPom parsePom(String pomUrlPath, RepositoryAtom repositoryAtom) {
         try {
             ParseResult result = parse(pomUrlPath, repositoryAtom);
-            Properties deps = new OrderedProperties();
-            Properties testDeps = new OrderedProperties();
+            PropFile deps = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
+            PropFile testDeps = new PropFile(Context.named("dependencies"), Scope.named("test"), PropFile.Loc.Local);
             Map<String, Map<String, String>> resolvedDeps = result.resolveDeps();
             for (String scope : resolvedDeps.keySet()) {
                 Map<String, String> scopedResolvedDeps = resolvedDeps.get(scope);
-                Properties scopedDeps = ("test".equals(scope) ? testDeps : deps); // maven for ply has either test or default scoped deps.
+                PropFile scopedDeps = ("test".equals(scope) ? testDeps : deps); // maven for ply has either test or default scoped deps.
                 for (String dependencyKey : scopedResolvedDeps.keySet()) {
                     String filteredDependencyKey = dependencyKey;
                     String filteredDependencyValue = scopedResolvedDeps.get(dependencyKey);
@@ -207,17 +212,17 @@ public class MavenPomParser {
                             filteredDependencyValue = filter(filteredDependencyValue, mavenProperty, result.mavenProperties);
                         }
                     }
-                    scopedDeps.put(filteredDependencyKey, filteredDependencyValue);
+                    scopedDeps.add(filteredDependencyKey, filteredDependencyValue);
                 }
             }
-            Properties repos = new OrderedProperties();
+            PropFile repos = new PropFile(Context.named("repositories"), PropFile.Loc.Local);
             for (String repoUrl : result.mavenRepositoryUrls) {
                 RepositoryAtom repoAtom = RepositoryAtom.parse("maven:" + repoUrl);
-                repos.put(repoAtom.getPropertyName(), repoAtom.getPropertyValue());
+                repos.add(repoAtom.getPropertyName(), repoAtom.getPropertyValue());
             }
-            Properties modules = new OrderedProperties();
+            PropFile modules = new PropFile(Context.named("submodules"), PropFile.Loc.Local);
             for (String module : result.modules) {
-                modules.put(module, "");
+                modules.add(module, "");
             }
             return new MavenPom(result.mavenProperties.get("project.groupId"),
                     result.mavenProperties.get("project.artifactId"),

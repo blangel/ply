@@ -43,8 +43,8 @@ public final class Build extends Command.ProjectReliant {
         // print a statement quickly, alerting the user that the build has begun (need to do after local execution
         // resolution as that resolution may affect printing (i.e., ply.decorated=false from an alias definition).
 
-        String projectName = Props.getLocalValue(Context.named("project"), "name");
-        String projectVersion = Props.getLocalValue(Context.named("project"), "version");
+        String projectName = Props.get("name", Context.named("project")).value();
+        String projectVersion = Props.get("version", Context.named("project")).value();
         Output.printNoLine("^ply^ building ^b^%s^r^, %s", projectName, projectVersion);
 
         List<Submodule> orderedSubmodules = Submodules.getSubmodules(PlyUtil.LOCAL_CONFIG_DIR);

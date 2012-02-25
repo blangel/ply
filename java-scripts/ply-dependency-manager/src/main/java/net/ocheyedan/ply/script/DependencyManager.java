@@ -1,20 +1,20 @@
 package net.ocheyedan.ply.script;
 
-import net.ocheyedan.ply.*;
+import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PlyUtil;
+import net.ocheyedan.ply.SlowTaskThread;
+import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Vertex;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -90,33 +90,33 @@ public class DependencyManager {
             usage();
             return;
         }
-        Scope scope = new Scope(Props.getValue(Context.named("ply"), "scope"));
+        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
         Context projectContext = Context.named("project");
         if ((args.length > 1) && "add".equals(args[0])) {
             addDependency(args[1], scope);
         } else if ((args.length > 1) && "remove".equals(args[0])) {
             removeDependency(args[1], scope);
         } else if ((args.length == 1) && "list".equals(args[0])) {
-            Map<String, String> dependencies = getDependencies(scope);
+            PropFile dependencies = getDependencies(scope);
             int size = dependencies.size();
             if (size > 0) {
-                Output.print("Project ^b^%s^r^ has ^b^%d^r^ %sdependenc%s: ", Props.getValue(projectContext, "name"), size,
+                Output.print("Project ^b^%s^r^ has ^b^%d^r^ %sdependenc%s: ", Props.get("name", projectContext).value(), size,
                         scope.getPrettyPrint(), (size == 1 ? "y" : "ies"));
-                for (String key : dependencies.keySet()) {
-                    String dep = dependencies.get(key);
-                    boolean transientDep = DependencyAtom.isTransient(dep);
+                for (PropFile.Prop dep : dependencies.props()) {
+                    String value = dep.value();
+                    boolean transientDep = DependencyAtom.isTransient(value);
                     if (transientDep) {
-                        dep = DependencyAtom.stripTransient(dep);
+                        value = DependencyAtom.stripTransient(value);
                     }
-                    Output.print("\t%s:%s%s", key, dep, (transientDep ? TRANSIENT_PRINT : ""));
+                    Output.print("\t%s:%s%s", dep.name, value, (transientDep ? TRANSIENT_PRINT : ""));
                 }
             } else {
-                Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.getValue(projectContext, "name"), scope.getPrettyPrint());
+                Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.get("name", projectContext).value(), scope.getPrettyPrint());
             }
         } else if ((args.length == 1) && "tree".equals(args[0])) {
             List<DependencyAtom> dependencies = Deps.parse(getDependencies(scope));
             if (dependencies.isEmpty()) {
-                Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.getValue(projectContext, "name"), scope.getPrettyPrint());
+                Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.get("name", projectContext).value(), scope.getPrettyPrint());
             } else {
                 DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(dependencies, createRepositoryList(null, null));
                 int size = dependencies.size();
@@ -126,7 +126,7 @@ public class DependencyManager {
                 }
                 String sizeExplanation = (size != graphSize) ?
                         String.format(" [ actually %d; %d of which are pulled in transitively ]", size, (size - graphSize)) : "";
-                Output.print("Project ^b^%s^r^ has ^b^%d^r^ direct %sdependenc%s%s: ", Props.getValue(projectContext, "name"), graphSize,
+                Output.print("Project ^b^%s^r^ has ^b^%d^r^ direct %sdependenc%s%s: ", Props.get("name", projectContext).value(), graphSize,
                         scope.getPrettyPrint(), (size == 1 ? "y" : "ies"), sizeExplanation);
                 printDependencyGraph(depGraph.getRootVertices(), String.format("%s ", PlyUtil.isUnicodeSupported() ? "\u26AC" : "+"), new HashSet<Vertex<Dep>>());
             }
@@ -137,16 +137,16 @@ public class DependencyManager {
         } else if ((args.length > 1) && "resolve-classifiers".equals(args[0])) {
             String[] classifiers = args[1].split(",");
             for (String classifier : classifiers) {
-                Map<String, String> dependencies = getDependencies(scope);
+                PropFile dependencies = getDependencies(scope);
                 resolveDependencies(dependencies, classifier, false);
             }
         } else if (args.length == 0) {
-            Map<String, String> dependencies = getDependencies(scope);
+            PropFile dependencies = getDependencies(scope);
             int size = dependencies.size();
             if (size > 0) {
                 Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^.", size, scope.getPrettyPrint(), (size == 1 ? "y" : "ies"),
-                        Props.getValue(projectContext, "name"));
-                Properties dependencyFiles = resolveDependencies(dependencies, null, true);
+                        Props.get("name", projectContext).value());
+                PropFile dependencyFiles = resolveDependencies(dependencies, null, true);
                 storeResolvedDependenciesFile(dependencyFiles, scope);
             }
         } else {
@@ -162,12 +162,13 @@ public class DependencyManager {
                     dependency, error.get());
             throw new SystemExit(1);
         }
-        Properties dependencies = loadDependenciesFile(scope);
+        PropFile dependencies = loadDependenciesFile(scope);
         if (dependencies.contains(atom.getPropertyName())) {
             Output.print("^info^ overriding %sdependency %s; was %s now is %s.", scope.getPrettyPrint(), atom.getPropertyName(),
-                    dependencies.getProperty(atom.getPropertyName()), atom.getPropertyValue());
+                    dependencies.get(atom.getPropertyName()).value(), atom.getPropertyValue());
+            dependencies.remove(atom.getPropertyName());
         }
-        dependencies.put(atom.getPropertyName(), atom.getPropertyValue());
+        dependencies.add(atom.getPropertyName(), atom.getPropertyValue());
         final List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
         final RepositoryRegistry repositoryRegistry = createRepositoryList(Deps.getProjectDep(), dependencyAtoms);
         DirectedAcyclicGraph<Dep> resolvedDeps = invokeWithSlowResolutionThread(new Callable<DirectedAcyclicGraph<Dep>>() {
@@ -194,11 +195,11 @@ public class DependencyManager {
             }
             atom = new DependencyAtom(split[0], split[1], null);
         }
-        if (Props.get(Context.named("dependencies"), atom.getPropertyName()) == null) {
+        if (Props.get(atom.getPropertyName(), Context.named("dependencies")).value().isEmpty()) {
             Output.print("^warn^ Could not find %sdependency; given %s:%s", scope.getPrettyPrint(), atom.getPropertyName(),
                     atom.getPropertyValue());
         } else {
-            Properties dependencies = loadDependenciesFile(scope);
+            PropFile dependencies = loadDependenciesFile(scope);
             dependencies.remove(atom.getPropertyName());
             storeDependenciesFile(dependencies, scope);
             Output.print("Removed dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
@@ -219,12 +220,13 @@ public class DependencyManager {
                     atom.getPropertyName());
             System.exit(1);
         }
-        Properties repositories = loadRepositoriesFile(scope);
+        PropFile repositories = loadRepositoriesFile(scope);
         if (repositories.contains(atom.getPropertyName())) {
             Output.print("^info^ overriding repository %s; was %s now is %s.", atom.getPropertyName(),
-                    repositories.getProperty(atom.getPropertyName()), atom.getPropertyValue());
+                    repositories.get(atom.getPropertyName()).value(), atom.getPropertyValue());
+            repositories.remove(atom.getPropertyName());
         }
-        repositories.put(atom.getPropertyName(), atom.getPropertyValue());
+        repositories.add(atom.getPropertyName(), atom.getPropertyValue());
         storeRepositoriesFile(repositories, scope);
         Output.print("Added repository %s%s", atom.toString(), !Scope.Default.equals(scope) ?
                 String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
@@ -237,11 +239,11 @@ public class DependencyManager {
             System.exit(1);
         }
 
-        if (Props.get(Context.named("repositories"), atom.getPropertyName()) == null) {
+        if (Props.get(atom.getPropertyName(), Context.named("repositories")).value().isEmpty()) {
             Output.print("^warn^ Repository not found; given %s:%s", atom.getPropertyValue(),
                     atom.getPropertyName());
         } else {
-            Properties repositories = loadRepositoriesFile(scope);
+            PropFile repositories = loadRepositoriesFile(scope);
             repositories.remove(atom.getPropertyName());
             storeRepositoriesFile(repositories, scope);
             Output.print("Removed repository %s%s", atom.toString(), !Scope.Default.equals(scope) ?
@@ -250,20 +252,20 @@ public class DependencyManager {
     }
 
     private static RepositoryRegistry createRepositoryList(DependencyAtom dependencyAtom, List<DependencyAtom> dependencyAtoms) {
-        RepositoryAtom localRepo = RepositoryAtom.parse(Props.getValue(Context.named("depmngr"), "localRepo"));
+        RepositoryAtom localRepo = RepositoryAtom.parse(Props.get("localRepo", Context.named("depmngr")).value());
         if (localRepo == null) {
             Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
             System.exit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
-        Collection<Prop> repositories = Props.get(Context.named("repositories"));
+        PropFileChain repositories = Props.get(Context.named("repositories"));
         if (repositories != null) {
-            for (Prop repoProp : repositories) {
+            for (Prop repoProp : repositories.props()) {
                 String repoUri = repoProp.name;
                 if (localRepo.getPropertyName().equals(repoUri)) {
                     continue;
                 }
-                String repoType = repoProp.value;
+                String repoType = repoProp.value();
                 String repoAtom = repoType + ":" + repoUri;
                 RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
                 if (repo == null) {
@@ -282,10 +284,10 @@ public class DependencyManager {
         return new RepositoryRegistry(localRepo, repositoryAtoms, synthetic);
     }
 
-    private static Properties resolveDependencies(final Map<String, String> dependencies, final String classifier,
+    private static PropFile resolveDependencies(final PropFile dependencies, final String classifier,
                                                   final boolean failMissingDependency) {
-        return invokeWithSlowResolutionThread(new Callable<Properties>() {
-            @Override public Properties call() throws Exception {
+        return invokeWithSlowResolutionThread(new Callable<PropFile>() {
+            @Override public PropFile call() throws Exception {
                 DependencyAtom self = Deps.getProjectDep();
                 List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
                 if (classifier != null) {
@@ -314,66 +316,67 @@ public class DependencyManager {
         }
     }
 
-    private static Map<String, String> getDependencies(Scope scope) {
+    private static PropFile getDependencies(Scope scope) {
         // note, for non-default scoped invocations this is redundant as we add a dependency to the
         // default scope itself (which via transitive deps will depend upon all the inherited deps anyway).
         // TODO - is this wrong? essentially saying transitive deps are first level deps for non-default scopes
-        Collection<Prop> scopedDependencies = Props.get(Context.named("dependencies"));
-        Map<String, String> dependencies = new HashMap<String, String>();
+        PropFileChain scopedDependencies = Props.get(Context.named("dependencies"));
+        PropFile dependencies = new PropFile(Context.named("dependencies"), scope, PropFile.Loc.Local);
         if (!scope.name.isEmpty()) {
             // add the project itself as this is not the default scope
-            DependencyAtom self = DependencyAtom.parse(Props.getValue(Context.named("project"), "nonscoped.artifact.name"), null);
+            DependencyAtom self = DependencyAtom.parse(Props.get("nonscoped.artifact.name", Context.named("project")).value(), null);
             if (self == null) {
                 throw new AssertionError("Could not determine the project information.");
             }
-            dependencies.put(self.namespace + ":" + self.name, self.version + ":" + self.getArtifactName());
+            dependencies.add(self.namespace + ":" + self.name, self.version + ":" + self.getArtifactName());
         }
-        if (scopedDependencies == null) {
-            return dependencies;
-        }
-        for (Prop dependency : scopedDependencies) {
-            dependencies.put(dependency.name, dependency.value);
+        for (Prop dependency : scopedDependencies.props()) {
+            dependencies.add(dependency.name, dependency.value());
         }
         return dependencies;
     }
 
-    private static Properties loadDependenciesFile(Scope scope) {
-        String localDir = Props.getValue(Context.named("ply"), "project.dir");
+    private static PropFile loadDependenciesFile(Scope scope) {
+        String localDir = Props.get("project.dir", Context.named("ply")).value();
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "dependencies" + scope.getFileSuffix() + ".properties";
-        return PropertiesFileUtil.load(loadPath, true);
+        PropFile dependencies = new PropFile(Context.named("dependencies"), scope, PropFile.Loc.Local);
+        PropFiles.load(loadPath, dependencies, true);
+        return dependencies;
     }
 
-    private static Properties loadRepositoriesFile(Scope scope) {
-        String localDir = Props.getValue(Context.named("ply"), "project.dir");
+    private static PropFile loadRepositoriesFile(Scope scope) {
+        String localDir = Props.get("project.dir", Context.named("ply")).value();
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "repositories" + scope.getFileSuffix() + ".properties";
-        return PropertiesFileUtil.load(loadPath, true);
+        PropFile repositories = new PropFile(Context.named("repositories"), scope, PropFile.Loc.Local);
+        PropFiles.load(loadPath, repositories, true);
+        return repositories;
     }
 
-    private static void storeDependenciesFile(Properties dependencies, Scope scope) {
-        String localDir = Props.getValue(Context.named("ply"), "project.dir");
+    private static void storeDependenciesFile(PropFile dependencies, Scope scope) {
+        String localDir = Props.get("project.dir", Context.named("ply")).value();
         String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "dependencies" + scope.getFileSuffix() + ".properties";
-        if (!PropertiesFileUtil.store(dependencies, storePath, true)) {
+        if (!PropFiles.store(dependencies, storePath, true)) {
             System.exit(1);
         }
     }
 
-    private static void storeRepositoriesFile(Properties repositories, Scope scope) {
-        String localDir = Props.getValue(Context.named("ply"), "project.dir");
+    private static void storeRepositoriesFile(PropFile repositories, Scope scope) {
+        String localDir = Props.get("project.dir", Context.named("ply")).value();
         String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "repositories" + scope.getFileSuffix() + ".properties";
-        if (!PropertiesFileUtil.store(repositories, storePath, true)) {
+        if (!PropFiles.store(repositories, storePath, true)) {
             System.exit(1);
         }
     }
 
-    private static void storeResolvedDependenciesFile(Properties resolvedDependencies, Scope scope) {
-        String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
+    private static void storeResolvedDependenciesFile(PropFile resolvedDependencies, Scope scope) {
+        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
         String storePath = buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
                 + "resolved-deps" + scope.getFileSuffix() + ".properties";
-        if (!PropertiesFileUtil.store(resolvedDependencies, storePath, true)) {
+        if (!PropFiles.store(resolvedDependencies, storePath, true)) {
             System.exit(1);
         }
     }

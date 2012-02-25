@@ -1,7 +1,7 @@
 package net.ocheyedan.ply.props;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * User: blangel
@@ -28,7 +28,7 @@ public final class Scope {
 
     public static final Scope Default = new Scope("");
 
-    private static final Map<String, Scope> interned = new HashMap<String, Scope>();
+    private static final Map<String, Scope> interned = new ConcurrentHashMap<String, Scope>();
 
     public static Scope named(String name) {
         if ((name == null) || name.isEmpty()) {
@@ -62,6 +62,10 @@ public final class Scope {
 
     public String getScriptPrefix() {
         return ((name == null) || name.isEmpty()) ? "" : name + ":";
+    }
+    
+    public String getAdHocSuffix() {
+        return ((name == null) || name.isEmpty()) ? "" : "#" + name;
     }
 
     @Override public boolean equals(Object o) {

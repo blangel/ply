@@ -1,8 +1,10 @@
 package net.ocheyedan.ply.cmd;
 
 import net.ocheyedan.ply.FileUtil;
-import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.SystemExit;
+import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.PropFile;
+import net.ocheyedan.ply.props.PropFiles;
 import org.junit.After;
 import org.junit.Test;
 
@@ -14,10 +16,8 @@ import java.net.MalformedURLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import static junit.framework.Assert.*;
-import static junit.framework.Assert.assertEquals;
 
 /**
  * User: blangel
@@ -230,82 +230,93 @@ public class UpdateTest {
         // test property name with invalid expected value
         int warnings = (Integer) updatePropertyMethod.invoke(update, "aliases.update=ply-update-2.0.jar|something-else", configDir);
         assertEquals(1, warnings);
-        Properties aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
-        assertEquals("ply-update-1.0.jar", aliases.getProperty("update"));
+        PropFile aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"), aliases);
+        assertEquals("ply-update-1.0.jar", aliases.get("update").value());
         // test property name with valid expected value
         warnings = (Integer) updatePropertyMethod.invoke(update, "aliases.update=ply-update-2.0.jar|ply-update-1.0.jar", configDir);
         assertEquals(0, warnings);
-        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
-        assertEquals("ply-update-2.0.jar", aliases.getProperty("update"));
+        aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"), aliases);
+        assertEquals("ply-update-2.0.jar", aliases.get("update").value());
 
         // test property name with invalid expected value
         warnings = (Integer) updatePropertyMethod.invoke(update, "aliases.update=ply-update-3.0.jar|", configDir);
         assertEquals(1, warnings);
-        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
-        assertEquals("ply-update-2.0.jar", aliases.getProperty("update"));
+        aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"), aliases);
+        assertEquals("ply-update-2.0.jar", aliases.get("update").value());
 
         // test property name with a period in it
         // test property name with invalid expected value
         warnings = (Integer) updatePropertyMethod.invoke(update, "aliases.user.modified=testing|blah", configDir);
         assertEquals(1, warnings);
-        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
-        assertEquals("something-else", aliases.getProperty("user.modified"));
+        aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"), aliases);
+        assertEquals("something-else", aliases.get("user.modified").value());
         // test property name with valid expected value
         warnings = (Integer) updatePropertyMethod.invoke(update, "aliases.user.modified=testing|something-else", configDir);
         assertEquals(0, warnings);
-        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
-        assertEquals("testing", aliases.getProperty("user.modified"));
+        aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"), aliases);
+        assertEquals("testing", aliases.get("user.modified").value());
 
         // test property value with pipe in it
         warnings = (Integer) updatePropertyMethod.invoke(update, "aliases.user.modified=with\\| character|testing", configDir);
         assertEquals(0, warnings);
-        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
-        assertEquals("with| character", aliases.getProperty("user.modified"));
+        aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"), aliases);
+        assertEquals("with| character", aliases.get("user.modified").value());
         warnings = (Integer) updatePropertyMethod.invoke(update, "aliases.user.modified=\\|pipe!|with| character", configDir);
         assertEquals(0, warnings);
-        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
-        assertEquals("|pipe!", aliases.getProperty("user.modified"));
+        aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"), aliases);
+        assertEquals("|pipe!", aliases.get("user.modified").value());
 
         // test property where the user has deleted the existing
         warnings = (Integer) updatePropertyMethod.invoke(update, "aliases.user.deleted=something|dne", configDir);
         assertEquals(1, warnings);
-        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
-        assertFalse(aliases.containsKey("user.deleted"));
+        aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"), aliases);
+        assertFalse(aliases.contains("user.deleted"));
 
         // test add a new property
         warnings = (Integer) updatePropertyMethod.invoke(update, "aliases.system.created=something|", configDir);
         assertEquals(0, warnings);
-        aliases = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"));
-        assertEquals("something", aliases.getProperty("system.created"));
+        aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "aliases.properties"), aliases);
+        assertEquals("something", aliases.get("system.created").value());
 
         // test the properties file dne
         warnings = (Integer) updatePropertyMethod.invoke(update, "project.prop=newvalue|oldvalue", configDir);
         assertEquals(1, warnings);
-        Properties project = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "project.properties"), false, true);
-        assertNull(project);
+        PropFile project = new PropFile(Context.named("project"), PropFile.Loc.Local);
+        assertFalse(
+                PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "project.properties"), project, false, true));
 
         // test the properties file dne but is created
         warnings = (Integer) updatePropertyMethod.invoke(update, "project.prop=newvalue|", configDir);
         assertEquals(0, warnings);
-        project = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "project.properties"));
-        assertEquals("newvalue", project.getProperty("prop"));
+        project = new PropFile(Context.named("project"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "project.properties"), project);
+        assertEquals("newvalue", project.get("prop").value());
 
         // test scoped properties file, creation
         warnings = (Integer) updatePropertyMethod.invoke(update, "project#test.testprop=newvalue|", configDir);
         assertEquals(0, warnings);
-        project = PropertiesFileUtil.load(FileUtil.pathFromParts(configDir.getPath(), "project.test.properties"));
-        assertEquals("newvalue", project.getProperty("testprop"));
+        project = new PropFile(Context.named("project"), PropFile.Loc.Local);
+        PropFiles.load(FileUtil.pathFromParts(configDir.getPath(), "project.test.properties"), project);
+        assertEquals("newvalue", project.get("testprop").value());
     }
 
     @After
     public void teardown() {
         File configDir = new File("src/test/resources/update-config");
         String aliasesFile = FileUtil.pathFromParts(configDir.getPath(), "aliases.properties");
-        Properties aliases = PropertiesFileUtil.load(aliasesFile);
-        aliases.clear();
-        aliases.put("update", "ply-update-1.0.jar");
-        aliases.put("user.modified", "something-else");
-        PropertiesFileUtil.store(aliases, aliasesFile);
+        PropFile aliases = new PropFile(Context.named("aliases"), PropFile.Loc.Local);
+        aliases.add("update", "ply-update-1.0.jar");
+        aliases.add("user.modified", "something-else");
+        PropFiles.store(aliases, aliasesFile);
 
         FileUtil.delete(FileUtil.fromParts(configDir.getPath(), "project.properties"));
         FileUtil.delete(FileUtil.fromParts(configDir.getPath(), "project.test.properties"));

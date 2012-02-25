@@ -3,7 +3,6 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
-import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.dep.RepositoryAtom;
@@ -21,8 +20,13 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.*;
 import java.nio.CharBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -33,28 +37,24 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class IntellijUtil {
 
-    private static final AtomicReference<String[]> cache = new AtomicReference<String[]>();
+    private static final AtomicReference<List<String>> cache = new AtomicReference<List<String>>();
 
     /**
-     * The modules are first checked by looking up the comma-delimited list at property {@literal intellij[.scope].submodules}
-     * if this property does not exist or is null then the {@literal submodules} property context is resolved.  If
+     * The {@literal submodules} property context is first resolved.  If it exists then its values are returned.
+     * Otherwise, the comma-delimited list at property {@literal intellij[.scope].submodules} is resolved. If
      * there are no sub-modules then null is returned.
      * @return the modules of this project.
      */
-    public static String[] getModules() {
+    public static List<String> getModules() {
         if (cache.get() != null) {
             return cache.get();
         }
-        Collection<Prop> submodules = null;
-        if (!Props.getValue(Context.named("intellij"), "submodules").isEmpty()) {
-            String[] modules = Props.getValue(Context.named("intellij"), "submodules").split(",");
-            cache.set(modules);
-            return modules;
-        } else if (((submodules = Props.get(Context.named("submodules"))) != null) && !submodules.isEmpty()) {
-            String[] submoduleNames = new String[submodules.size()];
+        PropFileChain submodules = null;
+        if (((submodules = Props.get(Context.named("submodules"))) != null) && !submodules.props().iterator().hasNext()) {
+            List<String> submoduleNames = new ArrayList<String>();
             int i = 0;
-            for (Prop submodule : submodules) {
-                submoduleNames[i++] = submodule.name;
+            for (Prop submodule : submodules.props()) {
+                submoduleNames.add(submodule.name); // TODO - recursively get submodules' submodules, if any
             }
             cache.set(submoduleNames);
             return submoduleNames;
@@ -73,9 +73,9 @@ public class IntellijUtil {
      */
     public static String setPlyLocalRepoMacro(String projectName) {
         // first, get the localRepo Prop
-        String localRepoValue = Props.getValue(Context.named("depmngr"), "localRepo");
+        String localRepoValue = Props.get("localRepo", Context.named("depmngr")).value();
         String systemLocalRepoValue = getSystemLocalRepo();
-        systemLocalRepoValue = Filter.filter(Context.named("depmngr"), systemLocalRepoValue, Props.get());
+        systemLocalRepoValue = Filter.filter(systemLocalRepoValue, Context.named("depmngr"), systemLocalRepoValue, Props.get());
         RepositoryAtom localRepo = RepositoryAtom.parse(localRepoValue);
         String plyRepoPathMacroName = "PLY_REPO";
         // if the localRepo was set locally then append projectName
@@ -130,9 +130,13 @@ public class IntellijUtil {
      */
     private static String getSystemLocalRepo() {
         Scope scope = Props.getScope();
-        Properties systemDepmngrProps = PropertiesFileUtil
-                .load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "depmngr" + scope.getFileSuffix() + ".properties"));
-        return (systemDepmngrProps == null ? null : systemDepmngrProps.getProperty("localRepo"));
+        PropFile systemDepmngrProps = new PropFile(Context.named("depmngr"), scope, PropFile.Loc.System);
+        String path = FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "depmngr" + scope.getFileSuffix() + ".properties");
+        if (!PropFiles.load(path, systemDepmngrProps) || !systemDepmngrProps.contains("localRepo")) {
+            return null;
+        } else {
+            return systemDepmngrProps.get("localRepo").value();
+        }
     }
 
     /**
@@ -220,35 +224,34 @@ public class IntellijUtil {
     }
 
     /**
-     * Collects all dependencies for the current project as well as those for each {@code submodules}.
-     * @param projectDir from which the script was ran
-     * @param submodules of the current project
-     * @return the collected dependencies for the current project as well as for {@code submodules}
+     * Calls {@link #collectDependencies(File, Scope)} with the value of {@literal ply.scope}
+     * @param projectConfigDir @see {@link #collectDependencies(File, Scope)}
+     * @return @see {@link #collectDependencies(File, Scope)}
      */
-    public static Set<DependencyAtom> collectDependencies(File projectDir, String[] submodules) {
-        Context dependenciesContext = Context.named("dependencies");
-        Scope scope = Props.getScope();
-        Scope testScope = Scope.named("test");
-        String canonicalProjectDirPath = FileUtil.getCanonicalPath(projectDir);
-        // first collect the current project's dependencies.
-        List<DependencyAtom> dependencies = Deps.parse(Props.get(dependenciesContext));  // no need to use scope as this is from resolved-props
-        Set<DependencyAtom> allDependencies = new HashSet<DependencyAtom>(dependencies);
-        dependencies = Deps.parse(Props.getForceResolution(dependenciesContext, PlyUtil.LOCAL_CONFIG_DIR, testScope));
-        allDependencies.addAll(dependencies);
-        // now collect all those from submodules
-        if (submodules != null) {
-            for (String submodule : submodules) {
-                File submoduleConfigDir = FileUtil.fromParts(canonicalProjectDirPath, submodule, ".ply", "config");
-                if ((submoduleConfigDir == null) || !submoduleConfigDir.exists()) {
-                    Output.print("^warn^ Skipping dependency addition for module ^b^%s^r^ as its ^b^.ply/config^r^ directory could not be found.", submodule);
-                }
-                dependencies = Deps.parse(Props.getForceResolution(dependenciesContext, submoduleConfigDir, scope));
-                allDependencies.addAll(dependencies);
-                dependencies = Deps.parse(Props.getForceResolution(dependenciesContext, submoduleConfigDir, testScope));
-                allDependencies.addAll(dependencies);
+    public static Set<DependencyAtom> collectDependencies(File projectConfigDir) {
+        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
+        return collectDependencies(projectConfigDir, scope);
+    }
+
+    /**
+     * Collects all dependencies for {@code projectDir} by parsing the property names of the
+     * {@literal resolved-deps.properties} within the {@literal project.build.dir}.
+     * @param projectConfigDir the project configuration directory from which to load properties necessary to
+     * @param scope the scope for which to load the {@literal resolved-deps.properties} file.
+     * @return the resolved {@link DependencyAtom} objects.
+     */
+    public static Set<DependencyAtom> collectDependencies(File projectConfigDir, Scope scope) {
+        PropFile properties = Deps.getResolvedProperties(projectConfigDir, scope, false);
+        Set<DependencyAtom> dependencyAtoms = new HashSet<DependencyAtom>(properties.size());
+        for (Prop dependencyAtom : properties.props()) {
+            DependencyAtom parsed = DependencyAtom.parse(dependencyAtom.name, null);
+            if (parsed != null) {
+                dependencyAtoms.add(parsed);
+            } else {
+                Output.print("^warn^ Could not parse dependency ^b^%s^r^.", dependencyAtom.name);
             }
         }
-        return allDependencies;
+        return dependencyAtoms;
     }
 
     /**
@@ -410,7 +413,7 @@ public class IntellijUtil {
      * @param attributeName name of the attribute
      */
     public static void setLanguageAttribute(Element component, String attributeName) {
-        String languageLevel = Props.getValue(Context.named("intellij"), "languageLevel");
+        String languageLevel = Props.get("languageLevel", Context.named("intellij")).value();
         if (languageLevel.isEmpty()) {
             languageLevel = "JDK_" + getJavaVersion().replace(".", "_");
         }

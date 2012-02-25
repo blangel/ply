@@ -2,15 +2,14 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.OrderedProperties;
+import net.ocheyedan.ply.props.PropFile;
+import net.ocheyedan.ply.props.PropFiles;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
-import java.util.Properties;
 
 /**
  * User: blangel
@@ -29,21 +28,21 @@ import java.util.Properties;
 public class RepositoryInstaller {
 
     public static void main(String[] args) {
-        String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
-        String artifactName = Props.getValue(Context.named("project"), "artifact.name");
+        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
+        String artifactName = Props.get("artifact.name", Context.named("project")).value();
         File artifact = FileUtil.fromParts(buildDirPath, artifactName);
         if (!artifact.exists()) {
             return;
         }
 
-        String plyProjectDirPath = Props.getValue(Context.named("ply"), "project.dir");
+        String plyProjectDirPath = Props.get("project.dir", Context.named("ply")).value();
         File dependenciesFile = FileUtil.fromParts(plyProjectDirPath, "config", "dependencies.properties");
 
-        String localRepoProp = Props.getValue(Context.named("depmngr"), "localRepo");
+        String localRepoProp = Props.get("localRepo", Context.named("depmngr")).value();
         RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp);
-        String namespace = Props.getValue(Context.named("project"), "namespace");
-        String name = Props.getValue(Context.named("project"), "name");
-        String version = Props.getValue(Context.named("project"), "version");
+        String namespace = Props.get("namespace", Context.named("project")).value();
+        String name = Props.get("name", Context.named("project")).value();
+        String version = Props.get("version", Context.named("project")).value();
         if (localRepo == null) {
             Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoProp);
             System.exit(1);
@@ -59,8 +58,8 @@ public class RepositoryInstaller {
             FileUtil.copy(dependenciesFile, localRepoDependenciesFile);
         } else {
             // need to override (perhaps there were dependencies but now none.
-            Properties dependencies = new OrderedProperties();
-            PropertiesFileUtil.store(dependencies, localRepoDependenciesFile.getPath(), true);
+            PropFile dependencies = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
+            PropFiles.store(dependencies, localRepoDependenciesFile.getPath(), true);
         }
     }
 

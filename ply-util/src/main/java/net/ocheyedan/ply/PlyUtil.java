@@ -49,14 +49,14 @@ public final class PlyUtil {
      * @return true if all prompts should be disallowed.
      */
     public static boolean isHeadless() {
-        return "true".equalsIgnoreCase(Props.getValue(Context.named("ply"), "headless"));
+        return "true".equalsIgnoreCase(Props.get("headless", Context.named("ply")).value());
     }
 
     /**
      * @return true if unicode is supported as output
      */
     public static boolean isUnicodeSupported() {
-        return "true".equalsIgnoreCase(Props.getValue(Context.named("ply"), "unicode"));
+        return "true".equalsIgnoreCase(Props.get("unicode", Context.named("ply")).value());
     }
 
     /**

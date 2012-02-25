@@ -6,10 +6,10 @@ import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.jna.JnaAccessor;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.PropFile;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
-import java.util.Properties;
 
 /**
  * User: blangel
@@ -50,15 +50,15 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
         File explodedWarDir = new File(getExplodedWarDirPath());
         explodedWarDir.mkdirs();
         // get the web-inf dir and copy to the exploded war web-inf dir
-        String webappDir = Props.getValue(Context.named("package"), "webapp.dir");
+        String webappDir = Props.get("webapp.dir", Context.named("package")).value();
         FileUtil.copyDir(FileUtil.fromParts(webappDir, "WEB-INF"),
                 FileUtil.fromParts(explodedWarDir.getPath(), "WEB-INF"));
         // copy the meta-dir to the exploded war meta-inf dir
         FileUtil.copyDir(FileUtil.fromParts(buildDir, "META-INF"),
                 FileUtil.fromParts(explodedWarDir.getPath(), "META-INF"));
         // copy the classes/resources directory to the WEB-INF/classes
-        String buildPath = Props.getValue(Context.named("compiler"), "build.path");
-        String resBuildPath = Props.getValue(Context.named("project"), "res.build.dir");
+        String buildPath = Props.get("build.path", Context.named("compiler")).value();
+        String resBuildPath = Props.get("res.build.dir", Context.named("project")).value();
         File buildPathDir = new File(buildPath);
         File resBuildPathDir = new File(resBuildPath);
         if (buildPathDir.exists()) {
@@ -68,26 +68,26 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
             FileUtil.copyDir(resBuildPathDir, FileUtil.fromParts(explodedWarDir.getPath(), "WEB-INF", "classes"));
         }
         // copy the dependencies to the WEB-INF/lib directory
-        Properties resolvedProperties = Deps.getResolvedProperties(false);
+        PropFile resolvedProperties = Deps.getResolvedProperties(false);
         Output.print("^info^ Copying dependencies for war file.");
         copyDependencies(resolvedProperties, FileUtil.fromParts(explodedWarDir.getPath(), "WEB-INF", "lib"));
     }
 
     protected String getExplodedWarDirPath() {
-        String explodedWarDir = Props.getValue(Context.named("package"), "exploded.war.dir");
+        String explodedWarDir = Props.get("exploded.war.dir", Context.named("package")).value();
         if (explodedWarDir.endsWith(".war")) {
             explodedWarDir = explodedWarDir.substring(0, explodedWarDir.length() - 4);
         }
         return explodedWarDir;
     }
 
-    protected void copyDependencies(Properties resolvedProperties, File copyToDir) {
+    protected void copyDependencies(PropFile resolvedProperties, File copyToDir) {
         copyToDir.mkdirs();
-        for (String resolvedKey : resolvedProperties.stringPropertyNames()) {
-            if (DependencyAtom.isTransient(resolvedKey)) {
+        for (PropFile.Prop resolvedKey : resolvedProperties.props()) {
+            if (DependencyAtom.isTransient(resolvedKey.name)) {
                 continue;
             }
-            File dependency = new File(resolvedProperties.getProperty(resolvedKey));
+            File dependency = new File(resolvedKey.value());
             File to = FileUtil.fromParts(copyToDir.getPath(), dependency.getName());
             if (!to.exists()) {
                 if (JnaAccessor.getCUnixLibrary() != null) {

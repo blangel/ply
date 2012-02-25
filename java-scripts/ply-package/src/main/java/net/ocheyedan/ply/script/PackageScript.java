@@ -20,7 +20,7 @@ import java.io.IOException;
 public class PackageScript {
 
     public static void main(String[] args) {
-        String packaging = Props.getValue(Context.named("project"), "packaging");
+        String packaging = Props.get("packaging", Context.named("project")).value();
         PackagingScript packagingScript;
         if ("zip".equals(packaging)) {
             packagingScript = new ZipPackageScript();

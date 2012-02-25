@@ -3,17 +3,12 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.BitUtil;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.PropertiesFileUtil;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.OrderedProperties;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 
 import java.io.*;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -38,13 +33,17 @@ import java.util.concurrent.atomic.AtomicReference;
 public class FileChangeDetector {
 
     public static void main(String[] args) {
-        Scope scope = new Scope(Props.getValue(Context.named("ply"), "scope"));
-        String srcDirPath = Props.getValue(Context.named("project"), "src.dir");
-        String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
+        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
+        String srcDirPath = Props.get("src.dir", Context.named("project")).value();
+        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
+        if (buildDirPath.isEmpty()) {
+            Output.print("build.dir is empty!");
+        }
         File lastSrcChanged = FileUtil.fromParts(buildDirPath, "changed-meta" + scope.getFileSuffix() + ".properties");
         File changedPropertiesFile = FileUtil.fromParts(buildDirPath, "changed" + scope.getFileSuffix() + ".properties");
         File srcDir = new File(srcDirPath);
-        Properties existing = PropertiesFileUtil.load(lastSrcChanged.getPath(), true);
+        PropFile existing = new PropFile(Context.named("changed"), PropFile.Loc.Local);
+        PropFiles.load(lastSrcChanged.getPath(), existing, true);
         try {
             changedPropertiesFile.createNewFile();
         } catch (IOException ioe) {
@@ -54,15 +53,15 @@ public class FileChangeDetector {
     }
 
     private static void computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir,
-                                            Properties existing, Scope scope) {
-        Properties changedList = new OrderedProperties();
-        Properties properties = new OrderedProperties();
+                                            PropFile existing, Scope scope) {
+        PropFile changedList = new PropFile(Context.named("changed"), PropFile.Loc.Local);
+        PropFile properties = new PropFile(Context.named("changed-meta"), PropFile.Loc.Local);
         collectAllFileChanges(srcDir, changedList, properties, existing, scope);
-        PropertiesFileUtil.store(changedList, changedPropertiesFile.getPath());
-        PropertiesFileUtil.store(properties, lastSrcChanged.getPath());
+        PropFiles.store(changedList, changedPropertiesFile.getPath());
+        PropFiles.store(properties, lastSrcChanged.getPath());
     }
 
-    private static void collectAllFileChanges(File from, Properties changedList, Properties into, Properties existing,
+    private static void collectAllFileChanges(File from, PropFile changedList, PropFile into, PropFile existing,
                                               Scope scope) {
         String epochTime = String.valueOf(System.currentTimeMillis());
         File[] subfiles = from.listFiles();
@@ -78,10 +77,10 @@ public class FileChangeDetector {
                     String path = file.getCanonicalPath();
                     if (hasChanged(file, existing, sha1HashRef, scope) && file.exists()) {
                         String sha1Hash = (sha1HashRef.get() == null ? computeSha1Hash(file) : sha1HashRef.get());
-                        into.setProperty(path, epochTime + "," + sha1Hash);
-                        changedList.setProperty(path, "");
+                        into.add(path, epochTime + "," + sha1Hash);
+                        changedList.add(path, "");
                     } else if (file.exists()) {
-                        into.setProperty(path, existing.getProperty(path));
+                        into.add(path, existing.get(path).value());
                     }
                 } catch (IOException ioe) {
                     Output.print(ioe);
@@ -90,10 +89,10 @@ public class FileChangeDetector {
         }
     }
 
-    private static boolean hasChanged(File file, Properties existing, AtomicReference<String> computedSha1, Scope scope) {
+    private static boolean hasChanged(File file, PropFile existing, AtomicReference<String> computedSha1, Scope scope) {
         try {
             String propertyValue;
-            if ((propertyValue = existing.getProperty(file.getCanonicalPath())) == null) {
+            if ((propertyValue = existing.get(file.getCanonicalPath()).value()).isEmpty()) {
                 return true;
             }
             String[] split = propertyValue.split("\\,");

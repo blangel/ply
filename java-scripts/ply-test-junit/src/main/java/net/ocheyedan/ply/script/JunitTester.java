@@ -3,14 +3,12 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
-import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.input.Resources;
 import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Prop;
+import net.ocheyedan.ply.props.PropFile;
 import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
 import net.ocheyedan.ply.script.print.PrivilegedOutput;
 import net.ocheyedan.ply.script.print.PrivilegedPrintStream;
 
@@ -19,9 +17,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
+
+import static net.ocheyedan.ply.props.PropFile.Prop;
 
 /**
  * User: blangel
@@ -46,21 +49,21 @@ public class JunitTester {
     @SuppressWarnings("unchecked") /* ignore unchecked in constructor call */
     public static void main(String[] args) {
 
-        Prop buildDirProp = Props.get(Context.named("project"), "build.dir");
-        Prop artifactNameProp = Props.get(Context.named("project"), "artifact.name");
-        if ((buildDirProp == null) || (artifactNameProp == null)) {
+        Prop buildDirProp = Props.get("build.dir", Context.named("project"));
+        Prop artifactNameProp = Props.get("artifact.name", Context.named("project"));
+        if (Prop.Empty.equals(buildDirProp) || Prop.Empty.equals(artifactNameProp)) {
             Output.print("^warn^ No project.build.dir or project.artifact.name found, skipping test execution.");
             return;
         }
 
         // load the resolved dependencies file from the ply-dependency-manager script
-        Properties resolvedDepProps = Deps.getResolvedProperties(true);
+        PropFile resolvedDepProps = Deps.getResolvedProperties(true);
         if (resolvedDepProps == null) {
             Output.print("^warn^ No resolved-deps.properties file found, skipping test execution.");
             return;
         }
 
-        File artifact = FileUtil.fromParts(buildDirProp.value, artifactNameProp.value);
+        File artifact = FileUtil.fromParts(buildDirProp.value(), artifactNameProp.value());
         if (!artifact.exists()) {
             Output.print("^warn^ No test artifact, skipping test execution.");
             return;
@@ -96,15 +99,15 @@ public class JunitTester {
         PrintStream oldErr = System.err;
         redirect:try {
             // create the redirected out/err files.
-            Prop reportDirProp = Props.get(Context.named("project"), "reports.dir");
-            if (reportDirProp == null) {
+            Prop reportDirProp = Props.get("reports.dir", Context.named("project"));
+            if (Prop.Empty.equals(reportDirProp)) {
                 Output.print("^warn^ Could not find property project.reports.dir, skipping out/err redirection.");
                 break redirect;
             }
-            File outFile = FileUtil.fromParts(reportDirProp.value, "tests-out.txt");
+            File outFile = FileUtil.fromParts(reportDirProp.value(), "tests-out.txt");
             outFile.getParentFile().mkdirs();
             outFile.createNewFile();
-            File errFile = FileUtil.fromParts(reportDirProp.value, "tests-err.txt");
+            File errFile = FileUtil.fromParts(reportDirProp.value(), "tests-err.txt");
             errFile.createNewFile();
             System.setOut(new PrivilegedPrintStream(oldOut, outFile));
             System.setErr(new PrivilegedPrintStream(oldErr, errFile));
@@ -144,7 +147,7 @@ public class JunitTester {
 
     }
 
-    private static List<URL> getClasspathEntries(File artifact, Properties dependencies) {
+    private static List<URL> getClasspathEntries(File artifact, PropFile dependencies) {
         List<URL> urls = new ArrayList<URL>();
         URL artifactUrl = getUrl(artifact);
         if (artifactUrl == null) {
@@ -156,22 +159,22 @@ public class JunitTester {
         }
 
         boolean includesPlyUtil = false;
-        for (String depName : dependencies.stringPropertyNames()) {
+        for (Prop depName : dependencies.props()) {
             // TODO - should this exclude the direct-transient deps? perhaps not b/c need for testing?
-            String depPath = dependencies.getProperty(depName);
+            String depPath = depName.value();
             URL depUrl = getUrl(new File(depPath));
             if (depUrl == null) {
                 throw new AssertionError(String.format("Could not find dependency artifact: %s", depPath));
             }
             urls.add(depUrl);
             // TODO - is this the best way to handle those projects which depend upon ply-util?
-            if (depName.contains("ply-util")) {
+            if (depName.name.contains("ply-util")) {
                 includesPlyUtil = true;
             }
         }
 
         // now add our own dependencies
-        String localRepoProp = Props.getValue(Context.named("depmngr"), "localRepo");
+        String localRepoProp = Props.get("localRepo", Context.named("depmngr")).value();
         RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp);
         if (localRepo == null) {
             Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");

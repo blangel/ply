@@ -1,6 +1,6 @@
 package net.ocheyedan.ply.mvn;
 
-import java.util.Properties;
+import net.ocheyedan.ply.props.PropFile;
 
 /**
  * User: blangel
@@ -19,13 +19,13 @@ public final class MavenPom {
 
     public final String packaging;
 
-    public final Properties dependencies;
+    public final PropFile dependencies;
 
-    public final Properties testDependencies;
+    public final PropFile testDependencies;
 
-    public final Properties modules;
+    public final PropFile modules;
 
-    public final Properties repositories;
+    public final PropFile repositories;
 
     public final String buildDirectory;
 
@@ -39,8 +39,8 @@ public final class MavenPom {
 
     public final String buildTestSourceDirectory;
 
-    public MavenPom(String groupId, String artifactId, String version, String packaging, Properties dependencies,
-                    Properties testDependencies, Properties repositories, Properties modules, String buildDirectory,
+    public MavenPom(String groupId, String artifactId, String version, String packaging, PropFile dependencies,
+                    PropFile testDependencies, PropFile repositories, PropFile modules, String buildDirectory,
                     String buildOutputDirectory, String buildFinalName, String buildSourceDirectory,
                     String buildTestOutputDirectory, String buildTestSourceDirectory) {
         this.groupId = groupId;

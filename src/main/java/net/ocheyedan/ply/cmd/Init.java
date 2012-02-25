@@ -12,6 +12,8 @@ import java.io.*;
 import java.nio.CharBuffer;
 import java.util.*;
 
+import static net.ocheyedan.ply.props.PropFile.Prop;
+
 /**
  * User: blangel
  * Date: 12/30/11
@@ -91,8 +93,8 @@ public final class Init extends Command {
                 throw new PomParseException(mavenPom.getPath());
             }
             if ((pom.modules != null) && !pom.modules.isEmpty()) {
-                for (String submodule : pom.modules.stringPropertyNames()) {
-                    File pomFile = FileUtil.fromParts(from.getPath(), submodule);
+                for (PropFile.Prop submodule : pom.modules.props()) {
+                    File pomFile = FileUtil.fromParts(from.getPath(), submodule.name);
                     try {
                         if (pomFile.exists()) {
                             List<String> rawArgs = new ArrayList<String>(2);
@@ -119,25 +121,12 @@ public final class Init extends Command {
         Output.print("^ply^ Created the following project properties:");
         Output.print("^ply^");
         PrintStream old = setupTabOutput();
-        Map<Context, Collection<Prop>> props = Props.getLocal(configDir, Scope.Default);
         Get get = new Get(null);
-        get.print(props, Scope.Default, false);
+        get.print(configDir, null, Scope.Default, null, false);
         revertTabOutput(old);
+        String projectName = Props.get("name", Context.named("project"), Scope.Default, configDir).value();
         Output.print("^ply^");
-        Output.print("^ply^ Project ^b^%s^r^ initialized successfully.", getValue(props, Context.named("project"), "name"));
-    }
-
-    private static String getValue(Map<Context, Collection<Prop>> props, Context context, String propertyName) {
-        Collection<Prop> contextProps = props.get(context);
-        if (contextProps == null) {
-            return "";
-        }
-        for (Prop prop : contextProps) {
-            if (prop.name.equals(propertyName)) {
-                return prop.value;
-            }
-        }
-        return "";
+        Output.print("^ply^ Project ^b^%s^r^ initialized successfully.", projectName);
     }
 
     private static File getMavenPom(File from, Args args) {
@@ -208,8 +197,11 @@ public final class Init extends Command {
      * @see net.ocheyedan.ply.PlyUtil#isHeadless()
      */
     private static boolean isHeadless() {
-        Properties plySystemProps = PropertiesFileUtil.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "ply.properties"));
-        return (plySystemProps != null) && "true".equalsIgnoreCase(plySystemProps.getProperty("headless"));
+        PropFile plySystemProps = new PropFile(Context.named("ply"), PropFile.Loc.System);
+        if (!PropFiles.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "ply.properties"), plySystemProps)) {
+            return false;
+        }
+        return "true".equalsIgnoreCase(plySystemProps.get("headless").value());
     }
 
     /**
@@ -225,24 +217,24 @@ public final class Init extends Command {
      * @return true is success; false, otherwise
      */
     private static boolean createProperties(File from, MavenPom pom) {
-        Map<String, Properties> fileToProps = new HashMap<String, Properties>(3);
+        Map<String, PropFile> fileToProps = new HashMap<String, PropFile>(3, 1.0f);
 
-        Properties projectProps = new OrderedProperties();
-        projectProps.put("namespace", pom.groupId);
-        projectProps.put("name", pom.artifactId);
-        projectProps.put("version", pom.version);
+        PropFile projectProps = new PropFile(Context.named("project"), PropFile.Loc.Local);
+        projectProps.add("namespace", pom.groupId);
+        projectProps.add("name", pom.artifactId);
+        projectProps.add("version", pom.version);
         if ((pom.packaging != null) && !DependencyAtom.DEFAULT_PACKAGING.equals(pom.packaging)
                 && !"pom".equals(pom.packaging)) { // maven's pom packaging will be considered default packaging in ply
-            projectProps.put("packaging", pom.packaging);
+            projectProps.add("packaging", pom.packaging);
         }
         if (pom.buildDirectory != null) {
-            projectProps.put("build.dir", pom.buildDirectory);
+            projectProps.add("build.dir", pom.buildDirectory);
         }
         if (pom.buildSourceDirectory != null) {
-            projectProps.put("src.dir", pom.buildSourceDirectory);
+            projectProps.add("src.dir", pom.buildSourceDirectory);
         }
         if (pom.buildFinalName != null) {
-            projectProps.put("artifact.name", pom.buildFinalName);
+            projectProps.add("artifact.name", pom.buildFinalName);
         }
         fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.properties"), projectProps);
 
@@ -259,20 +251,20 @@ public final class Init extends Command {
         }
 
         if (pom.buildOutputDirectory != null) {
-            Properties compilerProps = new OrderedProperties();
-            compilerProps.put("build.path", pom.buildOutputDirectory);
+            PropFile compilerProps = new PropFile(Context.named("compiler"), PropFile.Loc.Local);
+            compilerProps.add("build.path", pom.buildOutputDirectory);
             fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "compiler.properties"), compilerProps);
         }
 
         if (pom.buildTestOutputDirectory != null) {
-            Properties compilerTestProps = new OrderedProperties();
-            compilerTestProps.put("build.path", pom.buildTestOutputDirectory);
+            PropFile compilerTestProps = new PropFile(Context.named("compiler"), Scope.named("test"), PropFile.Loc.Local);
+            compilerTestProps.add("build.path", pom.buildTestOutputDirectory);
             fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "compiler.test.properties"), compilerTestProps);
         }
 
         if (pom.buildTestSourceDirectory != null) {
-            Properties projectTestProps = new OrderedProperties();
-            projectTestProps.put("src.dir", pom.buildTestSourceDirectory);
+            PropFile projectTestProps = new PropFile(Context.named("project"), Scope.named("test"), PropFile.Loc.Local);
+            projectTestProps.add("src.dir", pom.buildTestSourceDirectory);
             fileToProps.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.test.properties"), projectTestProps);
         }
 
@@ -292,8 +284,8 @@ public final class Init extends Command {
      * @return true on success
      */
     private static boolean createDefaultProperties(File from) {
-        Map<String, Properties> projectMap = new HashMap<String, Properties>(1);
-        Properties projectProps = new OrderedProperties();
+        Map<String, PropFile> projectMap = new HashMap<String, PropFile>(1, 1.0f);
+        PropFile projectProps = new PropFile(Context.named("project"), PropFile.Loc.Local);
         projectMap.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.properties"), projectProps);
         try {
             File projectDirectory = new File(".");
@@ -305,9 +297,9 @@ public final class Init extends Command {
             if (lastPathIndex != -1) {
                 path = path.substring(lastPathIndex + 1);
             }
-            projectProps.put("namespace", path);
-            projectProps.put("name", path);
-            projectProps.put("version", "1.0");
+            projectProps.add("namespace", path);
+            projectProps.add("name", path);
+            projectProps.add("version", "1.0");
             return createProperties(projectMap);
         } catch (IOException ioe) {
             Output.print("^error^ could not create the local project.properties file.");
@@ -318,13 +310,13 @@ public final class Init extends Command {
 
     /**
      * Saves each {@code fileToProps}
-     * @param fileToProps mapping from file name to {@link Properties}
+     * @param fileToProps mapping from file name to {@link PropFile}
      * @return true if all saves succeeded; false otherwise
      */
-    private static boolean createProperties(Map<String, Properties> fileToProps) {
+    private static boolean createProperties(Map<String, PropFile> fileToProps) {
         for (String filePath : fileToProps.keySet()) {
-            Properties localProperties = fileToProps.get(filePath);
-            if (!PropertiesFileUtil.store(localProperties, filePath, true)) {
+            PropFile localProperties = fileToProps.get(filePath);
+            if (!PropFiles.store(localProperties, filePath, true)) {
                 return false;
             }
         }
@@ -400,23 +392,23 @@ public final class Init extends Command {
      * @return the system value for the {@literal depmngr.localRepo} property for the default scope
      */
     private static String getSystemLocalRepo() {
-        Properties systemDepmngrProps = PropertiesFileUtil.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "depmngr.properties"));
-        return (systemDepmngrProps == null ? null : systemDepmngrProps.getProperty("localRepo"));
+        PropFile depmngr = new PropFile(Context.named("depmngr"), PropFile.Loc.System);
+        if (!PropFiles.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "depmngr.properties"), depmngr)) {
+            return null;
+        }
+        return depmngr.get("localRepo").value();
     }
 
     /**
      * @return the system defined repositories for the default scope
      */
     private static Collection<Prop> getSystemRepositories() {
-        Properties systemRepositoriesProps = PropertiesFileUtil.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "repositories.properties"));
-        if (systemRepositoriesProps == null) {
-            return Collections.emptyList();
-        }
         Context repositoriesContext = Context.named("repositories");
-        List<Prop> props = new ArrayList<Prop>(systemRepositoriesProps.size());
-        for (String propName : systemRepositoriesProps.stringPropertyNames()) {
-            String propValue = systemRepositoriesProps.getProperty(propName);
-            props.add(new Prop(repositoriesContext, propName, propValue, propValue, Prop.Loc.System));
+        PropFile systemRepositoriesProps = new PropFile(repositoriesContext, PropFile.Loc.System);
+        PropFiles.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "repositories.properties"), systemRepositoriesProps);
+        List<Prop> props = new ArrayList<Prop>();
+        for (Prop systemRepoProp : systemRepositoriesProps.props()) {
+            props.add(systemRepoProp);
         }
         return props;
     }

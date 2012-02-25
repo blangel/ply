@@ -1,16 +1,13 @@
 package net.ocheyedan.ply.cmd.config;
 
 import net.ocheyedan.ply.FileUtil;
-import net.ocheyedan.ply.OutputExt;
 import net.ocheyedan.ply.PlyUtil;
-import net.ocheyedan.ply.PropertiesFileUtil;
 import net.ocheyedan.ply.cmd.Args;
-import net.ocheyedan.ply.cmd.Command;
 import net.ocheyedan.ply.cmd.Usage;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.PropFile;
+import net.ocheyedan.ply.props.PropFiles;
 import net.ocheyedan.ply.props.Scope;
-
-import java.util.Properties;
 
 /**
  * User: blangel
@@ -47,9 +44,11 @@ public final class Set extends Config {
         }
         String path = FileUtil.pathFromParts(PlyUtil.LOCAL_CONFIG_DIR.getPath(), opts.context.name
                 + opts.scope.getFileSuffix() + ".properties");
-        Properties properties = PropertiesFileUtil.load(path, true);
-        properties.setProperty(opts.propName, opts.propValue);
-        PropertiesFileUtil.store(properties, path, true);
+        PropFile properties = new PropFile(opts.context, opts.scope, PropFile.Loc.Local);
+        PropFiles.load(path, properties, true);
+        properties.remove(opts.propName);
+        properties.add(opts.propName, opts.propValue);
+        PropFiles.store(properties, path, true);
     }
 
     @SuppressWarnings("fallthrough")

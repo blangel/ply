@@ -4,10 +4,10 @@ import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.PropFile;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.*;
-import java.util.Properties;
 
 /**
  * User: blangel
@@ -19,22 +19,29 @@ import java.util.Properties;
 public class ExecScript {
 
     public static void main(String[] args) {
-        String mainClass = (args.length == 1 ? args[0]
-                : !Props.getValue(Context.named("exec"), "class").isEmpty()
-                ?  Props.getValue(Context.named("exec"), "class") : Props.getValue(Context.named("package"), "manifest.mainClass"));
-        if ((mainClass == null) || mainClass.isEmpty()) {
-            Output.print("^warn^ Project doesn't have a 'exec.class' or 'package.manifest.mainClass' property set and none passed in, skipping execution.");
+        String mainClass = !Props.get("class", Context.named("exec")).value().isEmpty()
+                            ?  Props.get("class", Context.named("exec")).value()
+                            : Props.get("manifest.mainClass", Context.named("package")).value();
+        if (((mainClass == null) || mainClass.isEmpty())) {
+            Output.print("^warn^ Project doesn't have a 'exec.class' or 'package.manifest.mainClass' property set, skipping execution.");
             return;
         }
-        String artifactName = Props.getValue(Context.named("package"), "name");
-        String buildDirPath = Props.getValue(Context.named("project"), "build.dir");
+        String artifactName = Props.get("name", Context.named("package")).value();
+        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
         String artifactPath = FileUtil.pathFromParts(buildDirPath, artifactName);
-        Properties deps = Deps.getResolvedProperties(false);
+        PropFile deps = Deps.getResolvedProperties(false);
         String classpath = Deps.getClasspath(deps, artifactPath);
-        String java = Props.getValue(Context.named("ply"), "java");
-        String[] javaArgs = new String[] { java, "-cp", classpath, mainClass };
+        String java = Props.get("java", Context.named("ply")).value();
+        String[] javaArgs = new String[4 + args.length];
+        javaArgs[0] = java;
+        javaArgs[1] = "-cp";
+        javaArgs[2] = classpath;
+        if (args.length > 0) {
+            System.arraycopy(args, 0, javaArgs, 3, args.length);
+        }
+        javaArgs[javaArgs.length - 1] = mainClass;
         ProcessBuilder processBuilder = new ProcessBuilder(javaArgs).redirectErrorStream(true);
-        String outputFilePath = Props.getValue(Context.named("exec"), "output");
+        String outputFilePath = Props.get("output", Context.named("exec")).value();
         PrintStream output;
         try {
             if (outputFilePath.isEmpty() || "stdout".equals(outputFilePath)) {
