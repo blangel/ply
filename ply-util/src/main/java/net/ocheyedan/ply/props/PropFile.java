@@ -172,12 +172,16 @@ public final class PropFile {
             this.order = order;
         }
 
-        private Prop add(String name, String value, String comments) {
+        private Prop add(String name, String value, String comments, Integer at) {
             name = name.trim();
             Prop prop = new Prop(this, name, value, comments);
             Prop existing;
             if ((existing = this.props.putIfAbsent(name, prop)) == null) {
-                this.order.add(prop);
+                if (at == null) {
+                    this.order.add(prop);
+                } else {
+                    this.order.add(at, prop);
+                }
             } else {
                 prop = existing;
             }
@@ -189,10 +193,9 @@ public final class PropFile {
             if (props.containsKey(name)) {
                 int index = order.indexOf(props.get(name));
                 Prop old = remove(name);
-                newlyAdded = add(name, value, old.comments());
-                Collections.swap(order, index, order.size() - 1);
+                newlyAdded = add(name, value, old.comments(), index);
             } else {
-                newlyAdded = add(name, value, "");
+                newlyAdded = add(name, value, "", null);
             }
             return newlyAdded;
         }
@@ -317,7 +320,7 @@ public final class PropFile {
      *         property named {@code name} (i.e., if {@link #contains(String)} returns true for {@code name}).
      */
     public final Prop add(String name, String value) {
-        return delegate.add(name, value, "");
+        return delegate.add(name, value, "", null);
     }
 
     /**
@@ -338,7 +341,7 @@ public final class PropFile {
      *         property named {@code name} (i.e., if {@link #contains(String)} returns true for {@code name}).
      */
     public final Prop add(String name, String value, String comments) {
-        return delegate.add(name, value, comments);
+        return delegate.add(name, value, comments, null);
     }
 
     /**
