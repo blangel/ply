@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Pipes {@link System#in} to the {@link Runner#processStdin}.
  *
  * This class can be instantiated once for all executions.  Multiple calls to {@link #start()} have no negative
- * effect; the first calls actually starts and all subsequent calls are no-ops.
+ * effect; the first call actually starts and all subsequent calls are no-ops.
  */
 public final class StdinProcessPipe extends Thread {
 

@@ -60,7 +60,7 @@ public final class PropFiles {
      * @param create  @see {@link #load(String, PropFileReader, PropFile, boolean, boolean)}
      * @param nullOnFNF if {@link #load(String, PropFileReader, PropFile, boolean, boolean)} returns false then this 
      *                  method will return null.
-     * @return the loaded {@link PropFile} or the empty file {@link PropFile#Empty} if the file could not be loaded
+     * @return the loaded {@link PropFile} or an empty {@link PropFile} if the file could not be loaded
      *         and {@code nullOnFNF} was false, otherwise null.
      * @throws PropFileReader.Invalid @see {@link #load(String, PropFileReader, PropFile, boolean, boolean)}
      */
@@ -88,7 +88,7 @@ public final class PropFiles {
         } else if (nullOnFNF) {
             return null;
         } else {
-            return PropFile.Empty;
+            return propFile;
         }
     }
 
