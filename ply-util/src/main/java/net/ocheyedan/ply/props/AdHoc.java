@@ -92,6 +92,20 @@ public final class AdHoc {
                 }
             }
         }
+        // add any ad-hoc properties within {@link #adHocProps} not already added from {@code system} and {@code local}
+        for (Scope scope : adHocProps.keySet()) {
+            Map<Context, PropFile> contexts = adHocPropFiles.get(scope);
+            if (contexts == null) {
+                contexts = new ConcurrentHashMap<Context, PropFile>(12, 1.0f);
+                adHocPropFiles.put(scope, contexts);
+            }
+            Map<Context, PropFile> existing = adHocProps.get(scope);
+            for (Context context : existing.keySet()) {
+                if (!contexts.containsKey(context)) {
+                    contexts.put(context, existing.get(context));
+                }
+            }
+        }
         return adHocPropFiles;
     }
 
@@ -136,10 +150,12 @@ public final class AdHoc {
                 adHocPropFile = new PropFile(propContext, propScope, PropFile.Loc.AdHoc);
                 contexts.put(propContext, adHocPropFile);
             }
-            PropFile.Prop adHocProp = adHocPropFile.add(propName, propValue);
-            if (!propValue.equals(adHocProp.value())) {
+            if (adHocPropFile.contains(propName)) {
+                PropFile.Prop adHocProp = adHocPropFile.get(propName);
                 Output.print("^warn^ Found two ad-hoc property values for ^b^%s%s.%s^r^ [ ^b^%s^r^ and ^b^%s^r^ ] using first encountered, ^b^%s^r^",
                              context, propScope.getAdHocSuffix(), propName, adHocProp.value(), propValue, adHocProp.value());
+            } else {
+                adHocPropFile.add(propName, propValue);
             }
         } catch (Exception e) {
             Output.print("^error^ Could not parse ad-hoc property ^b^%s^r^.", prop);

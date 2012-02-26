@@ -134,7 +134,7 @@ final class Loader {
         Set<Scope> allScopes = collectScopes(system, local, adHoc);
         Set<Context> allContexts = collectContexts(system, local, adHoc);
 
-        // first do the Scope.Default so that it can be used a the default-delegate for all other scopes
+        // first do the Scope.Default so that it can be used as the default-delegate for all other scopes
         chain(system.containsKey(Scope.Default) ? system.get(Scope.Default) : Collections.<Context, PropFile>emptyMap(),
               local.containsKey(Scope.Default) ? local.get(Scope.Default) : Collections.<Context, PropFile>emptyMap(),
               adHoc.containsKey(Scope.Default) ? adHoc.get(Scope.Default) : Collections.<Context, PropFile>emptyMap(),

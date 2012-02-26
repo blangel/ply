@@ -107,14 +107,22 @@ public class AdHocTest {
     public void produceFor() {
         
         AdHoc.adHocProps.clear();
+        // add to existing to ensure it is returned by this method
+        Map<Context, PropFile> existingContexts = new ConcurrentHashMap<Context, PropFile>(1, 1.0f);
+        AdHoc.adHocProps.put(Scope.named("existing"), existingContexts);
+        PropFile existingFile = new PropFile(Context.named("existing"), Scope.named("existing"), PropFile.Loc.AdHoc);
+        existingContexts.put(Context.named("existing"), existingFile);
         
         Map<Scope, Map<Context, PropFile>> system = new ConcurrentHashMap<Scope, Map<Context, PropFile>>();
         Map<Scope, Map<Context, PropFile>> local = new ConcurrentHashMap<Scope, Map<Context, PropFile>>();
         
         Map<Scope, Map<Context, PropFile>> produced = AdHoc.produceFor(system, local);
         
-        assertEquals(0, produced.size());
-        assertEquals(0, AdHoc.adHocProps.size());
+        assertEquals(1, produced.size());
+        assertEquals(1, AdHoc.adHocProps.size());
+        assertEquals(1, produced.get(Scope.named("existing")).size());
+        assertSame(existingFile, produced.get(Scope.named("existing")).get(Context.named("existing")));
+
         
         Map<Context, PropFile> systemContexts = new ConcurrentHashMap<Context, PropFile>();
         Map<Context, PropFile> localContexts = new ConcurrentHashMap<Context, PropFile>();
@@ -124,11 +132,12 @@ public class AdHocTest {
         local.put(Scope.named("test"), localTestContexts);
         
         produced = AdHoc.produceFor(system, local);
-        assertEquals(2, produced.size());
-        assertEquals(2, AdHoc.adHocProps.size());
+        assertEquals(3, produced.size());
+        assertEquals(3, AdHoc.adHocProps.size());
 
         assertEquals(0, produced.get(Scope.Default).size());
         assertEquals(0, produced.get(Scope.named("test")).size());
+        assertEquals(1, produced.get(Scope.named("existing")).size());
         assertEquals(0, AdHoc.adHocProps.get(Scope.Default).size());
         assertEquals(0, AdHoc.adHocProps.get(Scope.named("test")).size());
         
@@ -138,16 +147,19 @@ public class AdHocTest {
         localTestContexts.put(Context.named("foobar"), new PropFile(Context.named("foobar"), Scope.named("test"), PropFile.Loc.Local));
 
         produced = AdHoc.produceFor(system, local);
-        assertEquals(2, produced.size());
-        assertEquals(2, AdHoc.adHocProps.size());
+        assertEquals(3, produced.size());
+        assertEquals(3, AdHoc.adHocProps.size());
 
         assertEquals(2, produced.get(Scope.Default).size());
         assertEquals(1, produced.get(Scope.named("test")).size());
+        assertEquals(1, produced.get(Scope.named("existing")).size());
         assertEquals(2, AdHoc.adHocProps.get(Scope.Default).size());
         assertEquals(1, AdHoc.adHocProps.get(Scope.named("test")).size());
+        assertEquals(1, AdHoc.adHocProps.get(Scope.named("existing")).size());
         assertSame(AdHoc.adHocProps.get(Scope.Default).get(Context.named("foo")), produced.get(Scope.Default).get(Context.named("foo")));
         assertSame(AdHoc.adHocProps.get(Scope.Default).get(Context.named("bar")), produced.get(Scope.Default).get(Context.named("bar")));
         assertSame(AdHoc.adHocProps.get(Scope.named("test")).get(Context.named("foobar")), produced.get(Scope.named("test")).get(Context.named("foobar")));
+        assertSame(existingFile, produced.get(Scope.named("existing")).get(Context.named("existing")));
                 
     }
 
