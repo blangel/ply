@@ -184,6 +184,19 @@ public final class PropFile {
             return prop;
         }
         
+        private Prop set(String name, String value) {
+            Prop newlyAdded;
+            if (props.containsKey(name)) {
+                int index = order.indexOf(props.get(name));
+                Prop old = remove(name);
+                newlyAdded = add(name, value, old.comments());
+                Collections.swap(order, index, order.size() - 1);
+            } else {
+                newlyAdded = add(name, value, "");
+            }
+            return newlyAdded;
+        }
+        
         protected boolean contains(String name) {
             return props.containsKey(name);
         }
@@ -326,6 +339,17 @@ public final class PropFile {
      */
     public final Prop add(String name, String value, String comments) {
         return delegate.add(name, value, comments);
+    }
+
+    /**
+     * Sets the value of {@code name} to {@code value} if a property exists with name {@code name}. otherwise newly
+     * adds such a property.
+     * @param name of the property
+     * @param value to set
+     * @return the {@link Prop} with new value {@code value}
+     */
+    public final Prop set(String name, String value) {
+        return delegate.set(name, value);
     }
 
     /**

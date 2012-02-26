@@ -227,18 +227,17 @@ public final class Update extends Command.SystemReliant {
             if (!properties.contains(propName) || (!expectedPropValue.equals(properties.get(propName).value())
                     && !modifiedAndNewTheSame)) {
                 Output.print("^warn^ Your ply has set ^b^%s^r^=\"%s\" (in context ^b^%s^r^) but ply wants to set it to ^b^%s^r^=\"%s\". Please manually resolve.",
-                        propName, properties.get(propName), context, propName, propValue);
+                        propName, properties.get(propName).value(), context, propName, propValue);
                 return 1;
             } else if (modifiedAndNewTheSame) {
                 return 0; // no need to resave file
             }
         } else if (properties.contains(propName)) {
             Output.print("^warn^ Your ply has set ^b^%s^r^=\"%s\" (in context ^b^%s^r^) but ply wants to set it to ^b^%s^r^=\"%s\". Please manually resolve.",
-                    propName, properties.get(propName), context, propName, propValue);
+                    propName, properties.get(propName).value(), context, propName, propValue);
             return 1;
         }
-        properties.remove(propName);
-        properties.add(propName, propValue);
+        properties.set(propName, propValue);
         PropFiles.store(properties, contextFile, true);
         return 0;
     }

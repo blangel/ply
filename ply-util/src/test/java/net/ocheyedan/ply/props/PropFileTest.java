@@ -199,6 +199,18 @@ public class PropFileTest {
         assertSame(testProp, localProps.remove("test"));
         assertFalse(localProps.contains("test"));
     }
+
+    @Test
+    public void set() {
+        PropFile systemProps = new PropFile(Context.named("context"), Loc.System);
+        PropFile.Prop testProp = systemProps.add("test", "value");
+        PropFile.Prop setProp = systemProps.set("test", "newvalue");
+        assertNotSame(testProp, setProp);
+        assertEquals("newvalue", setProp.value());
+        PropFile.Prop gotten = systemProps.get("test");
+        assertSame(setProp, gotten);
+        assertEquals("newvalue", gotten.value());
+    }
     
     @Test
     public void props() {
