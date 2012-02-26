@@ -68,5 +68,7 @@ METHOD=download=https://raw.github.com/blangel/ply/40867ac3862de1fdaea328053910d
 VERSION=1.0_13
 OUTPUT=Downloading update to ply util.
 METHOD=download=https://github.com/blangel/ply/raw/3a93133fa092fe309662010ad2b2fbe9f089c41f/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+aliases.intellij=dep "dep resolve-classifiers sources,javadoc" test:dep ply-intellij-1.0.jar|dep "dep resolve-classifiers sources,javadoc" ply-intellij-1.0.jar
+METHOD=property=aliases.compile=dep file-changed ply-compiler-1.0.jar|file-changed dep ply-compiler-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/3a93133fa092fe309662010ad2b2fbe9f089c41f/dist/ply/version to version
 VERSION=1.0_14
