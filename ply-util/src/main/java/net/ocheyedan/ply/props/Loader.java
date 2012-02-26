@@ -5,9 +5,7 @@ import net.ocheyedan.ply.PlyUtil;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -115,83 +113,109 @@ final class Loader {
 
         Map<Scope, Map<Context, PropFile>> adHoc = AdHoc.produceFor(systemCache, local);
 
-        Map<Scope, Map<Context, PropFileChain>> loaded = new ConcurrentHashMap<Scope, Map<Context, PropFileChain>>(3, 1.0f);
-        chain(systemCache, PropFile.Loc.System, loaded);
-        chain(local, PropFile.Loc.Local, loaded);
-        chain(adHoc, PropFile.Loc.AdHoc, loaded);
-
-        return loaded;
+        return chain(systemCache, local, adHoc);
     }
 
     /**
-     * Chains {@code files} with {@code chain} at the given {@code loc}.  This method should be called in the reverse
-     * order from which properties will be resolved; i.e, called in this order:
-     *  <pre>
-     *  System
-     *    |
-     *    v
-     *  Local
-     *    |
-     *    v
-     *  AdHoc
-     *  </pre>
-     * @param files the property files at location {@code loc}
-     * @param loc the location at which {@code files} were loaded
-     * @param chain the existing chain mapping which will be used to chain together {@code files}
+     * Chains together the inputted properties such that {@code adHoc} are consulted first during resolution, then
+     * {@code local} and finally {@code system}.
+     * @param system the system properties
+     * @param local the local properties
+     * @param adHoc the ad-hoc properties
+     * @return a mapping of {@code Scope} to a mapping from {@code Context} to the {@link PropFileChain}
      */
-    private static void chain(Map<Scope, Map<Context, PropFile>> files, PropFile.Loc loc,
-                              Map<Scope, Map<Context, PropFileChain>> chain) {
-        // handle default-scope up-front so it can be used as chains' defaults
-        Map<Context, PropFileChain> defaultContextChain = chain.get(Scope.Default);
-        if (defaultContextChain == null) {
-            defaultContextChain = new ConcurrentHashMap<Context, PropFileChain>(12, 1.0f);
-            chain.put(Scope.Default, defaultContextChain);
-        }
-        Map<Context, PropFile> defaultProps = files.get(Scope.Default);
-        for (Context context : (defaultProps == null ? Collections.<Context>emptySet() : defaultProps.keySet())) {
-            if (!defaultContextChain.containsKey(context)) {
-                defaultContextChain.put(context, new PropFileChain(defaultContextChain));
-            }
-        }
+    private static Map<Scope, Map<Context, PropFileChain>> chain(Map<Scope, Map<Context, PropFile>> system,
+                                                                 Map<Scope, Map<Context, PropFile>> local,
+                                                                 Map<Scope, Map<Context, PropFile>> adHoc) {
+        Map<Scope, Map<Context, PropFileChain>> chain = new ConcurrentHashMap<Scope, Map<Context, PropFileChain>>(3, 1.0f);
+        Map<Context, PropFileChain> defaultScopeChain = new ConcurrentHashMap<Context, PropFileChain>(13, 1.0f);
+        chain.put(Scope.Default, defaultScopeChain);
 
-        for (Scope scope : files.keySet()) {
-            Map<Context, PropFileChain> chains = chain.get(scope);
-            if (chains == null) {
-                chains = new ConcurrentHashMap<Context, PropFileChain>(12, 1.0f);
-                chain.put(scope, chains);
+        Set<Scope> allScopes = collectScopes(system, local, adHoc);
+        Set<Context> allContexts = collectContexts(system, local, adHoc);
+
+        // first do the Scope.Default so that it can be used a the default-delegate for all other scopes
+        chain(system.containsKey(Scope.Default) ? system.get(Scope.Default) : Collections.<Context, PropFile>emptyMap(),
+              local.containsKey(Scope.Default) ? local.get(Scope.Default) : Collections.<Context, PropFile>emptyMap(),
+              adHoc.containsKey(Scope.Default) ? adHoc.get(Scope.Default) : Collections.<Context, PropFile>emptyMap(),
+              defaultScopeChain, allContexts, null);
+        // now do all other scopes
+        for (Scope scope : allScopes) {
+            if (Scope.Default.equals(scope)) {
+                continue;
             }
-            Map<Context, PropFile> contexts = files.get(scope);
-            for (Context context : contexts.keySet()) {
-                PropFileChain contextChain;
-                if (chains.containsKey(context)) {
-                    contextChain = chains.get(context);
-                } else {
-                    // this will never be the default-scoped context-chain as it is added upfront.
-                    contextChain = new PropFileChain(defaultContextChain.get(context), chains);
-                    chains.put(context, contextChain);
-                }
-                contextChain.set(contexts.get(context), loc);
+            Map<Context, PropFile> systemFiles = system.get(scope);
+            Map<Context, PropFile> localFiles = local.get(scope);
+            Map<Context, PropFile> adHocFiles = adHoc.get(scope);
+            Map<Context, PropFileChain> scopedChain = new ConcurrentHashMap<Context, PropFileChain>(13, 1.0f);
+            chain.put(scope, scopedChain);
+            chain(systemFiles == null ? Collections.<Context, PropFile>emptyMap() : systemFiles,
+                  localFiles == null ? Collections.<Context, PropFile>emptyMap() : localFiles,
+                  adHocFiles == null ? Collections.<Context, PropFile>emptyMap() : adHocFiles,
+                  scopedChain, allContexts, defaultScopeChain);
+        }
+        
+        return chain;
+    }
+    
+    private static void chain(Map<Context, PropFile> system, Map<Context, PropFile> local,
+                              Map<Context, PropFile> adHoc, Map<Context, PropFileChain> chain,
+                              Set<Context> allContexts, Map<Context, PropFileChain> defaultChain) {
+        chain(system, PropFile.Loc.System, chain, allContexts, defaultChain);
+        chain(local, PropFile.Loc.Local, chain, allContexts, defaultChain);
+        chain(adHoc, PropFile.Loc.AdHoc, chain, allContexts, defaultChain);
+    }
+    
+    private static void chain(Map<Context, PropFile> files, PropFile.Loc loc, Map<Context, PropFileChain> chain, 
+                              Set<Context> contexts, Map<Context, PropFileChain> defaultChain) {
+        for (Context context : contexts) {
+            PropFileChain contextChain = chain.get(context);
+            if (contextChain == null) {
+                PropFileChain contextDefault = (defaultChain == null ? null : defaultChain.get(context));
+                contextChain = new PropFileChain(contextDefault, chain);
+                chain.put(context, contextChain);
             }
-            // if this isn't the default scope - need to ensure all the default-scope's contexts are represented
-            if (!Scope.Default.equals(scope)) {
-                for (Context context : defaultContextChain.keySet()) {
-                    if (contexts.containsKey(context)) {
-                        continue;
-                    }
-                    // the context is not represented within the scope -> link the context for this scope to the default
-                    PropFileChain contextChain;
-                    if (chains.containsKey(context)) {
-                        contextChain = chains.get(context);
-                    } else {
-                        contextChain = new PropFileChain(defaultContextChain.get(context), chains);
-                        chains.put(context, contextChain);
-                    }
-                    if ((defaultProps != null) && defaultProps.containsKey(context)) {
-                        contextChain.set(defaultProps.get(context), loc);
-                    }
-                }
+            if (files.containsKey(context)) {
+                contextChain.set(files.get(context), loc);
             }
         }
+    }
+
+    /**
+     * @param system the system properties
+     * @param local the local properties
+     * @param adHoc the ad-hoc properties
+     * @return a set of all {@link Scope} objects within {@code system}, {@code local} and {@code adHoc}
+     */
+    private static Set<Scope> collectScopes(Map<Scope, Map<Context, PropFile>> system,
+                                            Map<Scope, Map<Context, PropFile>> local,
+                                            Map<Scope, Map<Context, PropFile>> adHoc) {
+        Set<Scope> scopes = new HashSet<Scope>(system.keySet());
+        scopes.addAll(local.keySet());
+        scopes.addAll(adHoc.keySet());
+        return scopes;
+    }
+
+    /**
+     * @param system the system properties
+     * @param local the local properties
+     * @param adHoc the ad-hoc properties
+     * @return a set of all {@link Context} objects within {@code system}, {@code local} and {@code adHoc}
+     */
+    private static Set<Context> collectContexts(Map<Scope, Map<Context, PropFile>> system,
+                                                Map<Scope, Map<Context, PropFile>> local,
+                                                Map<Scope, Map<Context, PropFile>> adHoc) {
+        Set<Context> contexts = new HashSet<Context>();
+        for (Scope scope : system.keySet()) {
+            contexts.addAll(system.get(scope).keySet());
+        }
+        for (Scope scope : local.keySet()) {
+            contexts.addAll(local.get(scope).keySet());
+        }
+        for (Scope scope : adHoc.keySet()) {
+            contexts.addAll(adHoc.get(scope).keySet());
+        }
+        return contexts;
     }
 
     /**

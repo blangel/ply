@@ -58,7 +58,7 @@ public final class Filter {
                     "| uniqueIdentifier = %s | filterConsultant = %s ].", (unfiltered == null ? "null" : "prop"),
                     uniqueIdentifier, (filterConsultant == null ? "null" : "map")));
         }
-        FilterResult filterResult = _filter(unfiltered.value(), unfiltered.context(), uniqueIdentifier, filterConsultant);
+        FilterResult filterResult = _filter(unfiltered.unfilteredValue, unfiltered.context(), uniqueIdentifier, filterConsultant);
         if (Output.isDebug() && filterResult.filtered) {
             String toFilter = unfiltered.value();
             String truncatedToFilter = (toFilter.length() > 80) ? toFilter.substring(0, 80) + " [truncated]" : toFilter;
