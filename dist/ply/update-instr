@@ -70,6 +70,6 @@ OUTPUT=Downloading update to ply util.
 METHOD=download=https://github.com/blangel/ply/raw/7e8c9bd3c09de405585fb1165c5160deeb25349a/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 OUTPUT=Downloading update to ply core.
 METHOD=download=https://github.com/blangel/ply/raw/38107de16e39b7657bfe4a0163bc602702f12729/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
-METHOD=property=aliases.compile=dep file-changed ply-compiler-1.0.jar|file-changed dep ply-compiler-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/b779c03444402d147c2117f4cde51e355d013d4c/dist/ply/config/aliases.properties to config/aliases.properties
 METHOD=download=https://raw.github.com/blangel/ply/3a93133fa092fe309662010ad2b2fbe9f089c41f/dist/ply/version to version
 VERSION=1.0_14
