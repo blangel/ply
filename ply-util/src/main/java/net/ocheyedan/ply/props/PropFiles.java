@@ -54,6 +54,45 @@ public final class PropFiles {
     }
 
     /**
+     * Calls {@link #load(String, PropFileReader, PropFile, boolean, boolean)} with the {@link PropFileReader#Default}
+     * as the {@link PropFileReader} implementation.  It creates a {@link PropFile} based upon the {@code path}.
+     * @param path  @see {@link #load(String, PropFileReader, PropFile, boolean, boolean)}
+     * @param create  @see {@link #load(String, PropFileReader, PropFile, boolean, boolean)}
+     * @param nullOnFNF if {@link #load(String, PropFileReader, PropFile, boolean, boolean)} returns false then this 
+     *                  method will return null.
+     * @return the loaded {@link PropFile} or the empty file {@link PropFile#Empty} if the file could not be loaded
+     *         and {@code nullOnFNF} was false, otherwise null.
+     * @throws PropFileReader.Invalid @see {@link #load(String, PropFileReader, PropFile, boolean, boolean)}
+     */
+    public static PropFile load(String path, boolean create, boolean nullOnFNF)
+            throws PropFileReader.Invalid {
+        if (path == null) {
+            throw new NullPointerException("The path to load must not be null.");
+        }
+        String name = new File(path).getPath();
+        if (name.endsWith(".properties")) {
+            name = name.substring(0, name.length() - ".properties".length());
+        }
+        Context context; 
+        Scope scope = Scope.Default;
+        if (name.contains(".")) {
+            int index = name.indexOf(".");
+            context = Context.named(name.substring(0, index));
+            scope = Scope.named(name.substring(index + 1));
+        } else {
+            context = Context.named(name);
+        }
+        PropFile propFile = new PropFile(context, scope, PropFile.Loc.System);
+        if (load(path, PropFileReader.Default, propFile, create, nullOnFNF)) {
+            return propFile;
+        } else if (nullOnFNF) {
+            return null;
+        } else {
+            return PropFile.Empty;
+        }
+    }
+
+    /**
      * Loads {@code path} into the given {@code into} argument.
      * @param path to load
      * @param propFileReader to use to load the properties file at {@code path} into {@code into}

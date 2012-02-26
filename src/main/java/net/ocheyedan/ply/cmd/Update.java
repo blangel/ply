@@ -219,8 +219,7 @@ public final class Update extends Command.SystemReliant {
             throw new SystemExit(1);
         }
         String contextFile = FileUtil.pathFromParts(configDirectory.getPath(), context + ".properties");
-        PropFile properties = new PropFile(Context.named(context), PropFile.Loc.Local);
-        PropFiles.load(contextFile, properties, false);
+        PropFile properties = PropFiles.load(contextFile, false, false);
         propValue = propValue.replaceAll("\\\\\\|", "|"); // replace escaped pipe characters
         if (expectedPropValue != null) {
             boolean modifiedAndNewTheSame = (propValue == null ? !properties.contains(propName) :

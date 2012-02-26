@@ -47,8 +47,7 @@ public class FileChangeDetector {
         File lastSrcChanged = FileUtil.fromParts(buildDirPath, "changed-meta" + scope.getFileSuffix() + ".properties");
         File changedPropertiesFile = FileUtil.fromParts(buildDirPath, "changed" + scope.getFileSuffix() + ".properties");
         File srcDir = new File(srcDirPath);
-        PropFile existing = new PropFile(Context.named("changed"), PropFile.Loc.Local);
-        PropFiles.load(lastSrcChanged.getPath(), existing, true);
+        PropFile existing = PropFiles.load(lastSrcChanged.getPath(), true, false);
         try {
             changedPropertiesFile.createNewFile();
         } catch (IOException ioe) {

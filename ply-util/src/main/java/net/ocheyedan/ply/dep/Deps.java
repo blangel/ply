@@ -430,11 +430,7 @@ public final class Deps {
         if (!dependenciesFile.exists()) {
             return (nullOnFNF ? null : resolvedDeps);
         }
-        if (PropFiles.load(dependenciesFile.getPath(), resolvedDeps, false, nullOnFNF) || !nullOnFNF) {
-            return resolvedDeps;
-        } else {
-            return null;
-        }
+        return PropFiles.load(dependenciesFile.getPath(), false, nullOnFNF);
     }
 
     /**
@@ -552,12 +548,7 @@ public final class Deps {
     private static PropFile getDependenciesFromPlyRepo(String urlPath) {
         try {
             URL url = new URL(urlPath);
-            PropFile propFile = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
-            if (PropFiles.load(url.getFile(), propFile)) {
-                return propFile;
-            } else {
-                return null;
-            }
+            return PropFiles.load(url.getFile(), false, true);
         } catch (MalformedURLException murle) {
             Output.print(murle);
         }

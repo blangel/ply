@@ -237,7 +237,7 @@ public final class PropFile {
     /**
      * An empty, immutable, properties file.
      */
-    static final PropFile Empty = new PropFile(Context.named(""), Scope.Default, Loc.System, Impl.Empty);
+    public static final PropFile Empty = new PropFile(Context.named(""), Scope.Default, Loc.System, Impl.Empty);
 
     /**
      * An empty {@link Iterator} for {@link Prop} objects.

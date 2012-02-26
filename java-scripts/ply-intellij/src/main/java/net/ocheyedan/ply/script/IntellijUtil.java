@@ -130,9 +130,9 @@ public class IntellijUtil {
      */
     private static String getSystemLocalRepo() {
         Scope scope = Props.getScope();
-        PropFile systemDepmngrProps = new PropFile(Context.named("depmngr"), scope, PropFile.Loc.System);
         String path = FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "depmngr" + scope.getFileSuffix() + ".properties");
-        if (!PropFiles.load(path, systemDepmngrProps) || !systemDepmngrProps.contains("localRepo")) {
+        PropFile systemDepmngrProps = PropFiles.load(path, false, false);
+        if (!systemDepmngrProps.contains("localRepo")) {
             return null;
         } else {
             return systemDepmngrProps.get("localRepo").value();

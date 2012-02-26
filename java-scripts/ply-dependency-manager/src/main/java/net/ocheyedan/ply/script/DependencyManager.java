@@ -340,18 +340,14 @@ public class DependencyManager {
         String localDir = Props.get("project.dir", Context.named("ply")).value();
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "dependencies" + scope.getFileSuffix() + ".properties";
-        PropFile dependencies = new PropFile(Context.named("dependencies"), scope, PropFile.Loc.Local);
-        PropFiles.load(loadPath, dependencies, true);
-        return dependencies;
+        return PropFiles.load(loadPath, true, false);
     }
 
     private static PropFile loadRepositoriesFile(Scope scope) {
         String localDir = Props.get("project.dir", Context.named("ply")).value();
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "repositories" + scope.getFileSuffix() + ".properties";
-        PropFile repositories = new PropFile(Context.named("repositories"), scope, PropFile.Loc.Local);
-        PropFiles.load(loadPath, repositories, true);
-        return repositories;
+        return PropFiles.load(loadPath, true, false);
     }
 
     private static void storeDependenciesFile(PropFile dependencies, Scope scope) {

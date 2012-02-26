@@ -197,10 +197,8 @@ public final class Init extends Command {
      * @see net.ocheyedan.ply.PlyUtil#isHeadless()
      */
     private static boolean isHeadless() {
-        PropFile plySystemProps = new PropFile(Context.named("ply"), PropFile.Loc.System);
-        if (!PropFiles.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "ply.properties"), plySystemProps)) {
-            return false;
-        }
+        String plyPropertiesPath = FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "ply.properties");
+        PropFile plySystemProps = PropFiles.load(plyPropertiesPath, false, false);
         return "true".equalsIgnoreCase(plySystemProps.get("headless").value());
     }
 
@@ -392,8 +390,8 @@ public final class Init extends Command {
      * @return the system value for the {@literal depmngr.localRepo} property for the default scope
      */
     private static String getSystemLocalRepo() {
-        PropFile depmngr = new PropFile(Context.named("depmngr"), PropFile.Loc.System);
-        if (!PropFiles.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "depmngr.properties"), depmngr)) {
+        PropFile depmngr = PropFiles.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "depmngr.properties"), false, true);
+        if (depmngr == null) {
             return null;
         }
         return depmngr.get("localRepo").value();
@@ -403,9 +401,8 @@ public final class Init extends Command {
      * @return the system defined repositories for the default scope
      */
     private static Collection<Prop> getSystemRepositories() {
-        Context repositoriesContext = Context.named("repositories");
-        PropFile systemRepositoriesProps = new PropFile(repositoriesContext, PropFile.Loc.System);
-        PropFiles.load(FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "repositories.properties"), systemRepositoriesProps);
+        String systemRepositoriesPath = FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "repositories.properties");
+        PropFile systemRepositoriesProps = PropFiles.load(systemRepositoriesPath, false, false);
         List<Prop> props = new ArrayList<Prop>();
         for (Prop systemRepoProp : systemRepositoriesProps.props()) {
             props.add(systemRepoProp);

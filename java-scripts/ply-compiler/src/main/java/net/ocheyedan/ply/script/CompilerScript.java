@@ -137,8 +137,8 @@ public class CompilerScript {
         buildClassesDir.mkdirs();
         // load the changed[.scope].properties file from the build  directory.
         File changedPropertiesFile = FileUtil.fromParts(buildDir, "changed" + scope.getFileSuffix() + ".properties");
-        PropFile changedProperties = new PropFile(Context.named("changed"), scope, PropFile.Loc.Local);
-        if (!PropFiles.load(changedPropertiesFile.getPath(), changedProperties, false, false)) {
+        PropFile changedProperties = PropFiles.load(changedPropertiesFile.getPath(), false, false);
+        if (changedProperties == PropFile.Empty) {
             Output.print("^error^ changed%s.properties not found, please run 'file-changed' before 'compiler'.", scope.getFileSuffix());
         } else {
             for (PropFile.Prop filePath : changedProperties.props()) {
@@ -225,8 +225,8 @@ public class CompilerScript {
      * @return true if {@link #errorsPropertiesFile} was not empty
      */
     private boolean handleExistingErrors() {
-        PropFile errorsProperties = new PropFile(Context.named("errors"), PropFile.Loc.Local);
-        if (!PropFiles.load(errorsPropertiesFile.getPath(), errorsProperties, false, false)) {
+        PropFile errorsProperties = PropFiles.load(errorsPropertiesFile.getPath(), false, false);
+        if (errorsProperties.isEmpty()) {
             return false;
         }
         for (PropFile.Prop error : errorsProperties.props()) {
