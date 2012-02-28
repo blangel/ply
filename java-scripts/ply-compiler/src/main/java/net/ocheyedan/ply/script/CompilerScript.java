@@ -230,7 +230,7 @@ public class CompilerScript {
             return false;
         }
         for (PropFile.Prop error : errorsProperties.props()) {
-            Output.print(error.value());
+            Output.print(error.name);
         }
         return true;
     }
