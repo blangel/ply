@@ -79,7 +79,11 @@ METHOD=download=https://raw.github.com/blangel/ply/6aec6e543aa2776818ab4a0daab73
 VERSION=1.0_15
 OUTPUT=Downloading update to ply core to export submodules properties correctly when project.submodules.scope is set.
 METHOD=download=https://github.com/blangel/ply/raw/405bdac129a2e6547ad2970344b43555a3f2e761/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+OUTPUT=Downloading update to ply util.
+METHOD=download=https://github.com/blangel/ply/raw/405bdac129a2e6547ad2970344b43555a3f2e761/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 OUTPUT=Downloading update to ply intellij script (updated to support new PropFile implementation).
 METHOD=download=https://github.com/blangel/ply/raw/405bdac129a2e6547ad2970344b43555a3f2e761/dist/ply/scripts/ply-compiler-1.0.jar to scripts/ply-compiler-1.0.jar
+OUTPUT=Downloading update to ply exec script
+METHOD=download=https://github.com/blangel/ply/raw/405bdac129a2e6547ad2970344b43555a3f2e761/dist/ply/scripts/ply-exec-1.0.jar to scripts/ply-exec-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/405bdac129a2e6547ad2970344b43555a3f2e761/dist/ply/version to version
 VERSION=1.0_16
