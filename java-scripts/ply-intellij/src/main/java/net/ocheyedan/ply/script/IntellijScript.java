@@ -34,37 +34,46 @@ public class IntellijScript {
             System.exit(1);
         }
 
-        // execution is dependent upon whether this is a submodule.
-        boolean isSubmodule = false;
-        File possibleParentDir = FileUtil.fromParts(plyProjectPath, "..", "..", ".ply", "config");
-        if (possibleParentDir.exists()) {
-            String projectName = Props.get("name", Context.named("project")).value();
-            PropFileChain parentSubmodules = Props.get(Context.named("submodules"), Props.getScope(), possibleParentDir);
-            for (Prop parentSubmodule : parentSubmodules.props()) {
-                if (parentSubmodule.name.equals(projectName)) {
-                    isSubmodule = true;
-                    break;
-                }
-            }
-        }
-
-        if (isSubmodule) {
-            ProjectUtil.updateProjectForSubmodule(possibleParentDir, projectDir);
-            ModuleUtil.updateModule(projectDir, "");
+        File owningModuleDir = getOwningModule(projectDir);
+        if (owningModuleDir != null) {
+            ProjectUtil.updateProjectForSubmodule(owningModuleDir, projectDir);
         } else {
             ProjectUtil.updateProject(projectDir);
-            ModuleUtil.updateModule(projectDir, "");
+        }
+        ModuleUtil.updateModule(projectDir, owningModuleDir);
 
-            // TODO - do only if not submodules ...
-            List<String> modules = IntellijUtil.getModules();
-            if (modules != null) {
-                for (String module : modules) {
-                    ModuleUtil.updateModule(projectDir, module);
+        Output.print("Successfully created file-based Intellij structure.");
+    }
+
+    /**
+     * @param projectDir for which to determine if it is a submodule of an owning module.
+     * @return the owning module's directory if {@code projectDir} is a submodule, null otherwise.
+     */
+    private static File getOwningModule(File projectDir) {
+        boolean isSubmodule = false;
+        File parentDir = projectDir;
+        String moduleName = "", projectDirPath = FileUtil.getCanonicalPath(projectDir);
+        // try at least 3 directories upward - TODO - best way to actually figure out the owning-project
+        int i = 0;
+        while (!isSubmodule && (i++ < 3)) {
+            File possibleParentConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(parentDir), "..", ".ply", "config");
+            parentDir = FileUtil.fromParts(FileUtil.getCanonicalPath(possibleParentConfigDir), "..", "..");
+            try {
+                moduleName = projectDirPath.substring(FileUtil.getCanonicalPath(parentDir).length() + 1);
+            } catch (IndexOutOfBoundsException ioobe) {
+                break; // we hit the root directory...abort
+            }
+            if (possibleParentConfigDir.exists()) {
+                PropFileChain parentSubmodules = Props.get(Context.named("submodules"), Props.getScope(), possibleParentConfigDir);
+                for (Prop parentSubmodule : parentSubmodules.props()) {
+                    if (parentSubmodule.name.equals(moduleName)) {
+                        isSubmodule = true;
+                        break;
+                    }
                 }
             }
         }
-
-        Output.print("Successfully created file-based Intellij structure.");
+        return (isSubmodule ? parentDir : null);
     }
 
 }

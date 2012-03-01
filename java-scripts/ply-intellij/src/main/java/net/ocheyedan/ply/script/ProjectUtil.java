@@ -1,6 +1,7 @@
 package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.input.ClasspathResource;
 import net.ocheyedan.ply.input.FileResource;
@@ -42,7 +43,8 @@ public final class ProjectUtil {
      * @param projectDir in which to create or update the {@literal .ipr} file.
      */
     public static void updateProject(File projectDir) {
-        IprDocument iprDocument = getIprDocument(projectDir);
+        String projectName = Props.get("name", Context.named("project")).value();
+        IprDocument iprDocument = getIprDocument(projectDir, projectName);
 
         setJdk(iprDocument.iprXmlDocument.getDocumentElement());
         Element component = IntellijUtil.findComponent(iprDocument.iprXmlDocument.getDocumentElement(), "ProjectModuleManager");
@@ -50,53 +52,51 @@ public final class ProjectUtil {
         IntellijUtil.removeElements(modules, "module");
         addModule(modules, "", iprDocument.projectName);
         List<String> submodules = IntellijUtil.getModules();
-        if (submodules != null) {
-            addModules(modules, submodules);
-        }
+        addModules(modules, submodules);
+        // add all the dependencies from the project's {@literal resolved-deps.properties} file
+        File projectConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(projectDir), ".ply", "config");
+        updateProject(iprDocument, projectConfigDir);
+    }
+
+    /**
+     * Updates the {@literal .ipr} file associated with {@code owningModuleDir} by adding the library table entries
+     * for all resolved dependencies of {@code submoduleProjectDir}
+     * @param owningModuleDir the directory in which the {@literal .ipr} file is located
+     * @param submoduleProjectDir the directory in which the {@literal .iml} file is located from which to 
+     *                            extract the resolved dependencies in order to add to the {@code projectDir}'s 
+     *                            {@literal .ipr} file
+     */
+    public static void updateProjectForSubmodule(File owningModuleDir, File submoduleProjectDir) {
+        // get the owningModuleDir configuration directory
+        File owningModuleConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(owningModuleDir), ".ply", "config");
+        String projectName = Props.get("name", Context.named("project"), Props.getScope(), owningModuleConfigDir).value();
+        IprDocument iprDocument = getIprDocument(owningModuleDir, projectName);
+        // add all the dependencies from the project's {@literal resolved-deps.properties} file
+        File submoduleProjectConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(submoduleProjectDir), ".ply", "config");
+        updateProject(iprDocument, submoduleProjectConfigDir);
+    }
+    
+    private static void updateProject(IprDocument iprDocument, File projectConfigDir) {
         // ensure the localRepo value is set as a path-macro so it can be referenced in creating the library-table
         // see http://www.jetbrains.com/idea/webhelp/project-and-ide-settings.html
         // and http://www.jetbrains.com/idea/webhelp/path-variables.html
         String localRepoPathMacroName = IntellijUtil.setPlyLocalRepoMacro(iprDocument.projectName);
-        // add all the dependencies from the project's {@literal resolved-deps.properties} file
-        File projectConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(projectDir), ".ply", "config");
-        addLibraryTable(localRepoPathMacroName, iprDocument.iprXmlDocument.getDocumentElement(), projectConfigDir, true);
+        addLibraryTable(localRepoPathMacroName, iprDocument.iprXmlDocument.getDocumentElement(), projectConfigDir);
 
         Element usedPathMacros = IntellijUtil.findElement(iprDocument.iprXmlDocument.getDocumentElement(),
                 "UsedPathMacros");
-        IntellijUtil.removeElements(usedPathMacros, "macro");
-        Element usedMacro = IntellijUtil.createElement(usedPathMacros, "macro");
+        Element usedMacro = IntellijUtil.findElement(usedPathMacros, "macro", localRepoPathMacroName);
         usedMacro.setAttribute("name", localRepoPathMacroName);
 
         IntellijUtil.writeXmlDocument(iprDocument.iprXmlFile, iprDocument.iprXmlDocument);
     }
 
     /**
-     * Updates the {@literal .ipr} file associated with {@code projectDir} by adding the library table entries
-     * for all resolved dependencies of {@code submoduleProjectDir}
-     * @param projectDir the directory in which the {@literal .ipr} file is located
-     * @param submoduleProjectDir the directory in which the {@literal .iml} file is located from which to 
-     *                            extract the resolved dependencies in order to add to the {@code projectDir}'s 
-     *                            {@literal .ipr} file
-     */
-    public static void updateProjectForSubmodule(File projectDir, File submoduleProjectDir) {
-        IprDocument iprDocument = getIprDocument(projectDir);
-        // add all the dependencies from the project's {@literal resolved-deps.properties} file
-        File submoduleProjectConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(submoduleProjectDir), ".ply", "config");
-        // ensure the localRepo value is set as a path-macro so it can be referenced in creating the library-table
-        // see http://www.jetbrains.com/idea/webhelp/project-and-ide-settings.html
-        // and http://www.jetbrains.com/idea/webhelp/path-variables.html
-        String localRepoPathMacroName = IntellijUtil.setPlyLocalRepoMacro(iprDocument.projectName);
-        addLibraryTable(localRepoPathMacroName, iprDocument.iprXmlDocument.getDocumentElement(), submoduleProjectConfigDir, false);
-    }
-
-    /**
      * @param projectDir from which to return the {@literal .ipr} file.
+     * @param projectName the name of the project which is used as the file name of the {@literal .ipr} file.                  
      * @return the corresponding project's {@literal .ipr} file.
      */
-    private static IprDocument getIprDocument(File projectDir) {
-        Context projectContext = Context.named("project");
-
-        String projectName = Props.get("name", projectContext).value();
+    private static IprDocument getIprDocument(File projectDir, String projectName) {
         String iprFileName = projectName + ".ipr";
         File iprFile = FileUtil.fromParts(projectDir.getPath(), iprFileName);
         Document iprDocument = IntellijUtil.readXmlDocument(new FileResource(iprFile.getPath()),
@@ -110,51 +110,53 @@ public final class ProjectUtil {
      * @param localRepoPathMacroName the path macro to use as the base of the dependency (i.e., the local repo).
      * @param root from which to find the 'libraryTable' component
      * @param projectConfigDir the project's configuration directory to be used to resolve dependencies
-     * @param removeLibraryElements true to call {@link IntellijUtil#removeElements(Element, String)} named {@literal library}
      */
-    private static void addLibraryTable(String localRepoPathMacroName, Element root, File projectConfigDir,
-                                        boolean removeLibraryElements) {
+    private static void addLibraryTable(String localRepoPathMacroName, Element root, File projectConfigDir) {
         Element libraryTableElement = IntellijUtil.findComponent(root, "libraryTable");
-        if (removeLibraryElements) {
-            IntellijUtil.removeElements(libraryTableElement, "library");
-        }
         Set<DependencyAtom> allDeps = IntellijUtil.collectDependencies(projectConfigDir);
         allDeps.addAll(IntellijUtil.collectDependencies(projectConfigDir, Scope.named("test"))); // add test scoped deps as well
         for (DependencyAtom dep : allDeps) {
-            Element libraryElement = IntellijUtil.createElement(libraryTableElement, "library");
-            libraryElement.setAttribute("name", "Ply: " + dep.getPropertyName() + ":" + dep.getPropertyValueWithoutTransient());
-            boolean isJar = "jar".equals(dep.getSyntheticPackaging());
+            final String libraryName = "Ply: " + dep.getPropertyName() + ":" + dep.getPropertyValueWithoutTransient();
+            final Element libraryElement = IntellijUtil.findElement(libraryTableElement, "library", libraryName);
+            libraryElement.setAttribute("name", libraryName);
+            final boolean isJar = "jar".equals(dep.getSyntheticPackaging());
+            final String urlProtocol = dep.getSyntheticPackaging() + "://$" + localRepoPathMacroName + "$";
+            final String urlBase = FileUtil.pathFromParts(urlProtocol, dep.namespace, dep.name, dep.version);
             // create the CLASSES element
-            Element classesElement = IntellijUtil.createElement(libraryElement, "CLASSES");
-            Element classesRootElement = IntellijUtil.createElement(classesElement, "root");
-            String urlProtocol = dep.getSyntheticPackaging() + "://$" + localRepoPathMacroName + "$";
-            String urlBase = FileUtil.pathFromParts(urlProtocol, dep.namespace, dep.name, dep.version);
-            String urlValue = FileUtil.pathFromParts(urlBase, dep.getArtifactName());
-            if (isJar) {
-                urlValue = urlValue + "!";
+            if (!IntellijUtil.hasElement(libraryElement, "CLASSES")) {
+                Element classesElement = IntellijUtil.createElement(libraryElement, "CLASSES");
+                Element classesRootElement = IntellijUtil.createElement(classesElement, "root");
+                String urlValue = FileUtil.pathFromParts(urlBase, dep.getArtifactName());
+                if (isJar) {
+                    urlValue = urlValue + "!";
+                }
+                urlValue = urlValue + File.separator;
+                classesRootElement.setAttribute("url", urlValue);    
             }
-            urlValue = urlValue + File.separator;
-            classesRootElement.setAttribute("url", urlValue);
             // create the JAVADOC element
-            Element javadocElement = IntellijUtil.createElement(libraryElement, "JAVADOC");
-            Element javadocRootElement = IntellijUtil.createElement(javadocElement, "root");
-            DependencyAtom javadocDep = dep.withClassifier("javadoc");
-            urlValue = FileUtil.pathFromParts(urlBase, javadocDep.getArtifactName());
-            if (isJar) {
-                urlValue = urlValue + "!";
+            if (!IntellijUtil.hasElement(libraryElement, "JAVADOC")) {
+                Element javadocElement = IntellijUtil.createElement(libraryElement, "JAVADOC");
+                Element javadocRootElement = IntellijUtil.createElement(javadocElement, "root");
+                DependencyAtom javadocDep = dep.withClassifier("javadoc");
+                String urlValue = FileUtil.pathFromParts(urlBase, javadocDep.getArtifactName());
+                if (isJar) {
+                    urlValue = urlValue + "!";
+                }
+                urlValue = urlValue + File.separator;
+                javadocRootElement.setAttribute("url", urlValue);    
             }
-            urlValue = urlValue + File.separator;
-            javadocRootElement.setAttribute("url", urlValue);
             // create the SOURCES element
-            Element sourcesElement = IntellijUtil.createElement(libraryElement, "SOURCES");
-            Element sourcesRootElement = IntellijUtil.createElement(sourcesElement, "root");
-            DependencyAtom sourcesDep = dep.withClassifier("sources");
-            urlValue = FileUtil.pathFromParts(urlBase, sourcesDep.getArtifactName());
-            if (isJar) {
-                urlValue = urlValue + "!";
+            if (!IntellijUtil.hasElement(libraryElement, "SOURCES")) {
+                Element sourcesElement = IntellijUtil.createElement(libraryElement, "SOURCES");
+                Element sourcesRootElement = IntellijUtil.createElement(sourcesElement, "root");
+                DependencyAtom sourcesDep = dep.withClassifier("sources");
+                String urlValue = FileUtil.pathFromParts(urlBase, sourcesDep.getArtifactName());
+                if (isJar) {
+                    urlValue = urlValue + "!";
+                }
+                urlValue = urlValue + File.separator;
+                sourcesRootElement.setAttribute("url", urlValue);       
             }
-            urlValue = urlValue + File.separator;
-            sourcesRootElement.setAttribute("url", urlValue);
         }
     }
     

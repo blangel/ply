@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
+import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.dep.RepositoryAtom;
@@ -37,29 +38,31 @@ import static net.ocheyedan.ply.props.PropFile.Prop;
  */
 public class IntellijUtil {
 
-    private static final AtomicReference<List<String>> cache = new AtomicReference<List<String>>();
-
     /**
-     * The {@literal submodules} property context is first resolved.  If it exists then its values are returned.
-     * Otherwise, the comma-delimited list at property {@literal intellij[.scope].submodules} is resolved. If
-     * there are no sub-modules then null is returned.
-     * @return the modules of this project.
+     * @return the {@literal submodules} context values or an empty list.
      */
     public static List<String> getModules() {
-        if (cache.get() != null) {
-            return cache.get();
-        }
-        PropFileChain submodules = null;
-        if (((submodules = Props.get(Context.named("submodules"))) != null) && !submodules.props().iterator().hasNext()) {
-            List<String> submoduleNames = new ArrayList<String>();
-            int i = 0;
-            for (Prop submodule : submodules.props()) {
-                submoduleNames.add(submodule.name); // TODO - recursively get submodules' submodules, if any
+        return getModules(Props.get(Context.named("submodules")));
+    }
+
+    /**
+     * @param projectConfigDir the project configuration directory which to retrieve the {@literal submodules} values.
+     * @return the {@literal submodules} context values for the project at configuration directory {@code projectConfigDir}
+     *         or an empty list.
+     */
+    public static List<String> getModules(File projectConfigDir) {
+        return getModules(Props.get(Context.named("submodules"), Props.getScope(), projectConfigDir));
+    }
+    
+    private static List<String> getModules(PropFileChain submodules) {
+        List<String> submoduleNames = new ArrayList<String>();
+        for (Prop submodule : submodules.props()) {
+            if ("exclude".equals(submodule.value())) {
+                continue;
             }
-            cache.set(submoduleNames);
-            return submoduleNames;
+            submoduleNames.add(submodule.name); // TODO - recursively get submodules' submodules, if any
         }
-        return null;
+        return submoduleNames;
     }
 
     /**
@@ -113,16 +116,57 @@ public class IntellijUtil {
             return "PLY_REPO";
         }
         Element componentElement = findComponent(pathMacrosXmlFileDoc.getDocumentElement(), "PathMacrosImpl");
-        Element plyRepoPathMacroElement = findElement(componentElement, "macro", plyRepoPathMacroName);
-        // fourth, set the path macro value (even if already set as the user is choosing to run this script so likely
-        // the value needs to be updated).
+        // get the path macro value so that we can find an existing macro by name first and if none match then
+        // by value.
         String localRepoPath = localRepo.getPropertyName();
         if (localRepoPath.startsWith("file://")) {
             localRepoPath = localRepoPath.substring(7);
         }
+        // find/create the macro element as necessary
+        Element plyRepoPathMacroElement = findMacroElementByNameAndValue(componentElement, plyRepoPathMacroName, localRepoPath);
+        // fourth, set the path macro value (even if already set as the user is choosing to run this script so likely
+        // the value needs to be updated or the value is already the same anyway).
         plyRepoPathMacroElement.setAttribute("value", localRepoPath);
         writeXmlDocument(pathMacrosXmlFile, pathMacrosXmlFileDoc);
         return plyRepoPathMacroName;
+    }
+
+    /**
+     * Similar to {@link #findElement(org.w3c.dom.Element, String, String)} except if the {@literal name} attribute with
+     * value {@code macroName} is not found this method will also check for a {@literal value} attribute with value equal
+     * to {@code macroValue} and only if neither are found will this method create the element.
+     * @param componentElement the {@literal PathMacrosImpl} component
+     * @param macroName value of the {@literal macro} tag's {@literal name} attribute to match
+     * @param macroValue value of the {@literal macro} tag's {@literal value} attribute to match
+     * @return the found {@link Element} or the created element if one could not be found.
+     */
+    private static Element findMacroElementByNameAndValue(Element componentElement, String macroName, String macroValue) {
+        NodeList children = componentElement.getElementsByTagName("macro");
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            if (!(child instanceof Element)) {
+                continue;
+            }
+            Element childElement = (Element) child;
+            if (childElement.hasAttribute("name") && macroName.equals(childElement.getAttribute("name"))) {
+                return childElement;
+            }
+        }
+        // still not found, search by value
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            if (!(child instanceof Element)) {
+                continue;
+            }
+            Element childElement = (Element) child;
+            if (childElement.hasAttribute("value") && macroValue.equals(childElement.getAttribute("value"))) {
+                return childElement;
+            }
+        }
+        // still not found, create it
+        Element createdElement = createElement(componentElement, "macro");
+        createdElement.setAttribute("name", macroName);
+        return createdElement;
     }
 
     /**
@@ -229,8 +273,7 @@ public class IntellijUtil {
      * @return @see {@link #collectDependencies(File, Scope)}
      */
     public static Set<DependencyAtom> collectDependencies(File projectConfigDir) {
-        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
-        return collectDependencies(projectConfigDir, scope);
+        return collectDependencies(projectConfigDir, Props.getScope());
     }
 
     /**
@@ -260,8 +303,9 @@ public class IntellijUtil {
      * @param xmlResource to parse into a {@link Document}.
      * @param altXmlResource an alternative resource to use (the default template if {@code xmlResource} does not exist)
      * @return a {@link Document} object for the given resource
+     * @throws SystemExit upon {@link IOException} or {@link SAXException}
      */
-    public static Document readXmlDocument(Resource xmlResource, Resource altXmlResource) {
+    public static Document readXmlDocument(Resource xmlResource, Resource altXmlResource) throws SystemExit {
         Resource resource = xmlResource;
         if ((xmlResource == null) || xmlResource.getOntology() == Resource.Ontology.DoesNotExist) {
             resource = altXmlResource;
@@ -278,7 +322,7 @@ public class IntellijUtil {
                     stream = altXmlResource.open();
                 } catch (IOException altIoe) {
                     Output.print(altIoe);
-                    System.exit(1);
+                    throw new SystemExit(1);
                 }
             }
         }
@@ -286,23 +330,23 @@ public class IntellijUtil {
             return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stream);
         } catch (ParserConfigurationException pce) {
             Output.print(pce);
-            System.exit(1);
+            throw new SystemExit(1);
         } catch (SAXException saxe) {
             Output.print(saxe);
-            System.exit(1);
+            throw new SystemExit(1);
         } catch (IOException ioe) {
             Output.print(ioe);
-            System.exit(1);
+            throw new SystemExit(1);
         }
-        throw new AssertionError("Programming error."); // should never get here
     }
 
     /**
      * Writes {@code document} out to disk at {@code file}.  If {@code file} does not exist, it will be created.
      * @param file to which to write the content of {@code document}.
      * @param document to write to {@code file}
+     * @throws SystemExit upon {@link IOException} or {@link TransformerException}
      */
-    public static void writeXmlDocument(File file, Document document) {
+    public static void writeXmlDocument(File file, Document document) throws SystemExit {
         try {
             if (!file.exists()) {
                 file.createNewFile();
@@ -315,13 +359,13 @@ public class IntellijUtil {
             transformer.transform(source, result);
         } catch (TransformerConfigurationException tce) {
             Output.print(tce);
-            System.exit(1);
+            throw new SystemExit(1);
         } catch (TransformerException te) {
             Output.print(te);
-            System.exit(1);
+            throw new SystemExit(1);
         } catch (IOException ioe) {
             Output.print(ioe);
-            System.exit(1);
+            throw new SystemExit(1);
         }
     }
 
@@ -379,6 +423,16 @@ public class IntellijUtil {
         Element child = element.getOwnerDocument().createElement(name);
         element.appendChild(child);
         return child;
+    }
+
+    /**
+     * @param element the element to check
+     * @param elementName the name of the child-element to check for on {@code element}
+     * @return true if {@code element} has at least one child element named {@code elementName}
+     */
+    public static boolean hasElement(Element element, String elementName) {
+        NodeList elements = element.getElementsByTagName(elementName);
+        return ((elements != null) && (elements.getLength() != 0));
     }
 
     /**

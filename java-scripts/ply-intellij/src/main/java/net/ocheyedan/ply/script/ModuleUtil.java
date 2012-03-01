@@ -1,12 +1,13 @@
 package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.dep.DependencyAtom;
+import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.input.ClasspathResource;
 import net.ocheyedan.ply.input.FileResource;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -27,21 +28,22 @@ public class ModuleUtil {
 
     /**
      * @param projectDir the current project's root directory
-     * @param subdirectory the name of the sub-directory (submodule) which to create the {@literal .iml} file
-     *                     if this is the empty string it is assumed to be for the current project.
+     * @param owningModule the project directory of the owning module or null if this is the {@literal Intellij} project
+     *                     root (i.e., contains the {@literal .ipr} file).
      */
-    public static void updateModule(File projectDir, String subdirectory) {
+    public static void updateModule(File projectDir, File owningModule) {
         Context projectContext = Context.named("project");
-        File projectRootDir = (subdirectory.isEmpty() ? projectDir : FileUtil.fromParts(FileUtil.getCanonicalPath(projectDir), subdirectory));
-        String projectName = (subdirectory.isEmpty() ? Props.get("name", Context.named("project")).value() : projectRootDir.getName());
+        String projectName = Props.get("name", Context.named("project")).value();
         // use the directory name to keep modules in-sync with those referenced in the .ipr file.
         String imlFileName = projectName + ".iml";
-        File imlFile = FileUtil.fromParts(projectRootDir.getPath(), imlFileName);
+        File imlFile = FileUtil.fromParts(projectDir.getPath(), imlFileName);
         Document imlDocument = IntellijUtil.readXmlDocument(new FileResource(imlFile.getPath()),
                                                             new ClasspathResource("etc/ply-intellij/templates/module.xml",
                                                                                   ModuleUtil.class.getClassLoader()));
+        String projectDirPath = FileUtil.getCanonicalPath(projectDir);
+        File projectConfigDir = FileUtil.fromParts(projectDirPath, ".ply", "config");
         // nothing to do for ply
-        String packaging = getPropValue(projectDir, subdirectory, projectContext, "packaging");
+        String packaging = Props.get("packaging", projectContext, Props.getScope(), projectConfigDir).value();
         if ("war".equals(packaging)) {
             // TODO - nothing right now, pretty sure web-module is supported only in intellij-ultimate
         }
@@ -59,39 +61,46 @@ public class ModuleUtil {
         inheritedJdkElement.setAttribute("type", "inheritedJdk");
 
         // setup the outputs/inputs
+        String outputValue = Props.get("build.path", Context.named("compiler"), Props.getScope(), projectConfigDir).value();
         Element output = IntellijUtil.createElement(component, "output");
-        output.setAttribute("url", "file://$MODULE_DIR$/" + getPropValue(projectDir, subdirectory,
-                                    Context.named("compiler"), "build.path"));
+        output.setAttribute("url", "file://$MODULE_DIR$/" + outputValue);
 
         Element content = IntellijUtil.findElement(component, "content");
         IntellijUtil.removeElements(content, "sourceFolder");
         IntellijUtil.removeElements(content, "excludeFolder");
 
         content.setAttribute("url", "file://$MODULE_DIR$");
+        
+        String sourceFolderValue = Props.get("src.dir", projectContext, Props.getScope(), projectConfigDir).value();
+        // TODO - not doing this trivial check before adding as a nice benefit of adding unequivocally is that if
+        // TODO - the folder doesn't exist but is then added it is 'instantly' recognized as what it is (i.e., src/test/etc) by intellij.
+        //if (FileUtil.fromParts(projectDirPath, sourceFolderValue).exists()) {
         Element sourceFolder = IntellijUtil.createElement(content, "sourceFolder");
-        sourceFolder.setAttribute("url", "file://$MODULE_DIR$/" + getPropValue(projectDir, subdirectory, projectContext,
-                "src.dir"));
+        sourceFolder.setAttribute("url", "file://$MODULE_DIR$/" + sourceFolderValue);
         sourceFolder.setAttribute("isTestSource", "false");
+
+        String resourceFolderValue = Props.get("res.dir", projectContext, Props.getScope(), projectConfigDir).value();
         Element resourceFolder = IntellijUtil.createElement(content, "sourceFolder");
-        resourceFolder.setAttribute("url", "file://$MODULE_DIR$/" + getPropValue(projectDir, subdirectory,
-                projectContext, "res.dir"));
+        resourceFolder.setAttribute("url", "file://$MODULE_DIR$/" + resourceFolderValue);
         resourceFolder.setAttribute("isTestSource", "false");
+
+        String excludeFolderValue = Props.get("build.dir", projectContext, Props.getScope(), projectConfigDir).value();
         Element excludeFolder = IntellijUtil.createElement(content, "excludeFolder");
-        excludeFolder.setAttribute("url", "file://$MODULE_DIR$/" + getPropValue(projectDir, subdirectory,
-                projectContext, "build.dir"));
+        excludeFolder.setAttribute("url", "file://$MODULE_DIR$/" + excludeFolderValue);
 
         // setup the test outputs/inputs
+        String testOutputValue = getTestPropValue("build.path", Context.named("compiler"), projectConfigDir);
         Element testOutput = IntellijUtil.createElement(component, "output-test");
-        testOutput.setAttribute("url", "file://$MODULE_DIR$/" + getPropValue(projectDir, subdirectory,
-                                    Context.named("compiler"), Scope.named("test"), "build.path"));
+        testOutput.setAttribute("url", "file://$MODULE_DIR$/" + testOutputValue);
 
+        String testSourceFolderValue = getTestPropValue("src.dir", projectContext, projectConfigDir);
         Element testSourceFolder = IntellijUtil.createElement(content, "sourceFolder");
-        testSourceFolder.setAttribute("url", "file://$MODULE_DIR$/" + getPropValue(projectDir, subdirectory, projectContext,
-                Scope.named("test"), "src.dir"));
+        testSourceFolder.setAttribute("url", "file://$MODULE_DIR$/" + testSourceFolderValue);
         testSourceFolder.setAttribute("isTestSource", "true");
+
+        String testResourceFolderValue = getTestPropValue("res.dir", projectContext, projectConfigDir);
         Element testResourceFolder = IntellijUtil.createElement(content, "sourceFolder");
-        testResourceFolder.setAttribute("url", "file://$MODULE_DIR$/" + getPropValue(projectDir, subdirectory,
-                projectContext, Scope.named("test"), "res.dir"));
+        testResourceFolder.setAttribute("url", "file://$MODULE_DIR$/" + testResourceFolderValue);
         testResourceFolder.setAttribute("isTestSource", "true");
 
         // add the canned order-entry elements
@@ -100,7 +109,7 @@ public class ModuleUtil {
         sourceFolderElement.setAttribute("forTests", "false");
 
         // add the dependencies as order-entry elements
-        addDependencies(component, projectDir, subdirectory);
+        addDependencies(component, projectDir, owningModule);
 
         IntellijUtil.writeXmlDocument(imlFile, imlDocument);
     }
@@ -114,17 +123,31 @@ public class ModuleUtil {
      * }
      * @param to is the element into which to insert {@literal orderEntry} elements
      * @param projectDir is the base directory from which the script was executed
-     * @param subdirectory the sub-directory for which the module file is being made or the empty string
-     *        if this is the module file for the project itself
+     * @param owningModule the directory of the owning module (the {@literal Intellij} root project) or null
+     *                     if this is the root project
      */
-    private static void addDependencies(Element to, File projectDir, String subdirectory) {
+    private static void addDependencies(Element to, File projectDir, File owningModule) {
         Scope defaultScope = Scope.named(Props.get("scope", Context.named("ply")).value());
         Scope testScope = Scope.named("test");
         File projectConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(projectDir), ".ply", "config");
-        List<String> modules = IntellijUtil.getModules();
+        List<String> modules;
+        if (owningModule != null) {
+            File owningModuleConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(owningModule), ".ply", "config");
+            modules = IntellijUtil.getModules(owningModuleConfigDir);
+        } else {
+            modules = IntellijUtil.getModules();
+        }
         Set<DependencyAtom> excludes = new HashSet<DependencyAtom>();
-        excludes.addAll(addDependencies(to, projectConfigDir, defaultScope, "", modules, Collections.<DependencyAtom>emptySet()));
+        excludes.add(getSelf());
+        excludes.addAll(addDependencies(to, projectConfigDir, defaultScope, "", modules, excludes));
         addDependencies(to, projectConfigDir, testScope, "TEST", modules, excludes);
+    }
+    
+    private static DependencyAtom getSelf() {
+        DependencyAtom self = Deps.getProjectDep();
+        // the resolved-dep file stores all dependencies in a fully-qualified path name, which means the artifactName
+        // will be explicitly set, therefore, explicitly set on self so that exclusions work properly
+        return new DependencyAtom(self.namespace, self.name, self.version, self.getArtifactName(), self.transientDep);
     }
 
     /**
@@ -191,45 +214,32 @@ public class ModuleUtil {
     }
 
     /**
-     * Calls {@link Props#get(String, Context)} with {@code context} and {@code name} if {@code subdirectory}
-     * is the empty-string.  Otherwise determines the current config-dir based on {@code projectDir} and {@code subdirectory}
-     * and calls {@link Props#get(String, Context, Scope, File)} with {@code context}
-     * {@code named} the resolved config directory (composed from {@code projectDir} and {@code subdirectory}) and the
-     * value of {@link Props#getScope()}
-     * @param projectDir of the project from which the script was run
-     * @param subdirectory of the submodule (relative to {@code projectDir}) or the empty-string if the module
-     *                     in question is that associated with {@code projectDir} directly
-     * @param context from which to retrieve the property value
-     * @param named the name of the property for which to retrieve the property value
-     * @return the property value {@code named} in {@code context}
+     * Since this script is being invoked, property values are already resolved.  We need to get the values set for
+     * the test scope but we are not running in the test scope.  This method explicitly looks up property values
+     * from within the {@code projectConfigDir} and if not found then within the {@link PlyUtil#SYSTEM_CONFIG_DIR}
+     * @param propertyName name of the property to return
+     * @param context of the property file to retrieve (for scope {@literal test}).
+     * @param projectConfigDir the configuration directory of the local project
+     * @return the value of {@code propertyName} in {@code context} for scope {@literal test} or the empty string
+     *         if it couldn't be found in either the local or system directory.
      */
-    private static String getPropValue(File projectDir, String subdirectory, Context context, String named) {
-        return getPropValue(projectDir, subdirectory, context, Props.getScope(), named);
-    }
-
-    /**
-     * Calls {@link Props#get(String, Context)} with {@code context} and {@code name} if {@code subdirectory}
-     * is the empty-string.  Otherwise determines the current config-dir based on {@code projectDir} and {@code subdirectory}
-     * and calls {@link Props#get(String, Context, Scope, File)} with {@code context}
-     * {@code named} the resolved config directory (composed from {@code projectDir} and {@code subdirectory}) and the
-     * value of {@code scope}.
-     * Note, if {@code scope} is {@literal test} then resolution is done against the property files as we need
-     * to extract the test values of properties even if this is for the current project directory.
-     * @param projectDir of the project from which the script was run
-     * @param subdirectory of the submodule (relative to {@code projectDir}) or the empty-string if the module
-     *                     in question is that associated with {@code projectDir} directly
-     * @param context from which to retrieve the property value
-     * @param scope for which to retrieve the property value
-     * @param named the name of the property for which to retrieve the property value
-     * @return the property value {@code named} in {@code context}
-     */
-    private static String getPropValue(File projectDir, String subdirectory, Context context, Scope scope, String named) {
-        if (subdirectory.isEmpty() && !Scope.named("test").equals(scope)) {
-            return Props.get(named, context).value();
+    private static String getTestPropValue(String propertyName, Context context, File projectConfigDir) {
+        String propertyFileName = context.name + ".test.properties";
+        String localPath = FileUtil.pathFromParts(FileUtil.getCanonicalPath(projectConfigDir), propertyFileName);
+        if (new File(localPath).exists()) {
+            PropFile localPropFile = PropFiles.load(localPath, false,  true);
+            if ((localPropFile != null) && localPropFile.contains(propertyName)) {
+                return localPropFile.get(propertyName).value();
+            }    
         }
-        String canonicalProjectDirPath = FileUtil.getCanonicalPath(projectDir);
-        File submoduleConfigDir = FileUtil.fromParts(canonicalProjectDirPath, subdirectory, ".ply", "config");
-        return Props.get(named, context, scope, submoduleConfigDir).value();
+        String systemPath = FileUtil.pathFromParts(FileUtil.getCanonicalPath(PlyUtil.SYSTEM_CONFIG_DIR), propertyFileName);
+        if (new File(systemPath).exists()) {
+            PropFile systemPropFile = PropFiles.load(systemPath, false, true);
+            if (systemPropFile != null) {
+                return systemPropFile.get(propertyName).value();
+            }
+        }
+        return "";
     }
 
 }

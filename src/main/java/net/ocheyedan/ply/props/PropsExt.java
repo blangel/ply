@@ -39,10 +39,17 @@ public final class PropsExt {
         if (RESOLVED_ENV_CACHE.containsKey(cacheKey)) {
             return RESOLVED_ENV_CACHE.get(cacheKey);
         }
+        // handle the special submodules.scope
+        Prop submodulesScopeProp = Props.get("submodules.scope", Context.named("project"), Props.getScope(), configDirectory);
+        Scope submodulesScope = (submodulesScopeProp == null ? Scope.Default : Scope.named(submodulesScopeProp.value()));
+        
         Map<Context, PropFileChain> props = Props.get(scope, configDirectory);
         Map<String, String> envProps = new HashMap<String, String>(props.size() * 5); // assume avg of 5 props per context?
         for (Context context : props.keySet()) {
             PropFileChain contextProps = props.get(context);
+            if ("submodules".equals(context.name) && !scope.equals(submodulesScope)) {
+                contextProps = Props.get(context, submodulesScope);
+            }
             for (Prop prop : contextProps.props()) {
                 String envKey = "ply$" + context + "." + prop.name;
                 envProps.put(envKey, prop.value());
