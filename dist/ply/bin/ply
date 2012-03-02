@@ -135,8 +135,8 @@ if [ -e $PLY_HOME/version ]; then
 fi
 
 exec "$JAVACMD" \
-  -client -Xms32M -Xmx32M \
-  -classpath "${PLY_HOME}"/lib/ply-1.0.jar:"${PLY_HOME}"/lib/ply-util-1.0.jar \
+  -client -Xms32M -Xmx32M -d32 -noverify \
+  -Xbootclasspath/a:"${PLY_HOME}"/lib/ply-1.0.jar:"${PLY_HOME}"/lib/ply-util-1.0.jar \
   "-Dply.home=${PLY_HOME}" \
   "-Dply.version=${PLY_VERSION}" \
   "-Dply.java=${JAVACMD}" \
