@@ -148,7 +148,7 @@ public final class JarExec {
      * @param configDirectory the ply configuration directory from which to resolve properties
      * @param execution for which to retrieve options
      * @param staticClasspath will be set by this method to true iff the resolved options contains a
-     *        {@literal -classpath} or {@literal -cp} value.
+     *        {@literal -classpath} or {@literal -cp} {@literal -Xbootclasspath} value.
      * @return the split jvm options for {@code script}
      */
     private static String[] getJarScriptOptions(File configDirectory, Execution execution, AtomicBoolean staticClasspath) {
@@ -162,7 +162,7 @@ public final class JarExec {
         if (options.isEmpty()) {
             options = Props.get("options.default", Context.named("scripts-jar"), execution.script.scope, configDirectory).value();
         }
-        if (options.contains("-cp") || options.contains("-classpath")) {
+        if (options.contains("-cp") || options.contains("-classpath") || options.contains("-Xbootclasspath")) {
             staticClasspath.set(true);
         }
         return options.split(" ");
