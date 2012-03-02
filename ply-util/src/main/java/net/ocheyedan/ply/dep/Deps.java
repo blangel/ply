@@ -548,7 +548,12 @@ public final class Deps {
     private static PropFile getDependenciesFromPlyRepo(String urlPath) {
         try {
             URL url = new URL(urlPath);
-            return PropFiles.load(url.getFile(), false, true);
+            PropFile loaded = PropFiles.load(url.getFile(), false, false);
+            if (loaded.isEmpty()) {
+                return null;
+            } else {
+                return loaded;
+            }
         } catch (MalformedURLException murle) {
             Output.print(murle);
         }

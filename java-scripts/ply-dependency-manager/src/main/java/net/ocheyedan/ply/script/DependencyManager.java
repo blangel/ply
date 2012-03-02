@@ -125,7 +125,7 @@ public class DependencyManager {
                     throw new AssertionError("Dependency graph's root-vertices should not be greater than the specified dependencies.");
                 }
                 String sizeExplanation = (size != graphSize) ?
-                        String.format(" [ actually %d; %d of which are pulled in transitively ]", size, (size - graphSize)) : "";
+                        String.format(" [ actually %d; %d of which %s pulled in transitively ]", size, (size - graphSize), (size - graphSize) > 1 ? "are" : "is") : "";
                 Output.print("Project ^b^%s^r^ has ^b^%d^r^ direct %sdependenc%s%s: ", Props.get("name", projectContext).value(), graphSize,
                         scope.getPrettyPrint(), (size == 1 ? "y" : "ies"), sizeExplanation);
                 printDependencyGraph(depGraph.getRootVertices(), String.format("%s ", PlyUtil.isUnicodeSupported() ? "\u26AC" : "+"), new HashSet<Vertex<Dep>>());

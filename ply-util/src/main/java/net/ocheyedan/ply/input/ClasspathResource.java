@@ -16,7 +16,8 @@ public class ClasspathResource implements Resource {
 
     public ClasspathResource(String resource, ClassLoader classLoader) {
         this.name = resource;
-        this.stream = classLoader.getResourceAsStream(resource);
+        this.stream = (classLoader == null ? ClasspathResource.class.getResourceAsStream(resource) :
+                                             classLoader.getResourceAsStream(resource));
     }
 
     @Override public String name() {
