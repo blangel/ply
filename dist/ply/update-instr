@@ -87,3 +87,11 @@ OUTPUT=Downloading update to ply exec script
 METHOD=download=https://github.com/blangel/ply/raw/405bdac129a2e6547ad2970344b43555a3f2e761/dist/ply/scripts/ply-exec-1.0.jar to scripts/ply-exec-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/405bdac129a2e6547ad2970344b43555a3f2e761/dist/ply/version to version
 VERSION=1.0_16
+OUTPUT=Downloading update to ply core to leverage possibility of -Xbootclasspath entries
+METHOD=download=https://github.com/blangel/ply/raw/f4eb6ac43e800c07ec2264833cec374a3a09b3d8/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+OUTPUT=Downling and overridding 'scripts-jar.properties' system file to leverage new JVM options.
+METHOD=download=https://raw.github.com/blangel/ply/f4eb6ac43e800c07ec2264833cec374a3a09b3d8/dist/ply/config/scripts-jar.properties to config/scripts-jar.properties
+OUTPUT=Downling and overridding the ply bootstrapper script itself to leverage new JVM options.
+METHOD=download=https://raw.github.com/blangel/ply/f4eb6ac43e800c07ec2264833cec374a3a09b3d8/dist/ply/bin/ply to bin/ply
+METHOD=download=https://raw.github.com/blangel/ply/f4eb6ac43e800c07ec2264833cec374a3a09b3d8/dist/ply/version to version
+VERSION=1.0_17
