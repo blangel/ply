@@ -78,7 +78,7 @@ public class ExecScript {
             BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
             String processStdoutLine;
             while ((processStdoutLine = lineReader.readLine()) != null) {
-                output.print(processStdoutLine);
+                output.println(processStdoutLine);
             }
             int result = process.waitFor();
             if (result != 0) {
