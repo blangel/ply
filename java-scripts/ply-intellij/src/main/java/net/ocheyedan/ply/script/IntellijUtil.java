@@ -42,7 +42,7 @@ public class IntellijUtil {
      * @return the {@literal submodules} context values or an empty list.
      */
     public static List<String> getModules() {
-        return getModules(Props.get(Context.named("submodules")));
+        return getModules(Props.get(Context.named("submodules")), Props.get("name", Context.named("project")).value());
     }
 
     /**
@@ -51,16 +51,20 @@ public class IntellijUtil {
      *         or an empty list.
      */
     public static List<String> getModules(File projectConfigDir) {
-        return getModules(Props.get(Context.named("submodules"), Props.getScope(), projectConfigDir));
+        String projectName = Props.get("name", Context.named("project"), Props.getScope(), projectConfigDir).value();
+        return getModules(Props.get(Context.named("submodules"), Props.getScope(), projectConfigDir), projectName);
     }
     
-    private static List<String> getModules(PropFileChain submodules) {
+    private static List<String> getModules(PropFileChain submodules, String projectName) {
         List<String> submoduleNames = new ArrayList<String>();
         for (Prop submodule : submodules.props()) {
             if ("exclude".equals(submodule.value())) {
                 continue;
             }
             submoduleNames.add(submodule.name); // TODO - recursively get submodules' submodules, if any
+        }
+        if (!projectName.isEmpty()) {
+            submoduleNames.add(projectName);
         }
         return submoduleNames;
     }

@@ -224,19 +224,22 @@ public class ModuleUtil {
      *         if it couldn't be found in either the local or system directory.
      */
     private static String getTestPropValue(String propertyName, Context context, File projectConfigDir) {
+        // TODO - filtering is incorrect as we need to get the TEST scoped values
         String propertyFileName = context.name + ".test.properties";
         String localPath = FileUtil.pathFromParts(FileUtil.getCanonicalPath(projectConfigDir), propertyFileName);
         if (new File(localPath).exists()) {
             PropFile localPropFile = PropFiles.load(localPath, false,  true);
             if ((localPropFile != null) && localPropFile.contains(propertyName)) {
-                return localPropFile.get(propertyName).value();
+                PropFile.Prop prop = localPropFile.get(propertyName);
+                return Filter.filter(prop.value(), prop.context(), String.valueOf(System.identityHashCode(prop.value())), Props.get());
             }    
         }
         String systemPath = FileUtil.pathFromParts(FileUtil.getCanonicalPath(PlyUtil.SYSTEM_CONFIG_DIR), propertyFileName);
         if (new File(systemPath).exists()) {
             PropFile systemPropFile = PropFiles.load(systemPath, false, true);
             if (systemPropFile != null) {
-                return systemPropFile.get(propertyName).value();
+                PropFile.Prop prop = systemPropFile.get(propertyName);
+                return Filter.filter(prop.value(), prop.context(), String.valueOf(System.identityHashCode(prop.value())), Props.get());
             }
         }
         return "";
