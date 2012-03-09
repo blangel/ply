@@ -193,7 +193,9 @@ public class IntellijUtil {
      * that value is.  This document, {@see http://devnet.jetbrains.net/docs/DOC-181}, says that it should be of the
      * form {@literal .IntelliJIdeaXX} where XX is the product version.  However on my local box, it is of the form
      * {@literal .IdeaICXX} where, again, XX is the product version.  I have the community-edition so perhaps that
-     * is the cause of discrepancy.  This method will assume both are valid and check for both patterns.
+     * is the cause of discrepancy.  Additionally, on a {@literal MacOSX} box, it is of the format {@literal IdeaICXX}
+     * for the community-edition and {@literal IntelliJIdeaXX} for the full product (notice the lack of dot prefix).
+     * This method will assume all are valid and check for all aforementioned patterns.
      * @return the INTELLIJ_HOME directory or null if it cannot be found
      * @see {@literal http://www.jetbrains.com/idea/webhelp/project-and-ide-settings.html}
      * @see {@literal http://devnet.jetbrains.net/docs/DOC-181}
@@ -213,7 +215,8 @@ public class IntellijUtil {
         // now find the intellij-directory; either '.IntellijIdea*' or '.IdeaIC*'
         File[] intellijDirectories = userHomeBasePath.listFiles(new FilenameFilter() {
             @Override public boolean accept(File dir, String name) {
-                return (name.startsWith(".IntellijIdea") || name.startsWith(".IdeaIC"));
+                return (name.startsWith(".IntelliJIdea") || name.startsWith(".IdeaIC")
+                            || name.startsWith("IntelliJIdea") || name.startsWith("IdeaIC"));
             }
         });
         if ((intellijDirectories == null) || (intellijDirectories.length == 0)) {
