@@ -83,7 +83,8 @@ public final class Deps {
                                                                RepositoryRegistry repositoryRegistry,
                                                                boolean failMissingDependency) {
         DirectedAcyclicGraph<Dep> dependencyDAG = new DirectedAcyclicGraph<Dep>();
-        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG, false, failMissingDependency);
+        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG,
+                            new HashMap<DependencyAtom, Dep>(dependencyAtoms.size()), false, failMissingDependency);
         return dependencyDAG;
     }
 
@@ -102,6 +103,7 @@ public final class Deps {
      * @param dependencyAtoms the dependencies which to resolve and place into {@code graph}
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @param graph to fill with the resolved {@link Dep} objects of {@code dependencyAtoms}.
+     * @param resolved a mapping from {@link DependencyAtom} to {@link Dep} of already resolved dependencies within the graph
      * @param pomSufficient if true, then only the pom from a maven repository is necessary to have successfully
      *                      resolved the {@code dependencyAtom}.
      * @param failMissingDependency if true indicates that missing dependencies are treated as failures; false, to
@@ -109,7 +111,8 @@ public final class Deps {
      */
     private static void fillDependencyGraph(Vertex<Dep> parentVertex, List<DependencyAtom> dependencyAtoms,
                                             RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph,
-                                            boolean pomSufficient, boolean failMissingDependency) {
+                                            Map<DependencyAtom, Dep> resolved, boolean pomSufficient,
+                                            boolean failMissingDependency) {
         if (repositoryRegistry.isEmpty()) {
             Output.print("^error^ No repositories found, cannot resolve dependencies.");
             SystemExit.exit(1);
@@ -121,8 +124,13 @@ public final class Deps {
             // pom is sufficient for resolution if this is a transient dependency
             Dep resolvedDep;
             try {
-                resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep),
+                if (resolved.containsKey(dependencyAtom)) {
+                    resolvedDep = resolved.get(dependencyAtom);
+                } else {
+                    resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep),
                                                 failMissingDependency);
+                    resolved.put(dependencyAtom, resolvedDep);
+                }
                 if ((resolvedDep == null) && !failMissingDependency) {
                     if (Output.isInfo()) {
                         Output.print("^info^ Could not resolve dependency ^b^%s^r^.", dependencyAtom.toString());
@@ -154,7 +162,8 @@ public final class Deps {
                 }
             }
             if (!dependencyAtom.transientDep) { // direct transient dependencies are not recurred upon
-                fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, true, failMissingDependency);
+                fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, resolved,
+                                    true, failMissingDependency);
             }
         }
     }
@@ -325,7 +334,7 @@ public final class Deps {
                                          String repoDirPath, String saveToRepoDirPath) {
         PropFile dependenciesFile = getDependenciesFile(dependencyAtom, repositoryAtom, repoDirPath);
         if (dependenciesFile == null) {
-            Output.print("^dbug^ No dependencies file found for %s.", dependencyAtom.toString());
+            Output.print("^dbug^ No dependencies file found for %s in repo %s.", dependencyAtom.toString(), repositoryAtom.toString());
             dependenciesFile = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
         }
         storeDependenciesFile(dependenciesFile, saveToRepoDirPath);
