@@ -1,10 +1,12 @@
 package net.ocheyedan.ply.props;
 
+import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 
 import java.io.File;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static net.ocheyedan.ply.props.PropFile.Prop;
 
@@ -146,6 +148,38 @@ public final class Props {
     public static Scope getScope() {
         String scope = System.getenv("ply$ply.scope"); // cannot use Props itself as this is called internally while resolving
         return (scope == null ? Scope.Default : new Scope(scope));
+    }
+
+    /**
+     * For use by {@link AdHoc} when alias resolution adds ad-hoc properties for which there never was
+     * a {@link PropFileChain} object created ({@link AdHoc#produceFor(java.util.Map, java.util.Map)} was never
+     * invoked).
+     * @param scope associated with {@code adHocPropFile}
+     * @param context associated with {@code adHocPropFile}
+     * @param adHocPropFile the ad hoc properties
+     */
+    static void addAdHoc(Scope scope, Context context, PropFile adHocPropFile) {
+        Map<Scope, Map<Context, PropFileChain>> loaded = Loader.load(PlyUtil.LOCAL_CONFIG_DIR);
+        Map<Context, PropFileChain> contexts = loaded.get(scope);
+        if (contexts == null) {
+            contexts = new ConcurrentHashMap<Context, PropFileChain>();
+            loaded.put(scope, contexts);
+        }
+        PropFileChain chain = contexts.get(context);
+        if (chain == null) {
+            chain = new PropFileChain(contexts);
+            contexts.put(context, chain);
+        }
+        chain.set(adHocPropFile, PropFile.Loc.AdHoc); // TODO should merge?
+        if (Scope.Default.equals(scope)) {
+            // do the same for all other scopes.
+            for (Scope otherScope : loaded.keySet()) {
+                if (Scope.Default.equals(otherScope)) {
+                    continue;
+                }
+                addAdHoc(otherScope, context, adHocPropFile);
+            }
+        }
     }
     
     private Props() { }

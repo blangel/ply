@@ -149,6 +149,7 @@ public final class AdHoc {
             if (adHocPropFile == null) {
                 adHocPropFile = new PropFile(propContext, propScope, PropFile.Loc.AdHoc);
                 contexts.put(propContext, adHocPropFile);
+                Props.addAdHoc(propScope, propContext, adHocPropFile); // ensure property exists in Props
             }
             if (adHocPropFile.contains(propName)) {
                 PropFile.Prop adHocProp = adHocPropFile.get(propName);
