@@ -102,6 +102,11 @@ public class PropFileReaderTest {
         assertEquals("key_7", prop.name);
         assertEquals("more and more and more", prop.value());
         assertEquals(" notice the blank space between, both before and after this comment", prop.comments());
+        
+        prop = iterator.next();
+        assertEquals("key_8", prop.name);
+        assertEquals("something with an equals character=another", prop.value());
+        assertEquals("", prop.comments());
     }
 
 }

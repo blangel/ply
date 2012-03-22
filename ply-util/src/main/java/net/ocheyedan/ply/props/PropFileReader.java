@@ -97,7 +97,7 @@ public interface PropFileReader {
                         isEscaped = true;
                         break;
                     case '=':
-                        if (isEscaped) {
+                        if (isEscaped || !key.isEmpty()) {
                             buffer.append('=');
                         } else {
                             key = buffer.toString();
