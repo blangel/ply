@@ -51,8 +51,7 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
         explodedWarDir.mkdirs();
         // get the web-inf dir and copy to the exploded war web-inf dir
         String webappDir = Props.get("webapp.dir", Context.named("package")).value();
-        FileUtil.copyDir(FileUtil.fromParts(webappDir, "WEB-INF"),
-                FileUtil.fromParts(explodedWarDir.getPath(), "WEB-INF"));
+        FileUtil.copyDir(FileUtil.fromParts(webappDir), explodedWarDir);
         // copy the meta-dir to the exploded war meta-inf dir
         FileUtil.copyDir(FileUtil.fromParts(buildDir, "META-INF"),
                 FileUtil.fromParts(explodedWarDir.getPath(), "META-INF"));

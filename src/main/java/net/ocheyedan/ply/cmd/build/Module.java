@@ -6,9 +6,7 @@ import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.cmd.Args;
 import net.ocheyedan.ply.exec.Execution;
-import net.ocheyedan.ply.props.Context;
-import net.ocheyedan.ply.props.Props;
-import net.ocheyedan.ply.props.Scope;
+import net.ocheyedan.ply.props.*;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -49,7 +47,29 @@ final class Module {
 
     List<Execution> resolve() {
         List<Script> scripts = convertArgsToScripts();
+        // resolve ad-hoc properties before creating executions (as execution may depend upon a value of an ad-hoc prop).
+        // must invalidate filtered-cache (as ad-hoc props may have changed the filtered values).
+        if (handleAdHoc(scripts)) {
+            PropsExt.invalidateFilteredCaches(configDirectory);
+        }
+        // now that all ad-hoc props are accounted for, convert scripts to executions
         return convertScriptsToExecutions(scripts);
+    }
+    
+    private boolean handleAdHoc(List<Script> scripts) {
+        boolean hasAdHocPropsFromAliases = false;
+        for (Script script : scripts) {
+            if (script instanceof Alias) {
+                Alias alias = (Alias) script;
+                List<String> adHocProps = alias.adHocProps;
+                hasAdHocPropsFromAliases = (hasAdHocPropsFromAliases || handleAdHoc(alias.scripts));
+                if ((adHocProps != null) && !adHocProps.isEmpty()) {
+                    AdHoc.add(adHocProps);
+                    hasAdHocPropsFromAliases = true;
+                }
+            }
+        }
+        return hasAdHocPropsFromAliases;
     }
 
     /**

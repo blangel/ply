@@ -25,7 +25,7 @@ final class Loader {
      */
     static final FilenameFilter PROPERTIES_FILENAME_FILTER = new FilenameFilter() {
         @Override public boolean accept(File dir, String name) {
-            return name.endsWith(".properties");
+            return (name.endsWith(".properties") && !name.startsWith(".")); // ignore '.' files
         }
     };
 

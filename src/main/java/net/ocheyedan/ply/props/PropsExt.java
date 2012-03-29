@@ -71,6 +71,14 @@ public final class PropsExt {
         return envProps;
     }
 
+    /**
+     * @param configurationDirectory @see {@link Props#invalidateFilteredCaches(java.io.File)}
+     * @see Props#invalidateFilteredCaches(java.io.File)
+     */
+    public static void invalidateFilteredCaches(File configurationDirectory) {
+        Props.invalidateFilteredCaches(configurationDirectory);
+    }
+
     private PropsExt() { }
 
 }

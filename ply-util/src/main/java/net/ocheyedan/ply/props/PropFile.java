@@ -70,18 +70,17 @@ public final class PropFile {
             return owner.loc;
         }
         
-        public final Prop withComments(String comments) {
+        final Prop withComments(String comments) {
             this.comments.set(comments);
             return this;
         }
 
-        // TODO - perhaps this should be package-protected as all filtering should happen via the PropFileFilter methods
-        public final Prop with(String filteredValue) {
+        final Prop with(String filteredValue) {
             Prop filtered = new Prop(this.owner, this.name, this.unfilteredValue, this.comments.get());
             filtered.filteredValue.set(filteredValue);
             return filtered;
         }
-        
+
         @Override public boolean equals(Object o) {
             if (this == o) {
                 return true;
@@ -313,7 +312,7 @@ public final class PropFile {
      * <p/>
      * Note, if this properties file already contains a property named {@code name} this method has no effect.  This
      * implies that this method should not be used to set the filtered value of an existing property, that operation
-     * should be done with {@link Prop#withComments}.
+     * should be done with {@link Prop#with(String)}.
      * @param name of the property
      * @param value of the property
      * @return the created {@link Prop} object or the existing object if this properties file itself already contained a

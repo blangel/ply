@@ -57,6 +57,50 @@ public final class PropFileChain {
                 return PropFile.EmptyIterator;
             }
         };
+
+        /**
+         * An abstract iterator which shares the {@link #hasNext()} logic between the filtered and unfiltered varieties.
+         */
+        private static abstract class ImplIterator implements Iterator<PropFile.Prop> {
+            final Set<PropFile.Prop> encountered = new HashSet<PropFile.Prop>();
+            int index = 0;
+            Iterator<PropFile.Prop> curIter;
+            PropFile.Prop current = PropFile.Prop.Empty;
+            boolean incremented = false;
+            boolean hasNext = true;
+            final List<PropFile> chain;
+            final Impl defaultChain;
+            
+            private ImplIterator(List<PropFile> chain, Impl defaultChain) {
+                this.chain = chain;
+                this.defaultChain = defaultChain;
+            }
+            
+            @Override public boolean hasNext() {
+                if (incremented) {
+                    return hasNext;
+                }
+                incremented = true;
+                if ((curIter == null) || !curIter.hasNext()) {
+                    if (index < 3) {
+                        curIter = chain.get(index++).props().iterator();
+                    } else if (index++ == 3) {
+                        curIter = defaultChain.iterator();
+                    } else {
+                        return (hasNext = false);
+                    }
+                }
+                while ((hasNext = curIter.hasNext()) && !encountered.add(current = curIter.next())) { }
+                if (!hasNext && (index < 4)) {
+                    incremented = false;
+                    return hasNext();
+                }
+                return hasNext;
+            }
+            @Override public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        }
         
         private final List<PropFile> chain;
         
@@ -117,43 +161,13 @@ public final class PropFileChain {
         }
 
         protected Iterator<PropFile.Prop> iterator() {
-            return new Iterator<PropFile.Prop>() {
-                final Set<PropFile.Prop> encountered = new HashSet<PropFile.Prop>();
-                int index = 0;
-                Iterator<PropFile.Prop> curIter;
-                PropFile.Prop current = PropFile.Prop.Empty;
-                boolean incremented = false;
-                boolean hasNext = true;
-                @Override public boolean hasNext() {
-                    if (incremented) {
-                        return hasNext;
-                    }
-                    incremented = true;
-                    if ((curIter == null) || !curIter.hasNext()) {
-                        if (index < 3) {
-                            curIter = chain.get(index++).props().iterator();
-                        } else if (index++ == 3) {
-                            curIter = defaultChain.iterator();
-                        } else {
-                            return (hasNext = false);
-                        }
-                    }
-                    while ((hasNext = curIter.hasNext()) && !encountered.add(current = curIter.next())) { }
-                    if (!hasNext && (index < 4)) {
-                        incremented = false;
-                        return hasNext();
-                    }
-                    return hasNext;
-                }
+            return new ImplIterator(chain, defaultChain) {
                 @Override public PropFile.Prop next() {
                     if (!incremented) {
                         hasNext();
                     }
                     incremented = false;
                     return get(current.name); //ensures filtering happens...
-                }
-                @Override public void remove() {
-                    throw new UnsupportedOperationException();
                 }
             };
         }
@@ -218,6 +232,13 @@ public final class PropFileChain {
      */
     public final Iterable<PropFile.Prop> props() {
         return props;
+    }
+
+    /**
+     * Clears the filtered cache of property values.
+     */
+    final void invalidateFilteredCache() {
+        delegate.filteredCache.clear();
     }
     
 }

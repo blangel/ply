@@ -152,7 +152,7 @@ public final class Props {
 
     /**
      * For use by {@link AdHoc} when alias resolution adds ad-hoc properties for which there never was
-     * a {@link PropFileChain} object created ({@link AdHoc#produceFor(java.util.Map, java.util.Map)} was never
+     * a {@link PropFileChain} object created (i.e., {@link AdHoc#produceFor(java.util.Map, java.util.Map)} was never
      * invoked).
      * @param scope associated with {@code adHocPropFile}
      * @param context associated with {@code adHocPropFile}
@@ -180,6 +180,24 @@ public final class Props {
                 addAdHoc(otherScope, context, adHocPropFile);
             }
         }
+    }
+
+    /**
+     * For each {@link PropFileChain} associated with {@code configDirectory}, clears the filtered cache of property
+     * values.  This is done to force filter of property values when ad-hoc properties are added via alias
+     * resolution.
+     * @param configDirectory for which to clear the filtered cache of all associated {@link PropFileChain} objects.
+     */
+    static void invalidateFilteredCaches(File configDirectory) {
+        Map<Scope, Map<Context, PropFileChain>> loaded = Loader.load(configDirectory);
+        for (Scope scope : loaded.keySet()) {
+            Map<Context, PropFileChain> contexts = loaded.get(scope);
+            for (Context context : contexts.keySet()) {
+                PropFileChain chain = contexts.get(context);
+                chain.invalidateFilteredCache();
+            }
+        }
+        Filter.clearCache();
     }
     
     private Props() { }

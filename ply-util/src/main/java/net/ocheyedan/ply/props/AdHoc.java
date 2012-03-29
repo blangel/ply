@@ -137,7 +137,7 @@ public final class AdHoc {
             }
             propName = prop.substring(index + 1, (index = prop.indexOf("=", index)));
             propValue = prop.substring(index + 1);
-            
+
             Context propContext = Context.named(context);
             Scope propScope = Scope.named(scope);
             Map<Context, PropFile> contexts = adHocProps.get(propScope);

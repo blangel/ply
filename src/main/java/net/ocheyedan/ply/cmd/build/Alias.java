@@ -210,10 +210,6 @@ public final class Alias extends Script {
             last = last.augment(this.arguments.toArray(new String[this.arguments.size()]));
             executions.set(executions.size() - 1, last);
         }
-        // add this alias's ad-hoc properties if any
-        if (!adHocProps.isEmpty()) {
-            AdHoc.add(adHocProps);
-        }
         return executions;
     }
 

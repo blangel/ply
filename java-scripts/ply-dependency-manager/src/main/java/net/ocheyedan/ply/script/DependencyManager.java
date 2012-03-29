@@ -319,10 +319,10 @@ public class DependencyManager {
     private static PropFile getDependencies(Scope scope) {
         // note, for non-default scoped invocations this is redundant as we add a dependency to the
         // default scope itself (which via transitive deps will depend upon all the inherited deps anyway).
-        // TODO - is this wrong? essentially saying transitive deps are first level deps for non-default scopes
+        // TODO - is this wrong? essentially saying transitive deps are first level deps for test scope
         PropFileChain scopedDependencies = Props.get(Context.named("dependencies"));
         PropFile dependencies = new PropFile(Context.named("dependencies"), scope, PropFile.Loc.Local);
-        if (!scope.name.isEmpty()) {
+        if (!scope.name.isEmpty() && "test".equals(scope.name)) {
             // add the project itself as this is not the default scope
             DependencyAtom self = DependencyAtom.parse(Props.get("nonscoped.artifact.name", Context.named("project")).value(), null);
             if (self == null) {

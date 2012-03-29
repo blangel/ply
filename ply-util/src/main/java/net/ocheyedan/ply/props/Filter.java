@@ -149,6 +149,10 @@ public final class Filter {
         return String.format("%s#%s", unfiltered, uniqueIdentifier);
     }
 
+    static void clearCache() {
+        cache.clear();
+    }
+
     private Filter() { }
 
 }
