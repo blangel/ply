@@ -113,3 +113,12 @@ OUTPUT=Downloading update to ply-util to fix key/value parsing with '=' characte
 METHOD=download=https://github.com/blangel/ply/raw/16862f5ecdfcb650a078dfd3a28872cb0ba1e164/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/a9c2caf5573282785d95a759ec4d3192bddfd30c/dist/ply/version to version
 VERSION=1.0_20
+OUTPUT=Downloading update to ply-core/ply-util to make ad-hoc props defined in aliases more widely accessible.
+METHOD=download=https://github.com/blangel/ply/raw/997a1585ae470df4edca09868cc64431e284b87a/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://github.com/blangel/ply/raw/997a1585ae470df4edca09868cc64431e284b87a/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+OUTPUT=Downloading update to ply dependency manager script (to not force self dependency on non-default scopes).
+METHOD=download=https://github.com/blangel/ply/raw/997a1585ae470df4edca09868cc64431e284b87a/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
+OUTPUT=Downloading update to ply package script to correctly copy over everything in the webapp directory (not just WEB-INF).
+METHOD=download=https://github.com/blangel/ply/raw/997a1585ae470df4edca09868cc64431e284b87a/dist/ply/scripts/ply-package-1.0.jar to scripts/ply-package-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/997a1585ae470df4edca09868cc64431e284b87a/dist/ply/version to version
+VERSION=1.0_21
