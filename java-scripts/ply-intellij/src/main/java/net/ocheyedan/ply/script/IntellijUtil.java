@@ -243,7 +243,8 @@ public class IntellijUtil {
         for (File intellijDirectory : intellijDirectories) {
             Output.print("^ply^ [^b^%d^r^] %s", choice++, intellijDirectory.getPath());
         }
-        Output.printNoLine("^ply^ use configuration from %s? ", options);
+        // need to go directly to stdout to avoid Output parsing prior to Exec handling
+        System.out.println(String.format("^no_line^^ply^ use configuration from %s? ", options));
         while (true) {
             try {
                 CharBuffer buffer = CharBuffer.allocate(Integer.valueOf(intellijDirectories.length).toString().length() + 1);
@@ -261,9 +262,9 @@ public class IntellijUtil {
                     if ((index >= 0) && (index < intellijDirectories.length)) {
                         return intellijDirectories[index];
                     }
-                    Output.printNoLine("^ply^ ^red^invalid number^r^; must be between %d and %d, parse configuration %s ", 1, intellijDirectories.length, options);
+                    System.out.println(String.format("^no_line^^ply^ ^red^invalid number^r^; must be between %d and %d, parse configuration %s ", 1, intellijDirectories.length, options));
                 } else if (!"abort".equals(answer)) {
-                    Output.printNoLine("^ply^ ^red^invalid option^r^, parse configuration %s ", options);
+                    System.out.println(String.format("^no_line^^ply^ ^red^invalid option^r^, parse configuration %s ", options));
                 } else {
                     return null;
                 }
