@@ -50,11 +50,18 @@ public class ExecScript {
             execArgs = getExecArgs();
         }
         String java = Props.get("java", Context.named("ply")).value();
-        String[] javaArgs = new String[3 + execArgs.length];
+        String execJvmArgs = "";
+        PropFile.Prop execJvmArgsProp = Props.get("jvm.opts", Context.named("exec"));
+        if (!PropFile.Prop.Empty.equals(execJvmArgsProp)) {
+            execJvmArgs = execJvmArgsProp.value();
+        }
+        String[] jvmArgs = (execJvmArgs.isEmpty() ? new String[0] : execJvmArgs.split(" "));
+        String[] javaArgs = new String[3 + jvmArgs.length + execArgs.length];
         javaArgs[0] = java;
-        javaArgs[1] = "-cp";
-        javaArgs[2] = getClasspath();
-        System.arraycopy(execArgs, 0, javaArgs, 3, execArgs.length);
+        System.arraycopy(jvmArgs, 0, javaArgs, 1, jvmArgs.length);
+        javaArgs[1 + jvmArgs.length] = "-cp";
+        javaArgs[2 + jvmArgs.length] = getClasspath();
+        System.arraycopy(execArgs, 0, javaArgs, 3 + jvmArgs.length, execArgs.length);
         ProcessBuilder processBuilder = new ProcessBuilder(javaArgs).redirectErrorStream(true);
         String outputFilePath = Props.get("output", Context.named("exec")).value();
         PrintStream output;
