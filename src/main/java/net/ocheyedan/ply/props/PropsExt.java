@@ -41,7 +41,8 @@ public final class PropsExt {
         }
         // handle the special submodules.scope
         Prop submodulesScopeProp = Props.get("submodules.scope", Context.named("project"), Props.getScope(), configDirectory);
-        Scope submodulesScope = (submodulesScopeProp == null ? Scope.Default : Scope.named(submodulesScopeProp.value()));
+        // submodulesScopeProp will never be null, will be the empty, default scoped, prop if not found
+        Scope submodulesScope = Scope.named(submodulesScopeProp.value());
         
         Map<Context, PropFileChain> props = Props.get(scope, configDirectory);
         Map<String, String> envProps = new HashMap<String, String>(props.size() * 5); // assume avg of 5 props per context?

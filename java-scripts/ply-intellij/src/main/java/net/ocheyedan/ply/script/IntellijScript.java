@@ -5,6 +5,7 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.PropFileChain;
 import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.props.Scope;
 
 import java.io.File;
 import java.util.List;
@@ -36,6 +37,7 @@ public class IntellijScript {
 
         File owningModuleDir = getOwningModule(projectDir);
         if (owningModuleDir != null) {
+            Output.print("^info^ Updating submodule %s for owning project %s", plyProjectPath, owningModuleDir.getName());
             ProjectUtil.updateProjectForSubmodule(owningModuleDir, projectDir);
         } else {
             ProjectUtil.updateProject(projectDir);
@@ -63,8 +65,15 @@ public class IntellijScript {
             } catch (IndexOutOfBoundsException ioobe) {
                 break; // we hit the root directory...abort
             }
+            Output.print("^dbug^ Checking if %s is a submodule in %s", moduleName, possibleParentConfigDir.getPath());
             if (possibleParentConfigDir.exists()) {
-                PropFileChain parentSubmodules = Props.get(Context.named("submodules"), Props.getScope(), possibleParentConfigDir);
+                // get project.submodules.scope prop from props to see if scope for submodules has changed
+                // note, getting props not from parentConfig as the definition happens via the parent's ad-hoc
+                // prop (i.e., -Pproject.submodules.scope=intellij)
+                Prop submodulesScopeProp = Props.get("submodules.scope", Context.named("project"), Props.getScope());
+                Scope scope = (Prop.Empty.equals(submodulesScopeProp) ? Props.getScope() : Scope.named(submodulesScopeProp.value()));
+                Output.print("^dbug^ Using scope %s to get submodules for %s", scope.name, possibleParentConfigDir.getPath());
+                PropFileChain parentSubmodules = Props.get(Context.named("submodules"), scope, possibleParentConfigDir);
                 for (Prop parentSubmodule : parentSubmodules.props()) {
                     if (parentSubmodule.name.equals(moduleName)) {
                         isSubmodule = true;

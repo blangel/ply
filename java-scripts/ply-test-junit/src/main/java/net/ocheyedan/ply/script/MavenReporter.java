@@ -3,7 +3,6 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.script.print.PrivilegedOutput;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
@@ -112,9 +111,9 @@ public class MavenReporter extends RunListener {
             xmlBuffer.append("\">\n  <properties>\n");
             for (String propertyName : System.getProperties().stringPropertyNames()) {
                 xmlBuffer.append("    <property name=\"");
-                xmlBuffer.append(StringEscapeUtils.escapeXml(propertyName));
+                xmlBuffer.append(XmlEscaper.escapeXml(propertyName));
                 xmlBuffer.append("\" value=\"");
-                xmlBuffer.append(StringEscapeUtils.escapeXml(System.getProperties().getProperty(propertyName)));
+                xmlBuffer.append(XmlEscaper.escapeXml(System.getProperties().getProperty(propertyName)));
                 xmlBuffer.append("\"/>\n");
             }
             xmlBuffer.append("  </properties>");
@@ -205,11 +204,11 @@ public class MavenReporter extends RunListener {
             StringBuilder xmlBuffer = new StringBuilder("<");
             xmlBuffer.append(failureType);
             xmlBuffer.append(" message=\"");
-            xmlBuffer.append(StringEscapeUtils.escapeXml(message));
+            xmlBuffer.append(XmlEscaper.escapeXml(message));
             xmlBuffer.append("\" type=\"");
-            xmlBuffer.append(StringEscapeUtils.escapeXml(exceptionType));
+            xmlBuffer.append(XmlEscaper.escapeXml(exceptionType));
             xmlBuffer.append("\">");
-            xmlBuffer.append(StringEscapeUtils.escapeXml(trace));
+            xmlBuffer.append(XmlEscaper.escapeXml(trace));
             xmlBuffer.append("\n    </");
             xmlBuffer.append(failureType);
             xmlBuffer.append(">");
@@ -224,6 +223,48 @@ public class MavenReporter extends RunListener {
         private static boolean isError(String exceptionType) {
             return exceptionType.startsWith("junit") ? false : true;
         }
+    }
+
+    /**
+     * Code taken from commons-lang:commons-lang:2.6 Entities.XML; done to eliminate dependency when all that was
+     * needed was < 20 lines of code.
+     */
+    private static class XmlEscaper {
+        private static final Map<Character, String> XML_ESCAPES = new HashMap<Character, String>(5, 1.0f);
+        static {
+            XML_ESCAPES.put((char) 34, "quot"); // " - double-quote
+            XML_ESCAPES.put((char) 38, "amp"); // & - ampersand
+            XML_ESCAPES.put((char) 60, "lt"); // < - less-than
+            XML_ESCAPES.put((char) 62, "gt"); // > - greater-than
+            XML_ESCAPES.put((char) 39, "apos"); // XML apostrophe
+        }
+        private static String escapeXml(String str) {
+            if (str == null) {
+                return null;
+            }
+            // make the escaped buffer 10% larger to avoid resizing (which doubles the buffer)
+            StringBuilder buffer = new StringBuilder((int) (str.length() + (str.length() * 0.1)));
+            int len = str.length();
+            for (int i = 0; i < len; i++) {
+                char c = str.charAt(i);
+                String entityName = XML_ESCAPES.get(c);
+                if (entityName == null) {
+                    if (c > 0x7F) {
+                        buffer.append("&#");
+                        buffer.append(Integer.toString(c, 10));
+                        buffer.append(';');
+                    } else {
+                        buffer.append(c);
+                    }
+                } else {
+                    buffer.append('&');
+                    buffer.append(entityName);
+                    buffer.append(';');
+                }
+            }
+            return buffer.toString();
+        }
+
     }
 
     private final Map<String, ReportTestSuite> testSuites = new HashMap<String, ReportTestSuite>();

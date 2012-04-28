@@ -5,12 +5,15 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.script.print.PrivilegedOutput;
+import org.junit.Test;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
 import org.junit.runner.Result;
+import org.junit.runner.Runner;
 import org.junit.runner.manipulation.Filter;
 import org.junit.runner.notification.Failure;
 
+import java.lang.reflect.Method;
 import java.util.*;
 
 import static net.ocheyedan.ply.props.PropFile.Prop;
@@ -39,7 +42,7 @@ public class Junit4Invoker implements Runnable {
     private final String originalMatchers;
 
     public Junit4Invoker(Set<Class> classes, String[] matchers, String unsplitMatchers) {
-        this.classes = classes;
+        this.classes = pruneNonTestAnnotated(classes);
         UnionFilter filter = null;
         if (matchers != null) {
             for (String matcher : matchers) {
@@ -62,7 +65,6 @@ public class Junit4Invoker implements Runnable {
 
         JUnitCore jUnitCore = new JUnitCore();
         jUnitCore.addListener(new Junit4RunListener(padding));
-        // TODO - allow skipping of report generation or always skip and allow override
         jUnitCore.addListener(new MavenReporter());
 
         List<Class> sorted = new ArrayList<Class>(classes);
@@ -71,7 +73,7 @@ public class Junit4Invoker implements Runnable {
         if (filter != null) {
             request = request.filterWith(filter);
         }
-        Result result = jUnitCore.run(request);
+        Result result = jUnitCore.run(request); // TODO - if a test creates a non-daemon thread this runs forever, perhaps halt it
 
         int syntheticCount;
         if ((syntheticCount = countSynthetic(result)) == result.getRunCount()) {
@@ -129,6 +131,24 @@ public class Junit4Invoker implements Runnable {
             }
         }
         return (result.getFailureCount() > 0);
+    }
+
+    private Set<Class> pruneNonTestAnnotated(Set<Class> classes) {
+        Set<Class> pruned = new HashSet<Class>(classes.size());
+        for (Class clazz : classes) {
+            for (Method method : clazz.getMethods()) {
+                // junit 4 or 3 style (strict matching and handling is done by the Junit Request object, this is
+                // just to whittle down the number of classes involved int making the Request as it appears to do
+                // a much worst job than simply looping through the classes and inspecting the methods (it's creating
+                // objects, etc which add time).
+                if (method.isAnnotationPresent(Test.class)
+                        || method.getName().startsWith("test")) {
+                    pruned.add(clazz);
+                    break;
+                }
+            }
+        }
+        return pruned;
     }
 
 }

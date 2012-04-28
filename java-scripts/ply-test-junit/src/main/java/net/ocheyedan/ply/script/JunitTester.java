@@ -84,8 +84,8 @@ public class JunitTester {
             }
         };
         Set<String> classNames = getClasses(artifact, filter);
-
         Set<Class> classes = loadClasses(classNames, loader);
+        Output.print("^dbug^ Loaded %d classes from test artifact.", classNames.size());
 
         String[] matchers = null;
         String unsplitMatchers = null;
