@@ -17,7 +17,7 @@ import java.io.File;
  * An shell execution.  The shell to use is defined by property {@literal scripts-sh.shell} and is invoked with the
  * {@literal scripts-sh.shell.args} options.
  */
-class ShellExecution extends Execution {
+final class ShellExecution extends Execution {
 
     /**
      * Creates a shell execution based on {@code execution}.  The shell to use is defined by property {@literal scripts-sh.shell}

@@ -30,7 +30,7 @@ import java.util.jar.Manifest;
  * {@literal JVM} process while the previous process is executing so as to amortize {@literal JVM} start-up costs
  * when invoking many {@literal JVM} processes.
  */
-class JvmExecution extends Execution {
+final class JvmExecution extends Execution {
 
     /**
      * Translates {@code execution#scriptArgs[0]} into an executable statement for a JVM invoker.

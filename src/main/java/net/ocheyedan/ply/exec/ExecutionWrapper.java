@@ -10,8 +10,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Date: 4/29/12
  * Time: 12:30 PM
  *
- * Wraps {@link Execution} objects for use by {@link Exec}.  This encapsulates things like printing debug output, piping
- * std-out from the child process, etc.
+ * Wraps {@link Execution} objects for use by {@link Exec}.  This encapsulates things like printing debug output, exception
+ * handling, etc.
  */
 final class ExecutionWrapper {
 
