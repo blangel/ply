@@ -141,3 +141,10 @@ OUTPUT=Downloading update to ply intellij script to fix scope issue when using p
 METHOD=download=https://github.com/blangel/ply/raw/863d7e60a7f5846bc989674e686060c0621179dc/dist/ply/scripts/ply-intellij-1.0.jar to scripts/ply-intellij-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/863d7e60a7f5846bc989674e686060c0621179dc/dist/ply/version to version
 VERSION=1.0_24
+OUTPUT=Downloading update to ply-core to allow for queueing of JVM processes.
+METHOD=download=https://github.com/blangel/ply/raw/69b0a3723395530fe821a9b2eccf226a8a10b3cb/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+OUTPUT=Downloading new jvm-primer lib to faciliate JVM process queueing.
+METHOD=download=https://github.com/blangel/ply/raw/69b0a3723395530fe821a9b2eccf226a8a10b3cb/dist/ply/lib/ply-jvm-primer-1.0.jar to lib/ply-jvm-primer-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/69b0a3723395530fe821a9b2eccf226a8a10b3cb/dist/ply/config/scripts-jar.properties to config/scripts-jar.properties
+METHOD=download=https://raw.github.com/blangel/ply/69b0a3723395530fe821a9b2eccf226a8a10b3cb/dist/ply/version to version
+VERSION=1.0_25
