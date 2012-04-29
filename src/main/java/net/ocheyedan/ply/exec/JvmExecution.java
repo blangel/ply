@@ -2,6 +2,7 @@ package net.ocheyedan.ply.exec;
 
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.SystemExit;
+import net.ocheyedan.ply.cmd.build.Script;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.props.*;
@@ -10,20 +11,26 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-import static net.ocheyedan.ply.props.PropFile.Prop;
-
 /**
  * User: blangel
- * Date: 10/2/11
- * Time: 7:29 PM
+ * Date: 4/28/12
+ * Time: 12:51 PM
+ *
+ * An execution of a {@literal JVM} process.
+ *
+ * Note, this {@link Execution} extends {@link #preInvoke(java.io.File, java.util.Map)} and {@link #invoke(String)}
+ * to 'warm-up' the {@literal JVM} by wrapping the main-class with {@literal JvmPrimer}.  The idea is to start the
+ * {@literal JVM} process while the previous process is executing so as to amortize {@literal JVM} start-up costs
+ * when invoking many {@literal JVM} processes.
  */
-public final class JarExec {
+class JvmExecution extends Execution {
 
     /**
      * Translates {@code execution#scriptArgs[0]} into an executable statement for a JVM invoker.
@@ -33,11 +40,12 @@ public final class JarExec {
      * @param configDirectory the ply configuration directory from which to resolve properties
      * @return the translated execution
      */
-    static Execution createJarExecutable(Execution execution, File configDirectory) {
+    static JvmExecution createJarExecutable(Execution execution, File configDirectory) {
         String classpath = null;
         AtomicReference<String> mainClass = new AtomicReference<String>();
         AtomicBoolean staticClasspath = new AtomicBoolean(false);
-        String[] options = getJarScriptOptions(configDirectory, execution, staticClasspath);
+        AtomicBoolean containsJvmPrimer = new AtomicBoolean(false);
+        String[] options = getJarScriptOptions(configDirectory, execution, staticClasspath, containsJvmPrimer);
         if (!staticClasspath.get()) {
             classpath = getClasspathEntries(execution.executionArgs[0], execution.script.scope, mainClass, configDirectory);
         }
@@ -65,7 +73,36 @@ public final class JarExec {
         }
         System.arraycopy(execution.executionArgs, 1, newCmdArray, options.length + classpathLength + propertyLength + 1,
                 execution.executionArgs.length - 1);
-        return execution.with(newCmdArray);
+        return new JvmExecution(execution.name, execution.script, newCmdArray, containsJvmPrimer.get());
+    }
+
+    /**
+     * Translates {@code execution#scriptArgs[0]} into an executable statement for a JVM invocation with
+     * the {@literal scripts-clj.clojure.home} jar being the driver of the clj script.
+     * The whole command array needs to be processed as parameters to the JVM need to be inserted
+     * into the command array.
+     * @param execution to invoke
+     * @param configDirectory the ply configuration directory from which to resolve properties
+     * @return the translated execution
+     */
+    static JvmExecution createClojureExecutable(Execution execution, File configDirectory) {
+        String clojureJar = Props.get("clojure.home", Context.named("scripts-clj"), execution.script.scope,
+                configDirectory).value();
+        if (clojureJar.isEmpty()) {
+            Output.print("^error^ Cannot execute clojure script ^b^%s^r^ as the ^b^clojure.home^r^ property was not set within the ^b^scripts-clj^r^ context.", execution.executionArgs[0]);
+            throw new SystemExit(1);
+        }
+        JvmExecution jarExec = createJarExecutable(execution.with(clojureJar), configDirectory);
+        // now augment the jar exec with the 'clojure.main' and the script passed in
+        String[] args = jarExec.executionArgs;
+        String[] clojureArgs = new String[args.length + 2];
+        System.arraycopy(args, 0, clojureArgs, 0, args.length);
+        if (clojureArgs[args.length - 2].equals("-jar")) {
+            clojureArgs[args.length - 2] = "-cp"; // replace the -jar with -cp
+        }
+        clojureArgs[args.length] = "clojure.main";
+        clojureArgs[args.length + 1] = execution.executionArgs[0];
+        return new JvmExecution(jarExec.name, jarExec.script, clojureArgs, false);
     }
 
     /**
@@ -126,7 +163,7 @@ public final class JarExec {
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
         PropFileChain repositoryProps = Props.get(Context.named("repositories"), scope, configDirectory);
-        for (Prop repositoryProp : repositoryProps.props()) {
+        for (PropFile.Prop repositoryProp : repositoryProps.props()) {
             if (localRepo.getPropertyName().equals(repositoryProp.name)) {
                 continue;
             }
@@ -149,9 +186,12 @@ public final class JarExec {
      * @param execution for which to retrieve options
      * @param staticClasspath will be set by this method to true iff the resolved options contains a
      *        {@literal -classpath} or {@literal -cp} {@literal -Xbootclasspath} value.
+     * @param containsJvmPrimer will be set by this method to true iff the resolved options contains a reference
+     *                          to the {@literal JvmPrimer} main class.
      * @return the split jvm options for {@code script}
      */
-    private static String[] getJarScriptOptions(File configDirectory, Execution execution, AtomicBoolean staticClasspath) {
+    private static String[] getJarScriptOptions(File configDirectory, Execution execution, AtomicBoolean staticClasspath,
+                                                AtomicBoolean containsJvmPrimer) {
         String executable = execution.executionArgs[0];
         // strip the resolved path (just use the jar name)
         int index = executable.lastIndexOf(File.separator);
@@ -165,9 +205,55 @@ public final class JarExec {
         if (options.contains("-cp") || options.contains("-classpath") || options.contains("-Xbootclasspath")) {
             staticClasspath.set(true);
         }
+        if (options.contains("net.ocheyedan.ply.JvmPrimer")) {
+            containsJvmPrimer.set(true);
+        }
         return options.split(" ");
     }
 
-    private JarExec() { }
+    /**
+     * True to indicate that {@link #createJarExecutable(Execution, java.io.File)} was able to wrap the
+     * main class with {@literal JvmPrimer}, false otherwise.
+     */
+    private final boolean usingJvmPrimer;
+
+    JvmExecution(String name, Script script, String[] executionArgs, boolean usingJvmPrimer) {
+        super(name, script, executionArgs);
+        this.usingJvmPrimer = usingJvmPrimer;
+    }
+
+    /**
+     * Override to start the {@literal JVM} process, pausing it until the {@link #invoke(String)} is called.
+     * Note this overridden behavior only happens if {@link #usingJvmPrimer} is true.
+     * @param projectRoot for which to set the root directory for the invoked process
+     * @param supplementalEnvironment environment variables to pass to the invoked process
+     */
+    @Override void preInvoke(File projectRoot, Map<String, String> supplementalEnvironment) {
+        super.preInvoke(projectRoot, supplementalEnvironment);
+        if (!usingJvmPrimer) {
+            return;
+        }
+        try {
+            Process process = processBuilder.get().start();
+            this.process.set(process);
+        } catch (IOException ioe) {
+            this.process.set(null); // null out, reverting to standard execution
+        }
+    }
+
+    @Override void invoke(String scriptName) throws IOException {
+        if (!usingJvmPrimer || (this.process.get() == null)) {
+            super.invoke(scriptName); // either an error happened on preInvoke or !usingJvmPrimer, attempt as normal
+        } else {
+            Output.print("^dbug^ invoking %s", scriptName);
+            // send the control character to the JVM
+            process.get().getOutputStream().write(0xb);
+            process.get().getOutputStream().flush();
+            // take the parent's input and pipe to the child's output
+            STDIN_PROCESS_PIPE.get().startPipe(process.get().getOutputStream());
+            // capture the child's input for output on parent process
+            this.processStdout.set(new BufferedReader(new InputStreamReader(process.get().getInputStream())));
+        }
+    }
 
 }

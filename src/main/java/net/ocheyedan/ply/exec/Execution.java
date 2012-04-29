@@ -1,19 +1,37 @@
 package net.ocheyedan.ply.exec;
 
+import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.OutputExt;
 import net.ocheyedan.ply.cmd.build.Script;
+import net.ocheyedan.ply.props.PropsExt;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * User: blangel
  * Date: 11/13/11
  * Time: 2:02 PM
  *
- * Represents a concrete execution.  Unlike, {@link net.ocheyedan.ply.cmd.build.Script}, this class represents something which can be executed
- * via a {@link Process}.  To make a {@link net.ocheyedan.ply.cmd.build.Script} executable it is necessary to resolve its invoking mechanism;
- * say direct, via a JVM, etc.
+ * Represents a concrete execution.  Unlike, {@link net.ocheyedan.ply.cmd.build.Script}, this class represents something
+ * which can be executed via a {@link Process}.  To make a {@link net.ocheyedan.ply.cmd.build.Script} executable it is
+ * necessary to resolve its invoking mechanism; say direct, via a JVM, etc.
  */
-public final class Execution {
+public class Execution {
+
+    /**
+     * A thread-safe pipe to be used as the {@literal stdin} for the {@link Process} created to invoke this execution.
+     */
+    protected static final ThreadLocal<StdinProcessPipe> STDIN_PROCESS_PIPE = new ThreadLocal<StdinProcessPipe>() {
+        @Override protected StdinProcessPipe initialValue() {
+            return new StdinProcessPipe();
+        }
+    };
 
     /**
      * A name to use when identifying this exeuction.
@@ -32,10 +50,30 @@ public final class Execution {
      */
     public final String[] executionArgs;
 
+    /**
+     * The {@link ProcessBuilder} which will ultimately creates the {@link Process}.
+     * This is typically built within {@link #preInvoke(java.io.File, java.util.Map)}
+     */
+    protected final AtomicReference<ProcessBuilder> processBuilder;
+
+    /**
+     * The associated {@link Process} object's stdout.
+     */
+    protected final AtomicReference<BufferedReader> processStdout;
+
+    /**
+     * The actual {@link Process} created when invoking this execution.  By default, this is set when {@link #invoke(String)}
+     * is executed.
+     */
+    protected final AtomicReference<Process> process;
+
     public Execution(String name, Script script, String[] executionArgs) {
         this.name = name;
         this.script = script;
         this.executionArgs = executionArgs;
+        this.processBuilder = new AtomicReference<ProcessBuilder>();
+        this.processStdout = new AtomicReference<BufferedReader>();
+        this.process = new AtomicReference<Process>();
     }
 
     public Execution augment(String[] with) {
@@ -52,12 +90,64 @@ public final class Execution {
         return new Execution(name, this.script, args);
     }
 
-    public Execution with(String[] args) {
-        return new Execution(name, this.script, args);
+    /**
+     * Allows executions the ability to startup and then pause. If an implementation allows for this then they will pause
+     * after starting up and then wait until {@link #invoke(String)} is called.
+     * This functionality is useful for slow-starting executions like {@link JvmExecution} where the time to start
+     * a {@literal JVM} is long and so this 'start-up' time can be threaded by {@link Exec} to allow for faster
+     * execution without sacrificing process isolation (i.e., running the {@literal JVM} scripts in the same
+     * process).
+     *
+     * @param projectRoot for which to set the root directory for the invoked process
+     * @param supplementalEnvironment environment variables to pass to the invoked process
+     */
+    void preInvoke(File projectRoot, Map<String, String> supplementalEnvironment) {
+        ProcessBuilder processBuilder = new ProcessBuilder(executionArgs).redirectErrorStream(true).directory(projectRoot);
+        Map<String, String> environment = processBuilder.environment();
+        environment.putAll(supplementalEnvironment);
+        this.processBuilder.set(processBuilder);
     }
 
-    public Execution with(String executionName, String[] args) {
-        return new Execution(executionName, this.script, args);
+    /**
+     * Invokes the execution. Or in the case of execution implementations which implement
+     * {@link #preInvoke(java.io.File, java.util.Map)}, starts the process.
+     * @param scriptName the name of the execution
+     */
+    void invoke(String scriptName) throws IOException {
+        Output.print("^dbug^ invoking %s", scriptName);
+        // the Process thread reaps the child if the parent (this) is terminated
+        final Process process = processBuilder.get().start();
+        this.process.set(process);
+
+        // take the parent's input and pipe to the child's output
+        STDIN_PROCESS_PIPE.get().startPipe(process.getOutputStream());
+        // capture the child's input for output on parent process
+        this.processStdout.set(new BufferedReader(new InputStreamReader(process.getInputStream())));
+    }
+
+    /**
+     * Waits for the execution to complete.
+     * @return the process exit code
+     * @see Process#waitFor()
+     */
+    int waitFor(String outputScriptName) throws IOException, InterruptedException {
+        // take the child's input and reformat for output on parent process
+        String processStdoutLine;
+        while ((processStdoutLine = processStdout.get().readLine()) != null) {
+            OutputExt.printFromExec("[^green^%s^r^] %s", outputScriptName, processStdoutLine);
+        }
+        int result = process.get().waitFor();
+        STDIN_PROCESS_PIPE.get().pausePipe();
+        return result;
+    }
+
+    /**
+     * Kills the associated {@link Process} if any.
+     */
+    void kill() {
+        if (process.get() != null) {
+            process.get().destroy();
+        }
     }
 
     @Override public boolean equals(Object o) {

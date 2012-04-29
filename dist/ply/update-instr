@@ -136,6 +136,7 @@ OUTPUT=Downloading update to ply-core to cleanup null handling with export of pr
 METHOD=download=https://github.com/blangel/ply/raw/863d7e60a7f5846bc989674e686060c0621179dc/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
 OUTPUT=Downloading update to ply junit-test script to prune out non-Test classes before giving to Request.
 METHOD=download=https://github.com/blangel/ply/raw/863d7e60a7f5846bc989674e686060c0621179dc/dist/ply/scripts/ply-test-junit-1.0.jar to scripts/ply-test-junit-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/863d7e60a7f5846bc989674e686060c0621179dc/dist/ply/config/scripts-jar.properties to config/scripts-jar.properties
 OUTPUT=Downloading update to ply intellij script to fix scope issue when using project.submodules.intellij
 METHOD=download=https://github.com/blangel/ply/raw/863d7e60a7f5846bc989674e686060c0621179dc/dist/ply/scripts/ply-intellij-1.0.jar to scripts/ply-intellij-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/863d7e60a7f5846bc989674e686060c0621179dc/dist/ply/version to version

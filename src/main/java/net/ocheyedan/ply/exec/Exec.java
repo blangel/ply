@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * User: blangel
@@ -21,8 +22,6 @@ import java.util.Map;
  * Invokes {@link Execution} objects.
  */
 public final class Exec {
-
-    private final static StdinProcessPipe STDIN_PROCESS_PIPE = new StdinProcessPipe();
 
     /**
      * Invokes all {@code executions}.
@@ -35,89 +34,50 @@ public final class Exec {
         // this provides a consistent view of execution for all scripts.  if a script wants to actually know
         // which directory from which the 'ply' command was invoked, look at 'original.user.dir' environment property.
         File projectRoot = FileUtil.fromParts(projectPlyDir.getPath(), "..");
+        // track the running and queued callbacks
+        ExecutionWrapper running = null;
+        ExecutionWrapper queued = null;
         for (Execution execution : executions) {
-            if (!invoke(execution, projectRoot)) {
+            // wait for the running task, if any
+            if (!waitFor(running, queued)) {
                 return false;
             }
+            // the running task has now completed, invoke the queued task
+            running = invoke(queued);
+            // create a new queued task
+            queued = preInvoke(execution, projectRoot);
         }
-        return true;
+        // finish up the running/queued processes
+        if (!waitFor(running, queued)) {
+            return false;
+        }
+        running = invoke(queued);
+        return waitFor(running, null);
     }
 
-    /**
-     * Invokes {@code execution} and routes all output to this process's output stream.
-     * @param execution to invoke
-     * @param projectRoot for which to set the root directory for the process handling the {@code execution}
-     * @return false if the invocation of {@code execution} failed for any reason.
-     */
-    private static boolean invoke(Execution execution, File projectRoot) {
+    private static ExecutionWrapper preInvoke(Execution execution, File projectRoot) {
         File projectConfigDir = FileUtil.fromParts(projectRoot.getPath(), ".ply", "config");
         execution = handleNonNativeExecutable(execution, projectConfigDir);
-        String script = Output.isDebug() ? buildScriptName(execution.executionArgs) : "";
-        try {
-            long start = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
+        execution.preInvoke(projectRoot, PropsExt.getPropsForEnv(projectConfigDir, execution.script.scope));
+        return new ExecutionWrapper(execution, start);
+    }
 
-            ProcessBuilder processBuilder = new ProcessBuilder(execution.executionArgs).redirectErrorStream(true).directory(projectRoot);
+    private static ExecutionWrapper invoke(ExecutionWrapper queued) {
+        if (queued != null) {
+            queued.invoke();
+        }
+        return queued;
+    }
 
-            Map<String, String> environment = processBuilder.environment();
-            environment.putAll(PropsExt.getPropsForEnv(projectConfigDir, execution.script.scope));
-
-            String outputScriptName = buildExecutionName(execution);
-            Output.print("^dbug^ invoking %s", script);
-
-            // the Process thread reaps the child if the parent (this) is terminated
-            final Process process = processBuilder.start();
-            // take the parent's input and pipe to the child's output
-            STDIN_PROCESS_PIPE.startPipe(process.getOutputStream());
-            // take the child's input and reformat for output on parent process
-            BufferedReader processStdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String processStdoutLine;
-            while ((processStdoutLine = processStdout.readLine()) != null) {
-                OutputExt.printFromExec("[^green^%s^r^] %s", outputScriptName, processStdoutLine);
+    private static boolean waitFor(ExecutionWrapper running, ExecutionWrapper queued) {
+        if (!((running == null) || running.waitFor())) {
+            if (queued != null) {
+                queued.execution.kill();
             }
-            int result = process.waitFor();
-            STDIN_PROCESS_PIPE.pausePipe();
-
-            printTime(start, outputScriptName);
-
-            if (result == 0) {
-                return true;
-            }
-            Output.print("^error^ script ^green^%s^r^ failed [ exit code = %d ].", execution.script.unparsedName, result);
-        } catch (IOException ioe) {
-            Output.print("^error^ executing script ^green^%s^r^", execution.script.unparsedName);
-            Output.print(ioe);
-        } catch (InterruptedException ie) {
-            Output.print(ie);
+            return false;
         }
-        return false;
-    }
-
-    private static float printTime(long start, String script) {
-        long end = System.currentTimeMillis();
-        float seconds = ((end - start) / 1000.0f);
-        Output.print("^dbug^ executed ^b^%s^r^ in ^b^%.3f seconds^r^.", script, seconds);
-        return seconds;
-    }
-
-    private static String buildExecutionName(Execution execution) {
-        String name = execution.name;
-        String scope = execution.script.scope.getScriptPrefix();
-        // only prefix with scope if the execution name isn't the same as the scope
-        if (!name.equals(execution.script.scope.name)) {
-            return scope + name;
-        } else {
-            return name;
-        }
-    }
-
-    private static String buildScriptName(String[] cmdArgs) {
-        StringBuilder buffer = new StringBuilder();
-        for (String cmdArg : cmdArgs) {
-            buffer.append(cmdArg);
-            buffer.append(" ");
-        }
-        buffer.replace(buffer.length() - 1, buffer.length(), "");
-        return buffer.toString();
+        return true;
     }
 
     /**
@@ -131,11 +91,11 @@ public final class Exec {
     private static Execution handleNonNativeExecutable(Execution execution, File configDirectory) {
         String executable = execution.executionArgs[0];
         if ((execution.script instanceof ShellScript) || executable.endsWith(".sh")) {
-            return ShellExec.createShellExecutable(execution, configDirectory);
+            return ShellExecution.createShellExecutable(execution, configDirectory);
         } else if (executable.endsWith(".jar")) {
-            return JarExec.createJarExecutable(execution, configDirectory);
+            return JvmExecution.createJarExecutable(execution, configDirectory);
         } else if (executable.endsWith(".clj")) {
-            return ClojureExec.createClojureExecutable(execution, configDirectory);
+            return JvmExecution.createClojureExecutable(execution, configDirectory);
         }
         return execution;
     }

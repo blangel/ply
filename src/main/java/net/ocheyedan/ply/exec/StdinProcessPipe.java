@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * This class can be instantiated once for all executions.  Multiple calls to {@link #start()} have no negative
  * effect; the first call actually starts and all subsequent calls are no-ops.
  */
-public final class StdinProcessPipe extends Thread {
+final class StdinProcessPipe extends Thread {
 
     static final class Runner implements Runnable {
 
