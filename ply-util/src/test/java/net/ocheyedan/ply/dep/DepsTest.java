@@ -33,7 +33,7 @@ public class DepsTest {
             plyUtilPath = plyUtilPath.replace(".ply", FileUtil.pathFromParts("ply-util", ".ply"));
         }
         String repoPath = FileUtil.pathFromParts(plyUtilPath, "src", "test", "resources", "mock-mvn-repo");
-        RepositoryAtom mockRepo = new RepositoryAtom(new URI("file://" + repoPath), RepositoryAtom.Type.maven);
+        RepositoryAtom mockRepo = new RepositoryAtom(repoPath, new URI("file://" + repoPath), RepositoryAtom.Type.maven);
 
         MavenPom pom = parser.parsePom("file://" + repoPath + "/net/sf/ehcache/ehcache-core/2.2.0/ehcache-core-2.2.0.pom", mockRepo);
         List<DependencyAtom> deps = Deps.parse(pom.dependencies);

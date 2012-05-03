@@ -226,7 +226,7 @@ public class DependencyManager {
                     repositories.get(atom.getPropertyName()).value(), atom.getPropertyValue());
             repositories.remove(atom.getPropertyName());
         }
-        repositories.add(atom.getPropertyName(), atom.getPropertyValue());
+        repositories.add(atom.getPreResolvedUri(), atom.getPropertyValue());
         storeRepositoriesFile(repositories, scope);
         Output.print("Added repository %s%s", atom.toString(), !Scope.Default.equals(scope) ?
                 String.format(" (in scope %s)", scope.getPrettyPrint()) : "");

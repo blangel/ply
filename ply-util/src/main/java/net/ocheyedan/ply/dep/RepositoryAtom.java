@@ -44,19 +44,25 @@ public class RepositoryAtom {
 
     public static final String PLY_REPO_TYPE_PREFIX = "ply:";
 
+    public final String preResolvedUri;
+
     public final URI repositoryUri;
 
     public final Type type;
 
-    public RepositoryAtom(URI repositoryUri, Type type) {
+    public RepositoryAtom(String preResolvedUri, URI repositoryUri, Type type) {
+        this.preResolvedUri = preResolvedUri;
         this.repositoryUri = repositoryUri;
         this.type = type;
     }
-    public RepositoryAtom(URI repositoryUri) {
-        this(repositoryUri, null);
+    public RepositoryAtom(String preResolvedUri, URI repositoryUri) {
+        this(preResolvedUri, repositoryUri, null);
     }
     public String getPropertyName() {
         return repositoryUri.toString();
+    }
+    public String getPreResolvedUri() {
+        return preResolvedUri;
     }
     public String getPropertyValue() {
         return (type == null ? "" : type.name());
@@ -72,6 +78,28 @@ public class RepositoryAtom {
     }
     @Override public String toString() {
         return getResolvedPropertyValue() + ":" + getPropertyName();
+    }
+
+    @Override public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        RepositoryAtom that = (RepositoryAtom) o;
+
+        if (repositoryUri != null ? !repositoryUri.equals(that.repositoryUri) : that.repositoryUri != null) {
+            return false;
+        }
+        return (type == null ? that.type == null : type.equals(that.type));
+    }
+
+    @Override public int hashCode() {
+        int result = repositoryUri != null ? repositoryUri.hashCode() : 0;
+        result = 31 * result + (type != null ? type.hashCode() : 0);
+        return result;
     }
 
     public static String atomFromProp(Prop repositoryProp) {
@@ -93,6 +121,7 @@ public class RepositoryAtom {
         } else {
             type = Type.ply;
         }
+        String preResolved = atom;
         atom = FileUtil.resolveUnixTilde(atom);
         URI repositoryUri;
         // first check if this is a local file reference
@@ -112,6 +141,6 @@ public class RepositoryAtom {
             // invalid, return null
             return null;
         }
-        return new RepositoryAtom(repositoryUri, type);
+        return new RepositoryAtom(preResolved, repositoryUri, type);
     }
 }
