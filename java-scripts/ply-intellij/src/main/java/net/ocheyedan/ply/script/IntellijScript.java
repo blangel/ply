@@ -2,13 +2,13 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.PropFileChain;
 import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
 import java.io.File;
-import java.util.List;
 
 import static net.ocheyedan.ply.props.PropFile.Prop;
 
@@ -67,11 +67,7 @@ public class IntellijScript {
             }
             Output.print("^dbug^ Checking if %s is a submodule in %s", moduleName, possibleParentConfigDir.getPath());
             if (possibleParentConfigDir.exists()) {
-                // get project.submodules.scope prop from props to see if scope for submodules has changed
-                // note, getting props not from parentConfig as the definition happens via the parent's ad-hoc
-                // prop (i.e., -Pproject.submodules.scope=intellij)
-                Prop submodulesScopeProp = Props.get("submodules.scope", Context.named("project"), Props.getScope());
-                Scope scope = (Prop.Empty.equals(submodulesScopeProp) ? Props.getScope() : Scope.named(submodulesScopeProp.value()));
+                Scope scope = IntellijUtil.getSubmodulesScope();
                 Output.print("^dbug^ Using scope %s to get submodules for %s", scope.name, possibleParentConfigDir.getPath());
                 PropFileChain parentSubmodules = Props.get(Context.named("submodules"), scope, possibleParentConfigDir);
                 for (Prop parentSubmodule : parentSubmodules.props()) {

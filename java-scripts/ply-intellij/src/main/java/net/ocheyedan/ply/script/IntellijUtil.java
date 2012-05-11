@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static net.ocheyedan.ply.props.PropFile.Prop;
 
@@ -42,7 +41,8 @@ public class IntellijUtil {
      * @return the {@literal submodules} context values or an empty list.
      */
     public static List<String> getModules() {
-        return getModules(Props.get(Context.named("submodules")), Props.get("name", Context.named("project")).value());
+        Scope scope = getSubmodulesScope();
+        return getModules(Props.get(Context.named("submodules"), scope), Props.get("name", Context.named("project")).value());
     }
 
     /**
@@ -52,7 +52,7 @@ public class IntellijUtil {
      */
     public static List<String> getModules(File projectConfigDir) {
         String projectName = Props.get("name", Context.named("project"), Props.getScope(), projectConfigDir).value();
-        return getModules(Props.get(Context.named("submodules"), Props.getScope(), projectConfigDir), projectName);
+        return getModules(Props.get(Context.named("submodules"), getSubmodulesScope(), projectConfigDir), projectName);
     }
     
     private static List<String> getModules(PropFileChain submodules, String projectName) {
@@ -489,6 +489,14 @@ public class IntellijUtil {
             version = version.substring(0, 3);
         }
         return version;
+    }
+
+    public static Scope getSubmodulesScope() {
+        // get project.submodules.scope prop from props to see if scope for submodules has changed
+        // note, getting props not from parentConfig as the definition happens via the parent's ad-hoc
+        // prop (i.e., -Pproject.submodules.scope=intellij)
+        Prop submodulesScopeProp = Props.get("submodules.scope", Context.named("project"), Props.getScope());
+        return (Prop.Empty.equals(submodulesScopeProp) ? Props.getScope() : Scope.named(submodulesScopeProp.value()));
     }
 
 }
