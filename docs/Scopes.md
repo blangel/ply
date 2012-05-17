@@ -25,7 +25,12 @@ This same notion of scopes (which is used for test execution as well as scoping 
 
 One could scope the urls and then run `install` with the proper scope depending upon the environment.  For instance;
 
-    $ ply set domain=localhost in urls; ply config dev:set domain=dev.com in urls; ply beta:set domain=beta.com in urls
+    $ echo "Setting domain=localhost in default scope."
+    $ ply set domain=localhost in urls
+    $ echo "Setting domain=dev.com in 'dev' scope."
+    $ ply dev:set domain=dev.com in urls
+    $ echo "Setting domain=beta.com in 'beta' scope."
+    $ ply beta:set domain=beta.com in urls
 
 Now to run a build for the dev environment:
 
