@@ -62,6 +62,34 @@ public final class Deps {
     }
 
     /**
+     * Encapsulates state needed to fill a dependency graph.
+     */
+    private static class FillGraphState {
+
+        /**
+         * A mapping from {@link DependencyAtom} to {@link Dep} of already resolved dependencies within the graph
+         */
+        Map<DependencyAtom, Dep> resolved;
+
+        /**
+         * A mapping from {@link String} to {@link Dep} of already resolved dependencies where the key represents
+         * the un-versioned dependency (to warn about conflicting versions within the graph).
+         */
+        Map<String, Dep> unversionedResolved;
+
+        /**
+         * Set of {@literal namespace:name} strings for which a conflicting version warning has already been printed.
+         */
+        Set<String> unversionedResolvedAlreadyWarned;
+
+        private FillGraphState() {
+            this.resolved = new HashMap<DependencyAtom, Dep>();
+            this.unversionedResolved = new HashMap<String, Dep>();
+            this.unversionedResolvedAlreadyWarned = new HashSet<String>();
+        }
+    }
+
+    /**
      * @param dependencyAtoms the direct dependencies from which to create a dependency graph
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @return a DAG {@link Graph<Dep>} implementation representing the resolved {@code dependencyAtoms} and its tree of
@@ -83,8 +111,7 @@ public final class Deps {
                                                                RepositoryRegistry repositoryRegistry,
                                                                boolean failMissingDependency) {
         DirectedAcyclicGraph<Dep> dependencyDAG = new DirectedAcyclicGraph<Dep>();
-        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG,
-                            new HashMap<DependencyAtom, Dep>(dependencyAtoms.size()), false, failMissingDependency);
+        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG, new FillGraphState(), false, failMissingDependency);
         return dependencyDAG;
     }
 
@@ -103,7 +130,7 @@ public final class Deps {
      * @param dependencyAtoms the dependencies which to resolve and place into {@code graph}
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @param graph to fill with the resolved {@link Dep} objects of {@code dependencyAtoms}.
-     * @param resolved a mapping from {@link DependencyAtom} to {@link Dep} of already resolved dependencies within the graph
+     * @param state the {@link FillGraphState} used to track previously resolved dependencies, etc.
      * @param pomSufficient if true, then only the pom from a maven repository is necessary to have successfully
      *                      resolved the {@code dependencyAtom}.
      * @param failMissingDependency if true indicates that missing dependencies are treated as failures; false, to
@@ -111,8 +138,7 @@ public final class Deps {
      */
     private static void fillDependencyGraph(Vertex<Dep> parentVertex, List<DependencyAtom> dependencyAtoms,
                                             RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph,
-                                            Map<DependencyAtom, Dep> resolved, boolean pomSufficient,
-                                            boolean failMissingDependency) {
+                                            FillGraphState state, boolean pomSufficient, boolean failMissingDependency) {
         if (repositoryRegistry.isEmpty()) {
             Output.print("^error^ No repositories found, cannot resolve dependencies.");
             SystemExit.exit(1);
@@ -124,12 +150,13 @@ public final class Deps {
             // pom is sufficient for resolution if this is a transient dependency
             Dep resolvedDep;
             try {
-                if (resolved.containsKey(dependencyAtom)) {
-                    resolvedDep = resolved.get(dependencyAtom);
+                if (state.resolved.containsKey(dependencyAtom)) {
+                    resolvedDep = state.resolved.get(dependencyAtom);
                 } else {
                     resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep),
                                                 failMissingDependency);
-                    resolved.put(dependencyAtom, resolvedDep);
+                    state.resolved.put(dependencyAtom, resolvedDep);
+                    state.unversionedResolved.put(resolvedDep.toString(), resolvedDep);
                 }
                 if ((resolvedDep == null) && !failMissingDependency) {
                     if (Output.isInfo()) {
@@ -161,11 +188,30 @@ public final class Deps {
                     SystemExit.exit(1);
                 }
             }
+            Dep diffVersionDep = state.unversionedResolved.get(resolvedDep.toString());
+            if (state.unversionedResolved.containsKey(resolvedDep.toString())
+                    && !resolvedDep.toVersionString().equals(diffVersionDep.toVersionString())
+                    && !state.unversionedResolvedAlreadyWarned.contains(resolvedDep.toString())) {
+                warnAboutMultipleVersions(diffVersionDep, resolvedDep, parentVertex, dependencyAtom, graph);
+                state.unversionedResolvedAlreadyWarned.add(resolvedDep.toString());
+            } else {
+                state.unversionedResolved.put(resolvedDep.toString(), resolvedDep);
+            }
             if (!dependencyAtom.transientDep) { // direct transient dependencies are not recurred upon
-                fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, resolved,
-                                    true, failMissingDependency);
+                fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, state, true, failMissingDependency);
             }
         }
+    }
+
+    private static void warnAboutMultipleVersions(Dep diffVersionDep, Dep resolvedDep, Vertex<Dep> parentVertex,
+                                                  DependencyAtom dependencyAtom, Graph<Dep> graph) {
+        Vertex<Dep> diffVersionParent = graph.getVertex(diffVersionDep).getAnyParent();
+        String diffVersionPath = getPathAsString(diffVersionParent, diffVersionDep.dependencyAtom);
+        String path = getPathAsString(parentVertex, dependencyAtom);
+        Output.print("^warn^ Dependency graph contains conflicting versions for ^b^%s^r^ [ ^yellow^%s^r^ ] and [ ^yellow^%s^r^ ].",
+                resolvedDep.toString(), diffVersionDep.dependencyAtom.getPropertyValue(), resolvedDep.dependencyAtom.getPropertyValue());
+        Output.print("^warn^   ^b^%s^r^ => %s", diffVersionDep.dependencyAtom.getPropertyValue(), (diffVersionPath == null ? "<direct dependency>" : diffVersionPath));
+        Output.print("^warn^   ^b^%s^r^ => %s", resolvedDep.dependencyAtom.getPropertyValue(), (path == null ? "<direct dependency>" : path));
     }
 
     /**
@@ -370,16 +416,32 @@ public final class Deps {
         AtomicReference<String> error = new AtomicReference<String>();
         for (Prop dependency : dependencies.props()) {
             error.set(null);
-            String dependencyValue = dependency.value();
-            DependencyAtom dependencyAtom = DependencyAtom.parse(dependency.name + ":" + dependencyValue, error);
+            DependencyAtom dependencyAtom = parse(dependency);
             if (dependencyAtom == null) {
-                Output.print("^warn^ Invalid dependency %s:%s; %s", dependency.name, dependencyValue,
-                        error.get());
                 continue;
             }
             dependencyAtoms.add(dependencyAtom);
         }
         return dependencyAtoms;
+    }
+
+    /**
+     * Converts {@code dependencyProp} into a parsed {@link DependencyAtom}
+     * @param dependencyProp to convert
+     * @return the parsed {@link DependencyAtom} or null if {@code dependencyProp} could not be parsed
+     */
+    public static DependencyAtom parse(Prop dependencyProp) {
+        if (dependencyProp == null) {
+            return null;
+        }
+        AtomicReference<String> error = new AtomicReference<String>();
+        String dependencyValue = dependencyProp.value();
+        DependencyAtom dependency = DependencyAtom.parse(dependencyProp.name + ":" + dependencyValue, error);
+        if (dependency == null) {
+            Output.print("^warn^ Invalid dependency %s:%s; %s", dependencyProp.name, dependencyValue, error.get());
+            return null;
+        }
+        return dependency;
     }
 
     /**

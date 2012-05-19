@@ -164,9 +164,20 @@ public class DependencyManager {
         }
         PropFile dependencies = loadDependenciesFile(scope);
         if (dependencies.contains(atom.getPropertyName())) {
-            Output.print("^info^ overriding %sdependency %s; was %s now is %s.", scope.getPrettyPrint(), atom.getPropertyName(),
-                    dependencies.get(atom.getPropertyName()).value(), atom.getPropertyValue());
-            dependencies.remove(atom.getPropertyName());
+            PropFile.Prop existingDep = dependencies.get(atom.getPropertyName());
+            DependencyAtom existing = Deps.parse(existingDep);
+            if (existing == null) {
+                Output.print("^error^ Could not parse dependency atom, %s=%s, listed in dependencies%s.properties.",
+                        existingDep.name, existingDep.value(), scope.getFileSuffix());
+            } else if (existing.equals(atom)) {
+                Output.print("Project already depends upon %s%s, skipping.", atom.toString(), !Scope.Default.equals(scope) ?
+                        String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
+                return;
+            } else {
+                Output.print("^warn^ overriding %sdependency %s; was %s now is %s.", scope.getPrettyPrint(), atom.getPropertyName(),
+                        dependencies.get(atom.getPropertyName()).value(), atom.getPropertyValue());
+                dependencies.remove(atom.getPropertyName());
+            }
         }
         dependencies.add(atom.getPropertyName(), atom.getPropertyValue());
         final List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
