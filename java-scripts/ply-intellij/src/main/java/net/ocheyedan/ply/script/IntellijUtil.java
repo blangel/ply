@@ -247,7 +247,7 @@ public class IntellijUtil {
         System.out.println(String.format("^no_line^^ply^ use configuration from %s? ", options));
         while (true) {
             try {
-                CharBuffer buffer = CharBuffer.allocate(Integer.valueOf(intellijDirectories.length).toString().length() + 1);
+                CharBuffer buffer = CharBuffer.allocate(Math.max(Integer.valueOf(intellijDirectories.length).toString().length() + 1, "abort".length()));
                 new InputStreamReader(System.in).read(buffer);
                 buffer.rewind();
                 String answer = buffer.toString().trim();
