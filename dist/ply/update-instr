@@ -169,3 +169,8 @@ OUTPUT=Downloading update to ply intellij script to fix input-parsing buffer siz
 METHOD=download=https://github.com/blangel/ply/raw/2860d21463c0576413562e89f3a420406f9159de/dist/ply/scripts/ply-intellij-1.0.jar to scripts/ply-intellij-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/2860d21463c0576413562e89f3a420406f9159de/dist/ply/version to version
 VERSION=1.0_29
+OUTPUT=Downloading update to ply-core/ply-util for changes to init to allow for ad-hoc property resolution.
+METHOD=download=https://github.com/blangel/ply/raw/ae6ba705262fbc1f5047f323791009f4319fa5ec/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://github.com/blangel/ply/raw/ae6ba705262fbc1f5047f323791009f4319fa5ec/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/ae6ba705262fbc1f5047f323791009f4319fa5ec/dist/ply/version to version
+VERSION=1.0_30
