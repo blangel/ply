@@ -117,6 +117,8 @@ public final class Init extends Command {
                 throw new InitException(null);
             }
         }
+        // create default directory structure; if not exists
+        createDefaultDirectories(from);
         // print out the local properties
         Output.print("^ply^ Created the following project properties:");
         Output.print("^ply^");
@@ -274,17 +276,60 @@ public final class Init extends Command {
     }
 
     /**
+     * Creates the {@literal project.res.dir}, {@literal project.src.dir} within the default and test scope
+     * for the project based at {@code baseDir}, if the directories don't already exist.
+     * @param baseDir from which to create the directory structure
+     */
+    private static void createDefaultDirectories(File baseDir) {
+        File configDir = FileUtil.fromParts(baseDir.getPath(), ".ply", "config");
+        String projectPropsPath = FileUtil.pathFromParts(configDir.getPath(), "project.properties");
+        String projectTestPropsPath = FileUtil.pathFromParts(configDir.getPath(), "project.test.properties");
+        PropFile projectProps = new PropFile(Context.named("project"), Scope.Default, PropFile.Loc.Local);
+        PropFiles.load(projectPropsPath, projectProps, false, false);
+        PropFile projectTestProps = new PropFile(Context.named("project"), Scope.named("test"), PropFile.Loc.Local);
+        PropFiles.load(projectTestPropsPath, projectTestProps, false, false);
+        String srcDirPath = projectProps.get("src.dir").value();
+        String resDirPath = projectProps.get("res.dir").value();
+        String srcTestDirPath = projectTestProps.get("src.dir").value();
+        String resTestDirPath = projectTestProps.get("res.dir").value();
+        File srcDir = FileUtil.fromParts(baseDir.getPath(), srcDirPath);
+        File resDir = FileUtil.fromParts(baseDir.getPath(), resDirPath);
+        File srcTestDir = FileUtil.fromParts(baseDir.getPath(), srcTestDirPath);
+        File resTestDir = FileUtil.fromParts(baseDir.getPath(), resTestDirPath);
+
+        boolean createdSrc = (srcDir.exists() || srcDir.mkdirs()),
+                createdRes = (resDir.exists() || resDir.mkdirs()),
+                createdSrcTest = (srcTestDir.exists() || srcTestDir.mkdirs()),
+                createdResTest = (resTestDir.exists() || resTestDir.mkdirs());
+        if (!createdSrc || !createdRes || !createdSrcTest || !createdResTest) {
+            Output.print("^ply^^warn^ Could not create project directories.");
+        }
+    }
+
+    /**
      * Initializing the {@literal project.properties} file with the following values:
-     * namespace = current working directory
-     * name = current working directory
-     * version = 1.0
+     *   namespace = current working directory
+     *   name = current working directory
+     *   version = 1.0
+     * and any ad-hoc properties specified on the command line, which take precedence over those specified above.
      * @param from directory from which to save property files
      * @return true on success
      */
     private static boolean createDefaultProperties(File from) {
-        Map<String, PropFile> projectMap = new HashMap<String, PropFile>(1, 1.0f);
-        PropFile projectProps = new PropFile(Context.named("project"), PropFile.Loc.Local);
-        projectMap.put(FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.properties"), projectProps);
+        Map<Scope, Map<Context, PropFile>> adHocProps = AdHoc.get();
+        Map<String, PropFile> projectMap = new HashMap<String, PropFile>(3, 1.0f);
+        for (Scope scope : adHocProps.keySet()) {
+            Map<Context, PropFile> contexts = adHocProps.get(scope);
+            for (Context context : contexts.keySet()) {
+                PropFile adHocPropFile = contexts.get(context); // even though Loc == AdHoc; doesn't matter in how we're using it
+                if (adHocPropFile.isEmpty()) {
+                    continue;
+                }
+                String path = FileUtil.pathFromParts(from.getPath(), ".ply", "config", PropFiles.getFileName(adHocPropFile));
+                projectMap.put(path, adHocPropFile);
+            }
+        }
+        String projectKey = FileUtil.pathFromParts(from.getPath(), ".ply", "config", "project.properties");
         try {
             File projectDirectory = new File(".");
             String path = projectDirectory.getCanonicalPath();
@@ -295,12 +340,24 @@ public final class Init extends Command {
             if (lastPathIndex != -1) {
                 path = path.substring(lastPathIndex + 1);
             }
-            projectProps.add("namespace", path);
-            projectProps.add("name", path);
-            projectProps.add("version", "1.0");
+            // ensure at least 'namespace'/'name'/'version' exist in the 'project.properties' file
+            PropFile projectProps = projectMap.get(projectKey);
+            if (projectProps == null) {
+                projectProps = new PropFile(Context.named("project"), Scope.Default, PropFile.Loc.Local);
+                projectMap.put(projectKey, projectProps);
+            }
+            if (!projectProps.contains("namespace")) {
+                projectProps.add("namespace", path);
+            }
+            if (!projectProps.contains("name")) {
+                projectProps.add("name", path);
+            }
+            if (!projectProps.contains("version")) {
+                projectProps.add("version", "1.0");
+            }
             return createProperties(projectMap);
         } catch (IOException ioe) {
-            Output.print("^error^ could not create the local project.properties file.");
+            Output.print("^error^ could not create the local project's properties files.");
             Output.print(ioe);
             return false;
         }

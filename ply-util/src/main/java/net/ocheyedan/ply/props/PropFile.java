@@ -401,6 +401,14 @@ public final class PropFile {
         return props;
     }
 
+    final Context context() {
+        return delegate.context;
+    }
+
+    final Scope scope() {
+        return delegate.scope;
+    }
+
     @Override public final boolean equals(Object o) {
         if (this == o) {
             return true;

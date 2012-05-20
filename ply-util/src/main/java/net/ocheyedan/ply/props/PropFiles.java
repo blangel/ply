@@ -202,6 +202,19 @@ public final class PropFiles {
         return false;
     }
 
+    /**
+     * Returns the base file name for {@code propFile}.  For instance, if {@code propFile} has the default scope,
+     * context of 'project' then this method will return "project.properties".  If {@code propFile} has
+     * scope named 'test' and context 'project' then this method will return "project.test.properties".
+     * @param propFile for which to get the file name
+     * @return the base file for {@code propFile}.
+     */
+    public static String getFileName(PropFile propFile) {
+        Context context = propFile.context();
+        Scope scope = propFile.scope();
+        return String.format("%s%s.properties", context.name, scope.getFileSuffix());
+    }
+
     private PropFiles() { }
 
 }
