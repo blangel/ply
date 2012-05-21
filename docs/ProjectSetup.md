@@ -11,6 +11,8 @@ This will create the `.ply/config` directory and also a `project.properties` fil
 * __name__ - will default to be the name of the project directory.  The _name_ is analogous to _artifactId_ in __maven__.
 * __version__ - will default to be `1.0`.
 
+Additionally the `project.src.dir` and `project.res.dir` directories will be created for you in the default and `test` scopes.
+
 So issuing the following sequence of commands:
 
      $ mkdir electric-chilly
@@ -23,12 +25,18 @@ Will create directories `.ply/config` under `electric-chilly` and the following 
      name=electric-chilly
      version=1.0
 
-This can also be verified via _ply_ itself by doing:
+Also, directories `src/main/java`, `src/main/resources`, `src/test/java` and `src/test/resources` will be created under `electric-chilly`. 
+
+The created property values can be verified via _ply_ itself by doing:
 
      $ ply get
 
 Here's an image of the steps:
 
 ![project setup](https://github.com/blangel/ply/raw/master/docs/imgs/project-setup.png "project setup")
+
+Another thing to note, you can use the __ad hoc__ properties of ply to override default values while initializing a project.  For instance, to specify a different __namespace__ than the default, say __net.ocheyedan__, you would init with this ad hoc property:
+
+    $ ply init -Pproject.namespace=net.ocheyedan
 
 Continue on to [Building](BuildingProject.md)
