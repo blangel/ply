@@ -11,7 +11,7 @@ This will create the `.ply/config` directory and also a `project.properties` fil
 * __name__ - will default to be the name of the project directory.  The _name_ is analogous to _artifactId_ in __maven__.
 * __version__ - will default to be `1.0`.
 
-Additionally the `project.src.dir` and `project.res.dir` directories will be created for you in the default and `test` scopes.
+Additionally the `project.src.dir` and `project.res.dir` directories will be created for you in the default and `test` [scopes](Scopes.md).
 
 So issuing the following sequence of commands:
 
@@ -35,8 +35,13 @@ Here's an image of the steps:
 
 ![project setup](https://github.com/blangel/ply/raw/master/docs/imgs/project-setup.png "project setup")
 
-Another thing to note, you can use the __ad hoc__ properties of ply to override default values while initializing a project.  For instance, to specify a different __namespace__ than the default, say __net.ocheyedan__, you would init with this ad hoc property:
+Overriding Default Values
+-------------------------
+
+In case the default values are not desired, you can use the [ad hoc](Properties.md) properties of ply to override any value.  For instance, to specify a different __namespace__, say __net.ocheyedan__, you would invoke `ply init` with an ad hoc property:
 
     $ ply init -Pproject.namespace=net.ocheyedan
+
+Everything would be created as in the original example except the __namespace__ would be __net.ocheyedan__ instead of the default (i.e., the name of the project directory).
 
 Continue on to [Building](BuildingProject.md)
