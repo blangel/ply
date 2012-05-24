@@ -50,7 +50,7 @@ To enable a directory/project to use ply, simply run `init` from within the dire
 Ok, I Want It!
 --------------
 
-Download the tar file: [ply.tar](https://github.com/downloads/blangel/ply/ply.tar) or the zip file: [ply.zip](https://github.com/downloads/blangel/ply/ply.zip)
+Download the tar file [ply.tar](https://github.com/downloads/blangel/ply/ply.tar) or the zip file [ply.zip](https://github.com/downloads/blangel/ply/ply.zip)
 
 Un-package the tar/zip file to a directory of your choosing (say `/opt/ply`) and then make sure the following properties are set as environmental variables:
 
