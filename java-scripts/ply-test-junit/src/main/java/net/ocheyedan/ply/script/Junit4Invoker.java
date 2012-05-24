@@ -138,7 +138,7 @@ public class Junit4Invoker implements Runnable {
         for (Class clazz : classes) {
             for (Method method : clazz.getMethods()) {
                 // junit 4 or 3 style (strict matching and handling is done by the Junit Request object, this is
-                // just to whittle down the number of classes involved int making the Request as it appears to do
+                // just to whittle down the number of classes involved in making the Request as it appears to do
                 // a much worst job than simply looping through the classes and inspecting the methods (it's creating
                 // objects, etc which add time).
                 if (method.isAnnotationPresent(Test.class)
