@@ -179,3 +179,7 @@ METHOD=download=https://github.com/blangel/ply/raw/785fa434441d22c63bf08f3706805
 METHOD=download=https://github.com/blangel/ply/raw/785fa434441d22c63bf08f3706805985770dc0ed/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/785fa434441d22c63bf08f3706805985770dc0ed/dist/ply/version to version
 VERSION=1.0_31
+OUTPUT=Downloading update to ply-core to use system properties on init (if not specified by project).
+METHOD=download=https://github.com/blangel/ply/raw/e6265cff19d4bae6c94f76ed3a3908631b7584bd/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/e6265cff19d4bae6c94f76ed3a3908631b7584bd/dist/ply/version to version
+VERSION=1.0_32
