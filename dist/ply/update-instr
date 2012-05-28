@@ -174,3 +174,8 @@ METHOD=download=https://github.com/blangel/ply/raw/ae6ba705262fbc1f5047f32379100
 METHOD=download=https://github.com/blangel/ply/raw/ae6ba705262fbc1f5047f323791009f4319fa5ec/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/ae6ba705262fbc1f5047f323791009f4319fa5ec/dist/ply/version to version
 VERSION=1.0_30
+OUTPUT=Downloading update to ply-core/ply-util for bug fix to dependency management
+METHOD=download=https://github.com/blangel/ply/raw/785fa434441d22c63bf08f3706805985770dc0ed/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://github.com/blangel/ply/raw/785fa434441d22c63bf08f3706805985770dc0ed/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/785fa434441d22c63bf08f3706805985770dc0ed/dist/ply/version to version
+VERSION=1.0_31
