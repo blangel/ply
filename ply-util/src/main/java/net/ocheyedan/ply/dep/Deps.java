@@ -156,7 +156,8 @@ public final class Deps {
                     resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep),
                                                 failMissingDependency);
                     state.resolved.put(dependencyAtom, resolvedDep);
-                    state.unversionedResolved.put(resolvedDep.toString(), resolvedDep);
+                    String key = (resolvedDep == null ? dependencyAtom.getPropertyName() : resolvedDep.toString());
+                    state.unversionedResolved.put(key, resolvedDep);
                 }
                 if ((resolvedDep == null) && !failMissingDependency) {
                     if (Output.isInfo()) {

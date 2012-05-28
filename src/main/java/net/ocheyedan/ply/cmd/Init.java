@@ -296,6 +296,10 @@ public final class Init extends Command {
         File resDir = FileUtil.fromParts(baseDir.getPath(), resDirPath);
         File srcTestDir = FileUtil.fromParts(baseDir.getPath(), srcTestDirPath);
         File resTestDir = FileUtil.fromParts(baseDir.getPath(), resTestDirPath);
+        Output.print("^ply^^info^ Creating project.src.dir %s", srcDirPath);
+        Output.print("^ply^^info^ Creating project.res.dir %s", srcDirPath);
+        Output.print("^ply^^info^ Creating project#test.src.dir %s", srcDirPath);
+        Output.print("^ply^^info^ Creating project#test.res.dir %s", srcDirPath);
 
         boolean createdSrc = (srcDir.exists() || srcDir.mkdirs()),
                 createdRes = (resDir.exists() || resDir.mkdirs()),
