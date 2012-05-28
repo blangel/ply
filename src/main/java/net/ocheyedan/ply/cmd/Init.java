@@ -292,19 +292,39 @@ public final class Init extends Command {
         String resDirPath = projectProps.get("res.dir").value();
         String srcTestDirPath = projectTestProps.get("src.dir").value();
         String resTestDirPath = projectTestProps.get("res.dir").value();
+        // if the directory paths are empty, need to load from the system defaults
+        if (srcDirPath.isEmpty() || resDirPath.isEmpty()) {
+            projectPropsPath = FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "project.properties");
+            projectProps = new PropFile(Context.named("project"), Scope.Default, PropFile.Loc.System);
+            PropFiles.load(projectPropsPath, projectProps, false, false);
+            if (srcDirPath.isEmpty()) {
+                srcDirPath = projectProps.get("src.dir").value();
+            }
+            if (resDirPath.isEmpty()) {
+                resDirPath = projectProps.get("res.dir").value();
+            }
+        }
+        if (srcTestDirPath.isEmpty() || resTestDirPath.isEmpty()) {
+            projectTestPropsPath = FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "project.test.properties");
+            projectTestProps = new PropFile(Context.named("project"), Scope.named("test"), PropFile.Loc.System);
+            PropFiles.load(projectTestPropsPath, projectTestProps, false, false);
+            if (srcTestDirPath.isEmpty()) {
+                srcTestDirPath = projectTestProps.get("src.dir").value();
+            }
+            if (resTestDirPath.isEmpty()) {
+                resTestDirPath = projectTestProps.get("res.dir").value();
+            }
+        }
+
         File srcDir = FileUtil.fromParts(baseDir.getPath(), srcDirPath);
         File resDir = FileUtil.fromParts(baseDir.getPath(), resDirPath);
         File srcTestDir = FileUtil.fromParts(baseDir.getPath(), srcTestDirPath);
         File resTestDir = FileUtil.fromParts(baseDir.getPath(), resTestDirPath);
-        Output.print("^ply^^info^ Creating project.src.dir %s", srcDirPath);
-        Output.print("^ply^^info^ Creating project.res.dir %s", srcDirPath);
-        Output.print("^ply^^info^ Creating project#test.src.dir %s", srcDirPath);
-        Output.print("^ply^^info^ Creating project#test.res.dir %s", srcDirPath);
 
-        boolean createdSrc = (srcDir.exists() || srcDir.mkdirs()),
-                createdRes = (resDir.exists() || resDir.mkdirs()),
-                createdSrcTest = (srcTestDir.exists() || srcTestDir.mkdirs()),
-                createdResTest = (resTestDir.exists() || resTestDir.mkdirs());
+        boolean createdSrc = !srcDirPath.isEmpty() && (srcDir.exists() || srcDir.mkdirs()),
+                createdRes = !resDirPath.isEmpty() && (resDir.exists() || resDir.mkdirs()),
+                createdSrcTest = !srcTestDirPath.isEmpty() && (srcTestDir.exists() || srcTestDir.mkdirs()),
+                createdResTest = !resTestDirPath.isEmpty() && (resTestDir.exists() || resTestDir.mkdirs());
         if (!createdSrc || !createdRes || !createdSrcTest || !createdResTest) {
             Output.print("^ply^^warn^ Could not create project directories.");
         }
