@@ -33,7 +33,7 @@ public final class Usage extends Command {
         Output.print("    ^b^append^r^ propValue to propName in ^b^context^r^");
         Output.print("        appends '^b^propValue^r^' to the value of '^b^propName^r^' within '^b^context^r^' for the project");
         Output.print("    ^b^prepend^r^ propValue to propName in ^b^context^r^");
-        Output.print("        prepends '^b^propValue^r^' to the value of'^b^propName^r^' within '^b^context^r^' for the project");
+        Output.print("        prepends '^b^propValue^r^' to the value of '^b^propName^r^' within '^b^context^r^' for the project");
         Output.print("    ^b^remove^r^ propName from ^b^context^r^");
         Output.print("        removes '^b^propName^b^' from '^b^context^r^' for the project");
         Output.print("    <^b^build-scripts^r^>");

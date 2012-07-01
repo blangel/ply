@@ -138,9 +138,13 @@ public final class Output {
      */
     private static final AtomicBoolean decorated = new AtomicBoolean(true);
     /**
-     * True if
+     * True if environmental variable TERM is not null.
      */
     private static final AtomicBoolean withinTerminal = new AtomicBoolean(true);
+    /**
+     * True if ply is being piped into a non-tty terminal.
+     */
+    private static final AtomicBoolean beingPiped = new AtomicBoolean(false);
 
     /**
      * A mapping of easily identifiable words to a {@link TermCode} object for colored output.
@@ -168,7 +172,6 @@ public final class Output {
         if (inited.getAndSet(true)) {
             return;
         }
-        String terminal = System.getenv("TERM");
         if (!logLevels.contains("warn")) {
             warnLevel.set(false);
         }
@@ -181,8 +184,11 @@ public final class Output {
         if ("false".equalsIgnoreCase(decorated)) {
             Output.decorated.set(false);
         }
+        String terminal = System.getenv("TERM");
         withinTerminal.set(terminal != null);
-        boolean useColor = withinTerminal.get() && !"false".equalsIgnoreCase(coloredOutput);
+        String piped = System.getProperty("ply.piped");
+        beingPiped.set((piped != null) && "true".equalsIgnoreCase(piped));
+        boolean useColor = withinTerminal.get() && !"false".equalsIgnoreCase(coloredOutput) && !beingPiped.get();
         Output.coloredOutput.set(useColor);
         // TODO - what are the range of terminal values and what looks best for each?
         String terminalBold = ("xterm".equals(terminal) ? "1" : "0");

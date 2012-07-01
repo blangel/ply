@@ -64,16 +64,17 @@ public final class PlyUtil {
      * @return the resolved local ply project directory
      */
     private static File resolveLocalDir() {
-        String root = "/.ply";
+        File[] roots = File.listRoots();
         String defaultPath = "./.ply";
         String path = defaultPath;
         File ply = new File(path);
+        boolean atRoot = false;
         try {
-            while (!ply.exists() && !root.equals(ply.getCanonicalPath())) {
+            while (!ply.exists() && !(atRoot = reachedRoot(roots, ".ply", ply.getCanonicalPath()))) {
                 path = "../" + path;
                 ply = new File(path);
             }
-            if (root.equals(ply.getCanonicalPath())) {
+            if (atRoot) {
                 return new File(defaultPath);
             }
         } catch (IOException ioe) {
@@ -81,6 +82,22 @@ public final class PlyUtil {
             return new File(defaultPath);
         }
         return ply;
+    }
+
+    /**
+     * Returns true if any {@code roots} combined with {@code rootSuffix} equals {@code canonicalPath}
+     * @param roots to check
+     * @param rootSuffix to add to the end of each {@code roots} when evaluating
+     * @param canonicalPath to match
+     * @return true if any {@code roots} combined with {@code rootSuffix} equals {@code canonicalPath}
+     */
+    private static boolean reachedRoot(File[] roots, String rootSuffix, String canonicalPath) {
+        for (File root : roots) {
+            if (canonicalPath.equals(root.getPath() + rootSuffix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

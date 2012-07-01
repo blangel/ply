@@ -1,6 +1,7 @@
 package net.ocheyedan.ply.props;
 
 import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.Output;
 
 import java.io.File;
 import java.util.HashMap;
@@ -65,6 +66,8 @@ public final class PropsExt {
         envProps.put("ply$ply.original.user.dir", System.getProperty("user.dir"));
         // allow scripts access to which scope in which they are being invoked.
         envProps.put("ply$ply.scope", scope.name);
+        // force the resolved color property onto child processes
+        envProps.put("ply$ply.color", String.valueOf(Output.isColoredOutput()));
         // finally, add a property to signify that the script is being invoked via ply
         envProps.put("ply$ply.invoker", "ply");
 

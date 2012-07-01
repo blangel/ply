@@ -133,11 +133,19 @@ PLY_VERSION=""
 if [ -e $PLY_HOME/version ]; then
   PLY_VERSION=`cat $PLY_HOME/version`
 fi
+# Determine whether being run in a tty terminal
+PLY_PIPED="false"
+if tty -s <&1; then
+  PLY_PIPED="false"
+else
+  PLY_PIPED="true"
+fi
 
 exec "$JAVACMD" \
   -client -Xms32M -Xmx32M -d32 -noverify \
   -Xbootclasspath/a:"${PLY_HOME}"/lib/ply-1.0.jar:"${PLY_HOME}"/lib/ply-util-1.0.jar \
   "-Dply.home=${PLY_HOME}" \
   "-Dply.version=${PLY_VERSION}" \
+  "-Dply.piped=${PLY_PIPED}" \
   "-Dply.java=${JAVACMD}" \
   "net.ocheyedan.ply.Ply" "$@"
