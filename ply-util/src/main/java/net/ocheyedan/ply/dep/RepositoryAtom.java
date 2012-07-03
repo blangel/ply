@@ -1,6 +1,7 @@
 package net.ocheyedan.ply.dep;
 
 import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.Output;
 
 import java.io.File;
 import java.io.IOException;
@@ -129,6 +130,9 @@ public class RepositoryAtom {
         try {
             localRef = localRef.getCanonicalFile();
             if (localRef.exists()) {
+                if (!atom.startsWith("/")) {
+                    return new RepositoryAtom(preResolved, localRef.toURI(), type); // TODO - should always do this, why below for unix?
+                }
                 // don't use toURI as it's not appending 'file://' but simply 'file:'
                 atom = "file://" + localRef.getCanonicalPath();
             }
@@ -138,6 +142,7 @@ public class RepositoryAtom {
         try {
             repositoryUri = URI.create(atom);
         } catch (IllegalArgumentException iae) {
+            Output.print(iae);
             // invalid, return null
             return null;
         }

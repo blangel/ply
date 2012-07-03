@@ -212,6 +212,7 @@ public final class FileUtil {
         try {
             return file.getCanonicalPath();
         } catch (IOException ioe) {
+            Output.print("^error^ Could not get the canonical path of file %s", file.getPath());
             throw new RuntimeException(ioe);
         }
     }

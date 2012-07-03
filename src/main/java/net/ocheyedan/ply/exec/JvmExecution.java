@@ -155,10 +155,14 @@ final class JvmExecution extends Execution {
     }
 
     private static RepositoryRegistry createRepositoryList(File configDirectory, Scope scope) {
-        String localRepoValue = Props.get("localRepo", Context.named("depmngr"), scope, configDirectory).value();
-        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoValue.isEmpty() ? null : localRepoValue);
+        PropFile.Prop localRepoProp = Props.get("localRepo", Context.named("depmngr"), scope, configDirectory);
+        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp.value());
         if (localRepo == null) {
-            Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
+            if (PropFile.Prop.Empty.equals(localRepoProp)) {
+                Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
+            } else {
+                Output.print("^error^ Could not resolve directory for ^b^localRepo^r^ property [ is ^b^%s^r^ ].", localRepoProp.value());
+            }
             throw new SystemExit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();

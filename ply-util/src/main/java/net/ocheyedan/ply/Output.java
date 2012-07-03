@@ -39,7 +39,7 @@ public final class Output {
         static String convertStackTrace(Throwable t, boolean appendOutputError) {
             StackTraceWriter writer = new StackTraceWriter(appendOutputError);
             t.printStackTrace(new PrintWriter(writer));
-            return writer.toString();
+            return writer.toString().replaceAll("%", "%%");
         }
 
         /**

@@ -13,6 +13,7 @@ import net.ocheyedan.ply.script.print.PrivilegedOutput;
 import net.ocheyedan.ply.script.print.PrivilegedPrintStream;
 
 import java.io.*;
+import java.lang.String;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -174,10 +175,14 @@ public class JunitTester {
         }
 
         // now add our own dependencies
-        String localRepoProp = Props.get("localRepo", Context.named("depmngr")).value();
-        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp);
+        PropFile.Prop localRepoProp = Props.get("localRepo", Context.named("depmngr"));
+        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp.value());
         if (localRepo == null) {
-            Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
+            if (PropFile.Prop.Empty.equals(localRepoProp)) {
+                Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
+            } else {
+                Output.print("^error^ Could not resolve directory for ^b^localRepo^r^ property [ is ^b^%s^r^ ].", localRepoProp.value());
+            }
             System.exit(1);
         }
         String localRepoDirectoryPath = Deps.getDirectoryPathForRepo(localRepo);
@@ -216,7 +221,18 @@ public class JunitTester {
     private static URL getUrl(File artifact) {
         URL artifactUrl;
         try {
-            artifactUrl = new URL("file://" + artifact.getCanonicalPath());
+            String path = artifact.getPath();
+            if (path.startsWith("file://")) {
+                path = path.substring(7);
+            } else if (path.startsWith("file:/")) {
+                path = path.substring(6);
+            } else if (path.startsWith("file:")) {
+                path = path.substring(5);
+            }
+            if (!path.startsWith("/")) {
+                path = "/" + path;
+            }
+            artifactUrl = new URL("file://" + path);
         } catch (MalformedURLException murle) {
             Output.print(murle);
             return null;

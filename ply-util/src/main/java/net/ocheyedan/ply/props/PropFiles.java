@@ -1,5 +1,6 @@
 package net.ocheyedan.ply.props;
 
+import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 
 import java.io.*;
@@ -173,6 +174,13 @@ public final class PropFiles {
         if ((propFile == null) || (propFileWriter == null) || (to == null)) {
             return false;
         }
+        if (to.startsWith("file://")) {
+            to = to.substring(7);
+        } else if (to.startsWith("file:/")) {
+            to = to.substring(6);
+        } else if (to.startsWith("file:")) {
+            to = to.substring(5);
+        }
         File propertiesFile = new File(to);
         BufferedWriter writer = null;
         try {
@@ -186,9 +194,10 @@ public final class PropFiles {
             propFileWriter.store(writer, propFile);
             return true;
         } catch (FileNotFoundException fnfe) {
-            Output.print("Cannot load properties file, %s, it does not exist.", to);
+            Output.print("Cannot store properties file, %s, it does not exist.", to);
             Output.print(fnfe);
         } catch (IOException ioe) {
+            Output.print("^error^ Cannot store properties file, %s", to);
             Output.print(ioe);
         } finally {
             if (writer != null) {

@@ -556,8 +556,14 @@ public final class Deps {
     public static String getDirectoryPathForRepo(RepositoryAtom repositoryAtom) {
         try {
             String repoPath = repositoryAtom.getPropertyName();
-            if (repoPath.startsWith("file://")) {
+            if (repoPath.startsWith("file:///")) {
+                repoPath = repoPath.substring(8);
+            } else if (repoPath.startsWith("file://")) {
                 repoPath = repoPath.substring(7);
+            } else if (repoPath.startsWith("file:/")) {
+                repoPath = repoPath.substring(6);
+            } else if (repoPath.startsWith("file:")) {
+                repoPath = repoPath.substring(5);
             }
             return FileUtil.getCanonicalPath(new File(repoPath));
         } catch (RuntimeException re) {
@@ -570,8 +576,12 @@ public final class Deps {
     private static String getDependencyDirectoryPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
         String startPath = repositoryAtom.getPropertyName();
         if (!startPath.contains(":")) {
+            startPath = getDirectoryPathForRepo(repositoryAtom);
+            if (!startPath.startsWith("/")) {
+                startPath = "/" + startPath;
+            }
             // a file path without prefix, make absolute for URL handling
-            startPath = "file://" + getDirectoryPathForRepo(repositoryAtom);
+            startPath = "file://" + startPath;
         }
         RepositoryAtom.Type type = repositoryAtom.getResolvedType();
         String namespace = (type == RepositoryAtom.Type.ply ? dependencyAtom.namespace : dependencyAtom.namespace.replaceAll("\\.", File.separator));
@@ -585,7 +595,7 @@ public final class Deps {
 
     private static URL getUrl(String path) {
         try {
-            return new URI(path).toURL();
+            return new URI(path.replaceAll("\\\\", "/")).toURL();
         } catch (URISyntaxException urise) {
             Output.print(urise);
         } catch (MalformedURLException murle) {
@@ -600,7 +610,7 @@ public final class Deps {
             // no dependencies file just means no dependencies, skip.
             URL url = null;
             try {
-                url = new URL(repoDepDir);
+                url = new URL(repoDepDir.replaceAll("\\\\", "/"));
             } catch (MalformedURLException murle) {
                 Output.print(murle);
             }
@@ -619,7 +629,7 @@ public final class Deps {
 
     private static PropFile getDependenciesFromPlyRepo(String urlPath) {
         try {
-            URL url = new URL(urlPath);
+            URL url = new URL(urlPath.replaceAll("\\\\", "/"));
             PropFile loaded = PropFiles.load(url.getFile(), false, false);
             if (loaded.isEmpty()) {
                 return null;
@@ -639,7 +649,7 @@ public final class Deps {
     }
 
     private static void storeDependenciesFile(PropFile transitiveDependencies, String localRepoDepDirPath) {
-        PropFiles.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, "dependencies.properties"), true);
+        PropFiles.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, "dependencies.properties").replaceAll("\\\\", "/"), true);
     }
 
     private Deps() { }

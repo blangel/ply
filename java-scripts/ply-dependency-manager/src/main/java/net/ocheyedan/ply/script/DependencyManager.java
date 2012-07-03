@@ -8,6 +8,8 @@ import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.props.*;
+import net.ocheyedan.ply.props.PropFile;
+import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
 import java.util.*;
@@ -263,9 +265,14 @@ public class DependencyManager {
     }
 
     private static RepositoryRegistry createRepositoryList(DependencyAtom dependencyAtom, List<DependencyAtom> dependencyAtoms) {
-        RepositoryAtom localRepo = RepositoryAtom.parse(Props.get("localRepo", Context.named("depmngr")).value());
+        PropFile.Prop localRepoProp = Props.get("localRepo", Context.named("depmngr"));
+        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp.value());
         if (localRepo == null) {
-            Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
+            if (PropFile.Prop.Empty.equals(localRepoProp)) {
+                Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
+            } else {
+                Output.print("^error^ Could not resolve directory for ^b^localRepo^r^ property [ is ^b^%s^r^ ].", localRepoProp.value());
+            }
             System.exit(1);
         }
         List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
