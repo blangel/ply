@@ -197,3 +197,9 @@ METHOD=download=https://github.com/blangel/ply/raw/98d4535ba0624ad6576b4143c6dde
 METHOD=download=https://github.com/blangel/ply/raw/98d4535ba0624ad6576b4143c6dde8a4d06cf6a2/dist/ply/scripts/ply-test-junit-1.0.jar to scripts/ply-test-junit-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/98d4535ba0624ad6576b4143c6dde8a4d06cf6a2/dist/ply/version to version
 VERSION=1.0_34
+OUTPUT=Downloading update to ply-util/dep-manager/test-junit to fix issue in File <--> URI parsing.
+METHOD=download=https://github.com/blangel/ply/raw/c693858cf5ee86c54399e6bd1e6d466b74671956/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://github.com/blangel/ply/raw/c693858cf5ee86c54399e6bd1e6d466b74671956/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
+METHOD=download=https://github.com/blangel/ply/raw/c693858cf5ee86c54399e6bd1e6d466b74671956/dist/ply/scripts/ply-test-junit-1.0.jar to scripts/ply-test-junit-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/c693858cf5ee86c54399e6bd1e6d466b74671956/dist/ply/version to version
+VERSION=1.0_35
