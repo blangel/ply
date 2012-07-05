@@ -222,13 +222,7 @@ public class JunitTester {
         URL artifactUrl;
         try {
             String path = artifact.getPath();
-            if (path.startsWith("file://")) {
-                path = path.substring(7);
-            } else if (path.startsWith("file:/")) {
-                path = path.substring(6);
-            } else if (path.startsWith("file:")) {
-                path = path.substring(5);
-            }
+            path = FileUtil.stripFileUriPrefix(path); // standardize (could be prefixed with 'file://', 'file:/' or 'file:')
             if (!path.startsWith("/")) {
                 path = "/" + path;
             }

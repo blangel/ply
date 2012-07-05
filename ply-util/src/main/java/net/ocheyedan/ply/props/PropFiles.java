@@ -174,13 +174,7 @@ public final class PropFiles {
         if ((propFile == null) || (propFileWriter == null) || (to == null)) {
             return false;
         }
-        if (to.startsWith("file://")) {
-            to = to.substring(7);
-        } else if (to.startsWith("file:/")) {
-            to = to.substring(6);
-        } else if (to.startsWith("file:")) {
-            to = to.substring(5);
-        }
+        to = FileUtil.stripFileUriPrefix(to);
         File propertiesFile = new File(to);
         BufferedWriter writer = null;
         try {

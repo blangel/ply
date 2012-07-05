@@ -55,7 +55,7 @@ public final class Deps {
             if (localUrl == null) {
                 throw new AssertionError(String.format("The local path is not valid [ %s ]", localPath));
             }
-            String localDirPath = (localDirUrlPath.startsWith("file://") ? localDirUrlPath.substring(7) : localDirUrlPath);
+            String localDirPath = FileUtil.stripFileUriPrefix(localDirUrlPath);
             return new LocalPaths(localPath, localUrl, localDirUrlPath, localDirPath);
         }
 
@@ -556,15 +556,7 @@ public final class Deps {
     public static String getDirectoryPathForRepo(RepositoryAtom repositoryAtom) {
         try {
             String repoPath = repositoryAtom.getPropertyName();
-            if (repoPath.startsWith("file:///")) {
-                repoPath = repoPath.substring(8);
-            } else if (repoPath.startsWith("file://")) {
-                repoPath = repoPath.substring(7);
-            } else if (repoPath.startsWith("file:/")) {
-                repoPath = repoPath.substring(6);
-            } else if (repoPath.startsWith("file:")) {
-                repoPath = repoPath.substring(5);
-            }
+            repoPath = FileUtil.stripFileUriPrefix(repoPath);
             return FileUtil.getCanonicalPath(new File(repoPath));
         } catch (RuntimeException re) {
             // the path is likely invalid, attempt resolution anyway and let the subsequent code determine the

@@ -90,7 +90,7 @@ public class IntellijUtil {
             plyRepoPathMacroName = plyRepoPathMacroName + "_" + projectName;
         }
         // second, get the intellij-directory
-        File intellijDir = getIntellijDirectory();
+        File intellijDir = getAndSaveIntellijDirectory();
         if ((intellijDir == null) || !intellijDir.exists()) {
             Output.print("^error^ Could not determine your user's Intellij configuration directory.");
             Output.print("^error^ see http://www.jetbrains.com/idea/webhelp/project-and-ide-settings.html#topicSeeAlsoTopicsList");
@@ -123,9 +123,7 @@ public class IntellijUtil {
         // get the path macro value so that we can find an existing macro by name first and if none match then
         // by value.
         String localRepoPath = localRepo.getPropertyName();
-        if (localRepoPath.startsWith("file://")) {
-            localRepoPath = localRepoPath.substring(7);
-        }
+        localRepoPath = FileUtil.stripFileUriPrefix(localRepoPath);
         // find/create the macro element as necessary
         Element plyRepoPathMacroElement = findMacroElementByNameAndValue(componentElement, plyRepoPathMacroName, localRepoPath);
         // fourth, set the path macro value (even if already set as the user is choosing to run this script so likely
@@ -228,6 +226,31 @@ public class IntellijUtil {
         } else {
             return intellijDirectories[0];
         }
+    }
+
+    /**
+     * Wraps calls to {@linkplain #getIntellijDirectory()} and takes the choosen directory and saves it to the system
+     * configuration as property {@literal intellij.config.dir} where {@literal intellij} is the {@linkplain Context}.
+     * If the aforementioned property is defined it will be used instead of calling {@linkplain #getIntellijDirectory()}.
+     * @return the intellij directory
+     * @see #getIntellijDirectory()
+     */
+    private static File getAndSaveIntellijDirectory() {
+        PropFile.Prop configDirProp = Props.get("config.dir", Context.named("intellij"));
+        File configDir = new File(configDirProp.value());
+        if (Prop.Empty.equals(configDirProp) || !configDir.exists()) {
+            configDir = getIntellijDirectory();
+            if (configDir == null) {
+                return null;
+            }
+            String configDirValue = FileUtil.getCanonicalPath(configDir);
+            PropFile intellijSystemPropFile = new PropFile(Context.named("intellij"), PropFile.Loc.System);
+            String systemConfigIntellijPath = FileUtil.getCanonicalPath(FileUtil.fromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "intellij.properties"));
+            PropFiles.load(systemConfigIntellijPath, intellijSystemPropFile, true, false);
+            intellijSystemPropFile.add("config.dir", configDirValue);
+            PropFiles.store(intellijSystemPropFile, systemConfigIntellijPath, true);
+        }
+        return configDir;
     }
 
     /**

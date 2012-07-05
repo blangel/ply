@@ -217,6 +217,27 @@ public final class FileUtil {
         }
     }
 
+    /**
+     * Strips the {@literal URI} {@literal file:} prefix from {@code path}.  The {@linkplain File} class does not
+     * parse/support the prefix.
+     * @param path from which to strip the leading {@literal URI} {@literal file:} prefix
+     * @return {@code path} stripped of any of the following if they are the start of {@code path}: {@literal file://},
+     *         {@literal file:/}, and {@literal file:}
+     */
+    public static String stripFileUriPrefix(String path) {
+        if (path == null) {
+            return path;
+        }
+        if (path.startsWith("file://")) {
+            return path.substring(7);
+        } else if (path.startsWith("file:/")) {
+            return path.substring(6);
+        } else if (path.startsWith("file:")) {
+            return path.substring(5);
+        }
+        return path;
+    }
+
     private FileUtil() { }
 
 }

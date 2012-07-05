@@ -25,3 +25,4 @@ dist/ply/config/aliases.ply.properties
 ply-util/.ply/config/aliases.ply.properties
 ply-jna/.ply/config/aliases.ply.properties
 dist/ply/config/depmngr.properties
+dist/ply/config/intellij.properties
