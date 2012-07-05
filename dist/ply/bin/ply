@@ -118,6 +118,8 @@ if [ -z "$JAVA_HOME" ] ; then
   echo "Warning: JAVA_HOME environment variable is not set."
 fi
 
+CLASSPATH="${PLY_HOME}/lib/ply-1.0.jar:${PLY_HOME}/lib/ply-util-1.0.jar"
+
 # For Cygwin, switch paths to Windows format before running java
 if $cygwin; then
   [ -n "$PLY_HOME" ] &&
@@ -142,8 +144,8 @@ else
 fi
 
 exec "$JAVACMD" \
-  -client -Xms32M -Xmx32M -d32 -noverify \
-  -Xbootclasspath/a:"${PLY_HOME}"/lib/ply-1.0.jar:"${PLY_HOME}"/lib/ply-util-1.0.jar \
+  -client -Xms32M -Xmx32M -noverify \
+  -Xbootclasspath/a:"${CLASSPATH}" \
   "-Dply.home=${PLY_HOME}" \
   "-Dply.version=${PLY_VERSION}" \
   "-Dply.piped=${PLY_PIPED}" \
