@@ -203,3 +203,9 @@ METHOD=download=https://github.com/blangel/ply/raw/c693858cf5ee86c54399e6bd1e6d4
 METHOD=download=https://github.com/blangel/ply/raw/c693858cf5ee86c54399e6bd1e6d466b74671956/dist/ply/scripts/ply-test-junit-1.0.jar to scripts/ply-test-junit-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/c693858cf5ee86c54399e6bd1e6d466b74671956/dist/ply/version to version
 VERSION=1.0_35
+OUTPUT=Downloading update to ply-core/ply-util for execution on windows/cygwin
+METHOD=download=https://raw.github.com/blangel/ply/db62737ff5408d6672e04edfe7d0d800dade94ea/dist/ply/bin/ply to bin/ply
+METHOD=download=https://raw.github.com/blangel/ply/db62737ff5408d6672e04edfe7d0d800dade94ea/dist/ply/bin/ply.bat to bin/ply.bat
+METHOD=download=https://github.com/blangel/ply/raw/db62737ff5408d6672e04edfe7d0d800dade94ea/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/db62737ff5408d6672e04edfe7d0d800dade94ea/dist/ply/version to version
+VERSION=1.0_36
