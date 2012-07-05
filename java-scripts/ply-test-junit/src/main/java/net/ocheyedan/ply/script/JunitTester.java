@@ -221,12 +221,13 @@ public class JunitTester {
     private static URL getUrl(File artifact) {
         URL artifactUrl;
         try {
-            String path = artifact.getPath();
-            path = FileUtil.stripFileUriPrefix(path); // standardize (could be prefixed with 'file://', 'file:/' or 'file:')
-            if (!path.startsWith("/")) {
-                path = "/" + path;
+            try {
+                artifactUrl = new URL("file://" + artifact.getCanonicalPath());
+            } catch (IOException ioe) {
+                String path = artifact.getPath();
+                path = FileUtil.stripFileUriPrefix(path); // standardize (could be prefixed with 'file://', 'file:/' or 'file:')
+                artifactUrl = new URL("file://" + path);
             }
-            artifactUrl = new URL("file://" + path);
         } catch (MalformedURLException murle) {
             Output.print(murle);
             return null;

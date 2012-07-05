@@ -389,24 +389,6 @@ public final class Deps {
         return new Dep(dependencyAtom, dependencyAtoms, saveToRepoDirPath);
     }
 
-    public static List<DependencyAtom> parse(Collection<Prop> dependenciesProps) {
-        List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>(dependenciesProps.size());
-        AtomicReference<String> error = new AtomicReference<String>();
-        for (Prop dependencyProp : dependenciesProps) {
-            error.set(null);
-            String dependencyKey = dependencyProp.name;
-            String dependencyValue = dependencyProp.value();
-            DependencyAtom dependencyAtom = DependencyAtom.parse(dependencyKey + ":" + dependencyValue, error);
-            if (dependencyAtom == null) {
-                Output.print("^warn^ Invalid dependency %s:%s; %s", dependencyKey, dependencyValue,
-                        error.get());
-                continue;
-            }
-            dependencyAtoms.add(dependencyAtom);
-        }
-        return dependencyAtoms;
-    }
-
     /**
      * Converts {@code dependencies} into a list of {@link DependencyAtom} objects
      * @param dependencies to convert

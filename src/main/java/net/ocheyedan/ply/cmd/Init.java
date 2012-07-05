@@ -43,6 +43,8 @@ public final class Init extends Command {
             throw new SystemExit(1);
         } catch (PomParseException ppe) {
             Output.print("^ply^ ^error^ Could not parse pom [ %s ].", ppe.getMessage());
+            Output.print("^ply^ ^error^ As this is a maven project be sure to have run ^b^mvn clean install^r^ before running ^b^ply init^r^.");
+            Output.print("^ply^ ^error^ Also ensure your local maven repository is accessible to ply: add line ^b^~/.m2/repository=maven^r^ to file ^b^$PLY_HOME/config/repositories.properties^r^");
             cleanupAfterFailure();
             throw new SystemExit(1);
         } catch (InitException ie) {
