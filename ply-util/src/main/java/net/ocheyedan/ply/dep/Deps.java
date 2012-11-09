@@ -384,6 +384,7 @@ public final class Deps {
             Output.print("^dbug^ No dependencies file found for %s in repo %s.", dependencyAtom.toString(), repositoryAtom.toString());
             dependenciesFile = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
         }
+        // TODO - only store if necessary (also add force-update command like Maven's -U)
         storeDependenciesFile(dependenciesFile, saveToRepoDirPath);
         List<DependencyAtom> dependencyAtoms = parse(dependenciesFile);
         return new Dep(dependencyAtom, dependencyAtoms, saveToRepoDirPath);

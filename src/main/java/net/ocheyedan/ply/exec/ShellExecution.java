@@ -37,17 +37,32 @@ final class ShellExecution extends Execution {
             throw new SystemExit(1);
         }
         int supplimentalArgLength = 1 + (shellArgs.isEmpty() ? 0 : 1);
-        String[] args = new String[supplimentalArgLength + execution.executionArgs.length];
+        String[] args = new String[supplimentalArgLength + 1];
         args[0] = shell;
         if (supplimentalArgLength > 1) {
             args[1] = shellArgs;
         }
-        System.arraycopy(execution.executionArgs, 0, args, supplimentalArgLength, execution.executionArgs.length);
+        // combine the script and its own args into one arg at end of the shell invocation (so that script args are properly
+        // passed to script and not to shell)
+        args[supplimentalArgLength] = combine(execution.executionArgs);
         if (execution.script instanceof ShellScript) {
             return new ShellExecution(executable, execution.script, args);
         } else {
             return new ShellExecution(execution.name, execution.script, args);
         }
+    }
+
+    static String combine(String[] args) {
+        StringBuilder buffer = new StringBuilder();
+        boolean first = true;
+        for (String arg : args) {
+            if (!first) {
+                buffer.append(" ");
+            }
+            buffer.append(arg);
+            first = false;
+        }
+        return buffer.toString();
     }
 
     ShellExecution(String name, Script script, String[] executionArgs) {
