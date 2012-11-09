@@ -209,3 +209,11 @@ METHOD=download=https://raw.github.com/blangel/ply/db62737ff5408d6672e04edfe7d0d
 METHOD=download=https://github.com/blangel/ply/raw/db62737ff5408d6672e04edfe7d0d800dade94ea/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/db62737ff5408d6672e04edfe7d0d800dade94ea/dist/ply/version to version
 VERSION=1.0_36
+OUTPUT=Downloading update to ply-core to properly handle ad-hoc shell script arguments
+METHOD=download=https://github.com/blangel/ply/raw/f378d85718b9c65c93bb63ea004552bc15bae18f/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://github.com/blangel/ply/raw/f378d85718b9c65c93bb63ea004552bc15bae18f/dist/ply/scripts/ply-exec-1.0.jar to scripts/ply-exec-1.0.jar
+METHOD=download=https://github.com/blangel/ply/raw/f378d85718b9c65c93bb63ea004552bc15bae18f/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/f378d85718b9c65c93bb63ea004552bc15bae18f/dist/ply/config/scripts-jar.properties to config/scripts-jar.properties
+METHOD=download=https://raw.github.com/blangel/ply/f378d85718b9c65c93bb63ea004552bc15bae18f/dist/ply/config/repositories.properties to config/repositories.properties
+METHOD=download=https://raw.github.com/blangel/ply/f378d85718b9c65c93bb63ea004552bc15bae18f/dist/ply/version to version
+VERSION=1.0_37
