@@ -3,9 +3,7 @@ package net.ocheyedan.ply;
 import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.Writer;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -152,13 +150,29 @@ public final class Output {
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
 
     /**
+     * The UTF-8 output stream.
+     */
+    private static final PrintStream out;
+
+    /**
      * Set to true when {@link #init()} has been called.
      */
     private static AtomicBoolean inited = new AtomicBoolean(false);
     static {
         // if this is not ply itself - init straight-away
         if ("ply".equals(System.getenv("ply$ply.invoker"))) {
+            out = System.out;
             init();
+        } else {
+            out = getUtf8Output();
+        }
+    }
+
+    private static PrintStream getUtf8Output() {
+        try {
+            return new PrintStream(System.out, true, "UTF-8");
+        } catch (UnsupportedEncodingException ioe) {
+            return System.out; // balk
         }
     }
 
@@ -239,7 +253,7 @@ public final class Output {
         if ((formatted == null) || (!decorated.get() && isPrintFromPly())) {
             return;
         }
-        System.out.println(formatted);
+        out.println(formatted);
     }
 
     public static void printNoLine(String message, Object ... args) {
@@ -251,7 +265,7 @@ public final class Output {
         if ((formatted == null) || (!decorated.get() && isPrintFromPly())) {
             return;
         }
-        System.out.print(formatted);
+        out.print(formatted);
     }
     
     private static boolean isPrintFromPly() {
@@ -273,7 +287,7 @@ public final class Output {
         }
         String scriptArg = (String) args[1];
         if (!decorated.get()) {
-            System.out.println(scriptArg);
+            out.println(scriptArg);
             return;
         }
         boolean noLine = scriptArg.contains("^no_line^");
