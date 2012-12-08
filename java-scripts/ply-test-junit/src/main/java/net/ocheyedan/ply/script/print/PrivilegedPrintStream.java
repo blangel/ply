@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script.print;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 
 /**
  * User: blangel
@@ -18,9 +19,9 @@ public class PrivilegedPrintStream extends PrintStream {
 
     private final PrintStream delegate;
 
-    public PrivilegedPrintStream(PrintStream delegate, File file) throws FileNotFoundException {
+    public PrivilegedPrintStream(PrintStream delegate, File file) throws FileNotFoundException, UnsupportedEncodingException {
         super(file);
-        this.delegate = delegate;
+        this.delegate = new PrintStream(delegate, true, "UTF-8");
     }
 
     @Override public void print(String out) {
