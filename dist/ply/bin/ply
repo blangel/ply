@@ -142,10 +142,12 @@ if tty -s <&1; then
 else
   PLY_PIPED="true"
 fi
+PLY_ENCODING="UTF-8"
 
 exec "$JAVACMD" \
   -client -Xms32M -Xmx32M -noverify \
   -Xbootclasspath/a:"${CLASSPATH}" \
+  "-Dfile.encoding=${PLY_ENCODING}" \
   "-Dply.home=${PLY_HOME}" \
   "-Dply.version=${PLY_VERSION}" \
   "-Dply.piped=${PLY_PIPED}" \

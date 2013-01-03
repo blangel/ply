@@ -130,7 +130,7 @@ public class DependencyManager {
                         String.format(" [ actually %d; %d of which %s pulled in transitively ]", size, (size - graphSize), (size - graphSize) > 1 ? "are" : "is") : "";
                 Output.print("Project ^b^%s^r^ has ^b^%d^r^ direct %sdependenc%s%s: ", Props.get("name", projectContext).value(), graphSize,
                         scope.getPrettyPrint(), (size == 1 ? "y" : "ies"), sizeExplanation);
-                printDependencyGraph(depGraph.getRootVertices(), String.format("%s ", PlyUtil.isUnicodeSupported() ? "\u26AC" : "+"), new HashSet<Vertex<Dep>>());
+                printDependencyGraph(depGraph.getRootVertices(), "" /*String.format("%s ", PlyUtil.isUnicodeSupported() ? "\u26AC" : "+")*/, 0, new HashSet<Vertex<Dep>>());
             }
         } else if ((args.length > 1) && "add-repo".equals(args[0])) {
             addRepository(args[1], scope);
@@ -395,23 +395,53 @@ public class DependencyManager {
         }
     }
 
-    private static void printDependencyGraph(List<Vertex<Dep>> vertices, String indent, Set<Vertex<Dep>> encountered) {
+    private static void printDependencyGraph(List<Vertex<Dep>> vertices, String indent, int depth, Set<Vertex<Dep>> encountered) {
         if ((vertices == null) || vertices.isEmpty()) {
             return;
         }
         for (Vertex<Dep> vertex : vertices) {
+            int currentDepth = depth;
             boolean enc = encountered.contains(vertex);
             if (!enc) {
                 encountered.add(vertex);
             }
             Dep dep = vertex.getValue();
-            String name = dep.dependencyAtom.getPropertyName();
+            String namespace = dep.dependencyAtom.namespace;
+            String name = dep.dependencyAtom.name;
             String version = dep.dependencyAtom.getPropertyValueWithoutTransient();
-            Output.print("%s^b^%s:%s^r^%s%s", indent, name, version, (dep.dependencyAtom.transientDep ? TRANSIENT_PRINT : ""),
+            Output.print("%s%s^black^%s:^r^^b^%s:%s^r^%s%s", indent, getDepthSubscript(depth), namespace, name, version, (dep.dependencyAtom.transientDep ? TRANSIENT_PRINT : ""),
                     (enc ? " (already printed)" : ""));
             if (!enc && !dep.dependencyAtom.transientDep) {
-                printDependencyGraph(vertex.getChildren(), String.format("  %s %s", PlyUtil.isUnicodeSupported() ? "\u2937" : "\\", indent), encountered);
+                printDependencyGraph(vertex.getChildren(), String.format("  %s %s", PlyUtil.isUnicodeSupported() ? "\u2937" : "\\", indent),
+                                     ++currentDepth, encountered);
             }
+        }
+    }
+
+    private static String getDepthSubscript(int depth) {
+        switch (depth) {
+            case 0:
+                return PlyUtil.isUnicodeSupported() ? "\u2080 " : "0 ";
+            case 1:
+                return PlyUtil.isUnicodeSupported() ? "\u2081 " : "1 ";
+            case 2:
+                return PlyUtil.isUnicodeSupported() ? "\u2082 " : "2 ";
+            case 3:
+                return PlyUtil.isUnicodeSupported() ? "\u2083 " : "3 ";
+            case 4:
+                return PlyUtil.isUnicodeSupported() ? "\u2084 " : "4 ";
+            case 5:
+                return PlyUtil.isUnicodeSupported() ? "\u2085 " : "5 ";
+            case 6:
+                return PlyUtil.isUnicodeSupported() ? "\u2086 " : "6 ";
+            case 7:
+                return PlyUtil.isUnicodeSupported() ? "\u2087 " : "7 ";
+            case 8:
+                return PlyUtil.isUnicodeSupported() ? "\u2088 " : "8 ";
+            case 9:
+                return PlyUtil.isUnicodeSupported() ? "\u2089 " : "9 ";
+            default:
+                return PlyUtil.isUnicodeSupported() ? "\u2089\u208A " : "9+ ";
         }
     }
 
