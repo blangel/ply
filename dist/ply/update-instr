@@ -217,3 +217,9 @@ METHOD=download=https://raw.github.com/blangel/ply/f378d85718b9c65c93bb63ea00455
 METHOD=download=https://raw.github.com/blangel/ply/f378d85718b9c65c93bb63ea004552bc15bae18f/dist/ply/config/repositories.properties to config/repositories.properties
 METHOD=download=https://raw.github.com/blangel/ply/f378d85718b9c65c93bb63ea004552bc15bae18f/dist/ply/version to version
 VERSION=1.0_37
+OUTPUT=Downloading update to ply core to allow UTF-8 terminal support.
+METHOD=download=https://raw.github.com/blangel/ply/cedc6af2dc0248707eaf55535fc0e24fe4e70aaf/dist/ply/bin/ply to bin/ply
+METHOD=download=https://raw.github.com/blangel/ply/cedc6af2dc0248707eaf55535fc0e24fe4e70aaf/dist/ply/config/scripts-jar.properties to config/scripts-jar.properties
+METHOD=download=https://github.com/blangel/ply/raw/cedc6af2dc0248707eaf55535fc0e24fe4e70aaf/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/cedc6af2dc0248707eaf55535fc0e24fe4e70aaf/dist/ply/version to version
+VERSION=1.0_38
