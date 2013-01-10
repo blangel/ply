@@ -69,8 +69,8 @@ properties and passing them as environmental variables to each invoked script.  
 involves collecting all properties for all contexts (for the given scope; again see [Scopes](Scopes.md) for a general description
 of what scopes are) and overriding properties appropriately.
 
-Ply passes the properties in the following format: `ply$context.propName=propValue`.  That is the environment variable name
-is `ply$context.propName` and the value is `propValue`.  The first four characters `ply$` are just to disambiguate ply
+Ply passes the properties in the following format: `ply_context.propName=propValue`.  That is the environment variable name
+is `ply_context.propName` and the value is `propValue`.  The first four characters `ply_` are just to disambiguate ply
 properties from other environment variables.  The next part is the context.  The context is the property file name (without
 the scope), so in the last example above the context is `environ`.  The `propName` and `propValue` are self-explanatory.
 If a property within a context is defined in the system defaults but overridden by the local project, only the local
@@ -80,5 +80,10 @@ If the local project overrides this to false
 
     $ ply set warnings=false in compiler
 
-then only the local override is passed to scripts (i.e., scripts will see one environment variable named `ply$compiler.warnings` with
+then only the local override is passed to scripts (i.e., scripts will see one environment variable named `ply_compiler.warnings` with
 value `false`).
+
+Note, the delimiter between the `context` and the `propName` within the environment variable name is changed to an
+underscore character when the execution is a shell script (in an attempt to make the variable name shell-safe).  If
+the property name contains period characters these characters are changed to underscores as well.  Other non-shell-safe
+characters are left as is so take warning when creating shell scripts.

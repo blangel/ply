@@ -1,8 +1,12 @@
 package net.ocheyedan.ply;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * User: blangel
@@ -137,6 +141,73 @@ public final class FileUtil {
     }
 
     /**
+     * If {@code url} is local, returns {@link java.net.URL#getFile()} otherwise downloads the url
+     * to a temporary file and returns that file's path.
+     * @param url to resolve to a local path
+     * @param headers to be used when downloading {@code url}
+     * @param name of the file to be downloaded, for debug logging
+     * @param intoName of the file into which to download, for debug logging
+     * @return a local filesystem path to the dependencies file or null on exception
+     */
+    public static String getLocalPath(URL url, Map<String, String> headers, String name, String intoName) {
+        if (url == null) {
+            return null;
+        }
+        String protocol = url.getProtocol();
+        if ("file".equals(protocol)) {
+            return url.getFile();
+        } else {
+            try {
+                File tmp = File.createTempFile("ply-", ".tmp");
+                if (download(url, headers, tmp, name, intoName, true)) {
+                    return tmp.getPath();
+                } else {
+                    return null;
+                }
+            } catch (IOException ioe) {
+                return null; //
+            }
+        }
+    }
+
+    /**
+     * Downloads the {@code remoteUrl} and saves to {@code into} file.
+     * @param remoteUrl to download
+     * @param headers to use when making a connection to {@code remoteUrl}
+     * @param into the location into which to download
+     * @param name of the file being downloaded
+     * @param intoName of the location into which the file is being downloaded
+     * @param ignoreFNF true to ignore printing exception messages when file is not found
+     * @return true if the file was successfully downloaded and saved {@code into}, false otherwise
+     */
+    public static boolean download(URL remoteUrl, Map<String, String> headers, File into, String name, String intoName, boolean ignoreFNF) {
+        if (remoteUrl == null) {
+            return false;
+        }
+        InputStream stream;
+        try {
+            // TODO - proxy info (see http://download.oracle.com/javase/6/docs/technotes/guides/net/proxies.html)
+            URLConnection urlConnection = remoteUrl.openConnection();
+            if (headers != null) {
+                for (String key : headers.keySet()) {
+                    urlConnection.addRequestProperty(key, headers.get(key));
+                }
+            }
+            stream = urlConnection.getInputStream();
+        } catch (FileNotFoundException fnfe) {
+            if (!ignoreFNF) {
+                Output.print(fnfe);
+            }
+            return false;
+        } catch (IOException ioe) {
+            Output.print(ioe); // TODO - parse exception and more gracefully handle http-errors.
+            return false;
+        }
+        Output.print("^info^ Downloading %s from %s...", name, intoName);
+        return FileUtil.copy(stream, into);
+    }
+
+    /**
      * Concatenates {@code parts} together ensuring they are correctly separated by {@link File#separator} where
      * appropriate.
      * @param parts to concatenate.
@@ -186,6 +257,19 @@ public final class FileUtil {
             return path;
         }
         return pathFromParts(USER_HOME, path.substring(1));
+    }
+
+    /**
+     * Removes resolved prefix from {@code path} replacing it with a '~'
+     * @param path to reverse resolve unix tilde
+     * @return {@code path} with '~' replacing resolution or {@code path} as inputted if the value did not start with the
+     *         resolved user home directory.
+     */
+    public static String reverseUnixTilde(String path) {
+        if (path.startsWith(USER_HOME)) {
+            return path.replace(USER_HOME, "~");
+        }
+        return path;
     }
 
     /**

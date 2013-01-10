@@ -57,7 +57,7 @@ final class Loader {
 
     private static boolean shouldLoadFromEnv(File configDirectory) {
         return ((configDirectory == PlyUtil.LOCAL_CONFIG_DIR)
-                && (System.getenv("ply$ply.invoker") != null));
+                && (System.getenv("ply_ply.invoker") != null));
     }
 
     /**
@@ -74,12 +74,12 @@ final class Loader {
         
         Map<String, String> env = System.getenv();
         for (String key : env.keySet()) {
-            if (!key.startsWith("ply$")) {
+            if (!key.startsWith("ply_")) {
                 continue; // non-ply property
             }
             String propertyValue = env.get(key);
-            key = key.substring(4); // strip ply$
-            // extract context
+            key = key.substring(4); // strip ply_
+            // extract context (note, this is java code and so the delimiter should be a '.')
             int index = key.indexOf("."); // error if -1; must have been set by Ply itself
             Context context = Context.named(key.substring(0, index));
             key = key.substring(index + 1); // error if (length == index + 1) as property name's are non-null
@@ -154,7 +154,7 @@ final class Loader {
                   adHocFiles == null ? Collections.<Context, PropFile>emptyMap() : adHocFiles,
                   scopedChain, allContexts, defaultScopeChain);
         }
-        
+
         return chain;
     }
     

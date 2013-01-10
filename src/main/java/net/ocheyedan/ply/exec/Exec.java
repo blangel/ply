@@ -59,7 +59,7 @@ public final class Exec {
         File projectConfigDir = FileUtil.fromParts(projectRoot.getPath(), ".ply", "config");
         execution = handleNonNativeExecutable(execution, projectConfigDir);
         long start = System.currentTimeMillis();
-        execution.preInvoke(projectRoot, PropsExt.getPropsForEnv(projectConfigDir, execution.script.scope));
+        execution.preInvoke(projectRoot, PropsExt.getPropsForEnv(execution, projectConfigDir, execution.script.scope));
         return new ExecutionWrapper(execution, start);
     }
 

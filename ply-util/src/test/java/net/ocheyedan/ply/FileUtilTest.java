@@ -3,13 +3,16 @@ package net.ocheyedan.ply;
 import org.junit.Test;
 
 import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.Map;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertNull;
+import static junit.framework.Assert.*;
 
 /**
  * User: blangel
@@ -165,6 +168,42 @@ public class FileUtilTest {
                                                                                                      "again" + File.separator,
                                                                                                      "more" + File.separator).getPath());
 
+    }
+
+    @Test
+    public void download() throws IOException {
+        Map<String, String> empty = Collections.emptyMap();
+        assertFalse(FileUtil.download(null, empty, null, null, null, true));
+        URL url = URI.create("http://dne.com/dne/dne/dne.html").toURL();
+        assertFalse(FileUtil.download(url, empty, null, null, null, true));
+        File tmp = File.createTempFile("ply-test", ".tmp");
+        url = URI.create("https://raw.github.com/blangel/ply/master/README.md").toURL();
+        assertTrue(FileUtil.download(url, empty, tmp, "ply-test.tmp", "tmp location", true));
+    }
+
+    @Test
+    public void getLocalPath() throws IOException {
+        Map<String, String> empty = Collections.emptyMap();
+        assertNull(FileUtil.getLocalPath(null, empty, null, null));
+
+        File tmp = File.createTempFile("ply-test", ".tmp");
+        URL url = tmp.toURI().toURL();
+        String path = FileUtil.getLocalPath(url, empty, "ply-test", "tmp location");
+        assertNotNull(path);
+        assertEquals(tmp.getPath(), path);
+        String expectedPath = "/Users/ply/test.tmp";
+        url = URI.create("file:" + expectedPath).toURL();
+        path = FileUtil.getLocalPath(url, empty, "ply-test", "tmp location");
+        assertNotNull(path);
+        assertEquals(expectedPath, path);
+
+        url = URI.create("http://dne.com/dne/dne/dne.html").toURL();
+        assertNull(FileUtil.getLocalPath(url, empty, "dne", "tmp location"));
+        url = URI.create("https://raw.github.com/blangel/ply/master/README.md").toURL();
+        path = FileUtil.getLocalPath(url, empty, "readme", "tmp location");
+        assertNotNull(path);
+        assertTrue(path.contains("ply-"));
+        assertTrue(path.endsWith(".tmp"));
     }
 
 }

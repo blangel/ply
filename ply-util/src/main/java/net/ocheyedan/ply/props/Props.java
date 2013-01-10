@@ -1,6 +1,5 @@
 package net.ocheyedan.ply.props;
 
-import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 
 import java.io.File;
@@ -142,11 +141,11 @@ public final class Props {
     }
 
     /**
-     * @return the value of the environment variable {@literal ply$scope} or {@link Scope#Default} if the environment
+     * @return the value of the environment variable {@literal ply_scope} or {@link Scope#Default} if the environment
      *         variable is not set.
      */
     public static Scope getScope() {
-        String scope = System.getenv("ply$ply.scope"); // cannot use Props itself as this is called internally while resolving
+        String scope = System.getenv("ply_ply.scope"); // cannot use Props itself as this is called internally while resolving
         return (scope == null ? Scope.Default : new Scope(scope));
     }
 

@@ -8,10 +8,7 @@ import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
 import net.ocheyedan.ply.props.*;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.jar.JarEntry;
@@ -136,7 +133,7 @@ final class JvmExecution extends Execution {
                 return null;
             }
             List<DependencyAtom> deps = Deps.parse(dependencies);
-            RepositoryRegistry repos = createRepositoryList(projectConfigDir, scope);
+            RepositoryRegistry repos = Repos.createRepositoryRegistry(projectConfigDir, scope, null, null);
             DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(deps, repos);
             PropFile resolvedDependencies = Deps.convertToResolvedPropertiesFile(depGraph);
             return Deps.getClasspath(resolvedDependencies, jarPath);
@@ -152,36 +149,6 @@ final class JvmExecution extends Execution {
                 }
             }
         }
-    }
-
-    private static RepositoryRegistry createRepositoryList(File configDirectory, Scope scope) {
-        PropFile.Prop localRepoProp = Props.get("localRepo", Context.named("depmngr"), scope, configDirectory);
-        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp.value());
-        if (localRepo == null) {
-            if (PropFile.Prop.Empty.equals(localRepoProp)) {
-                Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
-            } else {
-                Output.print("^error^ Could not resolve directory for ^b^localRepo^r^ property [ is ^b^%s^r^ ].", localRepoProp.value());
-            }
-            throw new SystemExit(1);
-        }
-        List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
-        PropFileChain repositoryProps = Props.get(Context.named("repositories"), scope, configDirectory);
-        for (PropFile.Prop repositoryProp : repositoryProps.props()) {
-            if (localRepo.getPropertyName().equals(repositoryProp.name)) {
-                continue;
-            }
-            String repoType = repositoryProp.value();
-            String repoAtom = repoType + ":" + repositoryProp.name;
-            RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
-            if (repo == null) {
-                Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);
-            } else {
-                repositoryAtoms.add(repo);
-            }
-        }
-        Collections.sort(repositoryAtoms, RepositoryAtom.LOCAL_COMPARATOR);
-        return new RepositoryRegistry(localRepo, repositoryAtoms, null);
     }
 
     /**

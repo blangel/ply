@@ -8,6 +8,7 @@ import net.ocheyedan.ply.props.Context;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
+import java.util.regex.Pattern;
 
 /**
  * User: blangel
@@ -67,5 +68,27 @@ final class ShellExecution extends Execution {
 
     ShellExecution(String name, Script script, String[] executionArgs) {
         super(name, script, executionArgs);
+    }
+
+    /**
+     * Override to produce shell safe environment variable names.  Note, this will produce ambiguous
+     * environment names if the {@code propName} contains '_' characters.
+     * @param prefix to prepend to the variable name to distinguish this variable as a ply variable
+     * @param context of the property
+     * @param propName of the property
+     * @return the shell-safe environment variable name
+     */
+    @Override public String getEnvKey(String prefix, Context context, String propName) {
+        propName = propName.replaceAll(Pattern.quote("."), "_");
+        return prefix + context.name + "_" + propName;
+    }
+
+    /**
+     * @return an id for the type of environment key; override this method when overriding
+     *         {@link #getEnvKey(String, net.ocheyedan.ply.props.Context, String)} to allow for proper caching
+     *         of resolved environment keys.
+     */
+    @Override public String getEnvKeyId() {
+        return "shellexecution";
     }
 }

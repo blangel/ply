@@ -201,7 +201,7 @@ public final class SlowTaskThread {
         }
 
         @Override public void run() {
-            final boolean invokedByPly = "ply".equals(System.getenv("ply$ply.invoker"));
+            final boolean invokedByPly = "ply".equals(System.getenv("ply_ply.invoker"));
             try {
                 Thread.sleep(wait);
                 if (!Thread.currentThread().isInterrupted()) {

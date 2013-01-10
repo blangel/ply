@@ -1,7 +1,9 @@
 package net.ocheyedan.ply.exec;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -66,6 +68,13 @@ final class StdinProcessPipe extends Thread {
         setDaemon(true);
         started = new AtomicBoolean(false);
         this.processStdin = processStdin;
+    }
+
+    void write(char[] buffer) throws IOException {
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(this.processStdin.get()));
+        writer.write(buffer, 0, buffer.length);
+        writer.write('\n');
+        writer.flush();
     }
 
     public void pausePipe() {

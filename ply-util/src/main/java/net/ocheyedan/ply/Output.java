@@ -150,29 +150,13 @@ public final class Output {
     private static final Map<String, TermCode> TERM_CODES = new HashMap<String, TermCode>();
 
     /**
-     * The UTF-8 output stream.
-     */
-    private static final PrintStream out;
-
-    /**
      * Set to true when {@link #init()} has been called.
      */
     private static AtomicBoolean inited = new AtomicBoolean(false);
     static {
         // if this is not ply itself - init straight-away
-        if ("ply".equals(System.getenv("ply$ply.invoker"))) {
-            out = System.out;
+        if ("ply".equals(System.getenv("ply_ply.invoker"))) {
             init();
-        } else {
-            out = getUtf8Output();
-        }
-    }
-
-    private static PrintStream getUtf8Output() {
-        try {
-            return new PrintStream(System.out, true, "UTF-8");
-        } catch (UnsupportedEncodingException ioe) {
-            return System.out; // balk
         }
     }
 
@@ -216,6 +200,7 @@ public final class Output {
         TERM_CODES.put("normal", new TermCode(Pattern.compile("\\^n\\^"), "\u001b[2m", ""));
         TERM_CODES.put("inverse", new TermCode(Pattern.compile("\\^i\\^"), "\u001b[7m", ""));
         TERM_CODES.put("black", new TermCode(Pattern.compile("\\^black\\^"), "\u001b[" + terminalBold + ";30m", ""));
+        TERM_CODES.put("grey", new TermCode(Pattern.compile("\\^grey\\^"), "\u001b[1;30m", ""));
         TERM_CODES.put("red", new TermCode(Pattern.compile("\\^red\\^"),  "\u001b[" + terminalBold + ";31m", ""));
         TERM_CODES.put("green", new TermCode(Pattern.compile("\\^green\\^"), "\u001b[" + terminalBold + ";32m", ""));
         TERM_CODES.put("yellow", new TermCode(Pattern.compile("\\^yellow\\^"), "\u001b[" + terminalBold + ";33m", ""));
@@ -253,7 +238,7 @@ public final class Output {
         if ((formatted == null) || (!decorated.get() && isPrintFromPly())) {
             return;
         }
-        out.println(formatted);
+        System.out.println(formatted);
     }
 
     public static void printNoLine(String message, Object ... args) {
@@ -265,7 +250,7 @@ public final class Output {
         if ((formatted == null) || (!decorated.get() && isPrintFromPly())) {
             return;
         }
-        out.print(formatted);
+        System.out.print(formatted);
     }
     
     private static boolean isPrintFromPly() {
@@ -287,7 +272,7 @@ public final class Output {
         }
         String scriptArg = (String) args[1];
         if (!decorated.get()) {
-            out.println(scriptArg);
+            System.out.println(scriptArg);
             return;
         }
         boolean noLine = scriptArg.contains("^no_line^");

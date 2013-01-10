@@ -77,8 +77,6 @@ import static net.ocheyedan.ply.props.PropFile.Prop;
  * The {@literal remove} command takes an atom and removes it from the dependencies scope, if it exists.
  * The {@literal list} command lists all direct dependencies for the scope (transitive dependencies are not listed).
  * The {@literal tree} command lists all dependencies for the scope in a tree format (including transitive).
- * The {@literal add-repo} command takes a repository and adds it to the repositories.
- * The {@literal remove-repo} command removes the repository.
  *
  * If nothing is passed to the script then dependency resolution is done for all dependencies against the known
  * repositories.
@@ -132,10 +130,6 @@ public class DependencyManager {
                         scope.getPrettyPrint(), (size == 1 ? "y" : "ies"), sizeExplanation);
                 printDependencyGraph(depGraph.getRootVertices(), "" /*String.format("%s ", PlyUtil.isUnicodeSupported() ? "\u26AC" : "+")*/, 0, new HashSet<Vertex<Dep>>());
             }
-        } else if ((args.length > 1) && "add-repo".equals(args[0])) {
-            addRepository(args[1], scope);
-        } else if ((args.length > 1) && "remove-repo".equals(args[0])) {
-            removeRepository(args[1], scope);
         } else if ((args.length > 1) && "resolve-classifiers".equals(args[0])) {
             String[] classifiers = args[1].split(",");
             for (String classifier : classifiers) {
@@ -220,86 +214,13 @@ public class DependencyManager {
         }
     }
 
-    private static void addRepository(String repository, Scope scope) {
-        RepositoryAtom atom = RepositoryAtom.parse(repository);
-        if (atom == null) {
-            Output.print("^error^ Repository %s not of format [type:]repoUri.", repository);
-            System.exit(1);
-        }
-        try {
-            atom.repositoryUri.toURL();
-        } catch (Exception e) {
-            Output.print("^error^ Given value ^b^%s^r^ is not a valid URL and so is not a repository.",
-                    atom.getPropertyName());
-            System.exit(1);
-        }
-        PropFile repositories = loadRepositoriesFile(scope);
-        if (repositories.contains(atom.getPropertyName())) {
-            Output.print("^info^ overriding repository %s; was %s now is %s.", atom.getPropertyName(),
-                    repositories.get(atom.getPropertyName()).value(), atom.getPropertyValue());
-            repositories.remove(atom.getPropertyName());
-        }
-        repositories.add(atom.getPreResolvedUri(), atom.getPropertyValue());
-        storeRepositoriesFile(repositories, scope);
-        Output.print("Added repository %s%s", atom.toString(), !Scope.Default.equals(scope) ?
-                String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
-    }
-
-    private static void removeRepository(String repository, Scope scope) {
-        RepositoryAtom atom = RepositoryAtom.parse(repository);
-        if (atom == null) {
-            Output.print("^error^ Repository %s not of format [type:]repoUri.", repository);
-            System.exit(1);
-        }
-
-        if (Props.get(atom.getPropertyName(), Context.named("repositories")).value().isEmpty()) {
-            Output.print("^warn^ Repository not found; given %s:%s", atom.getPropertyValue(),
-                    atom.getPropertyName());
-        } else {
-            PropFile repositories = loadRepositoriesFile(scope);
-            repositories.remove(atom.getPropertyName());
-            storeRepositoriesFile(repositories, scope);
-            Output.print("Removed repository %s%s", atom.toString(), !Scope.Default.equals(scope) ?
-                String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
-        }
-    }
-
     private static RepositoryRegistry createRepositoryList(DependencyAtom dependencyAtom, List<DependencyAtom> dependencyAtoms) {
-        PropFile.Prop localRepoProp = Props.get("localRepo", Context.named("depmngr"));
-        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp.value());
-        if (localRepo == null) {
-            if (PropFile.Prop.Empty.equals(localRepoProp)) {
-                Output.print("^error^ No ^b^localRepo^r^ property defined (^b^ply set localRepo=xxxx in depmngr^r^).");
-            } else {
-                Output.print("^error^ Could not resolve directory for ^b^localRepo^r^ property [ is ^b^%s^r^ ].", localRepoProp.value());
-            }
-            System.exit(1);
+        try {
+            return Repos.createRepositoryRegistry(PlyUtil.LOCAL_CONFIG_DIR, Props.getScope(), dependencyAtom, dependencyAtoms);
+        } catch (SystemExit se) {
+            System.exit(se.exitCode);
+            throw new AssertionError("Not reachable");
         }
-        List<RepositoryAtom> repositoryAtoms = new ArrayList<RepositoryAtom>();
-        PropFileChain repositories = Props.get(Context.named("repositories"));
-        if (repositories != null) {
-            for (Prop repoProp : repositories.props()) {
-                String repoUri = repoProp.name;
-                if (localRepo.getPropertyName().equals(repoUri)) {
-                    continue;
-                }
-                String repoType = repoProp.value();
-                String repoAtom = repoType + ":" + repoUri;
-                RepositoryAtom repo = RepositoryAtom.parse(repoAtom);
-                if (repo == null) {
-                    Output.print("^warn^ Invalid repository declared %s, ignoring.", repoAtom);
-                } else {
-                    repositoryAtoms.add(repo);
-                }
-            }
-        }
-        Collections.sort(repositoryAtoms, RepositoryAtom.LOCAL_COMPARATOR);
-        Map<DependencyAtom, List<DependencyAtom>> synthetic = null;
-        if (dependencyAtom != null) {
-            synthetic = new HashMap<DependencyAtom, List<DependencyAtom>>(1);
-            synthetic.put(dependencyAtom, dependencyAtoms);
-        }
-        return new RepositoryRegistry(localRepo, repositoryAtoms, synthetic);
     }
 
     private static PropFile resolveDependencies(final PropFile dependencies, final String classifier,
@@ -361,27 +282,11 @@ public class DependencyManager {
         return PropFiles.load(loadPath, true, false);
     }
 
-    private static PropFile loadRepositoriesFile(Scope scope) {
-        String localDir = Props.get("project.dir", Context.named("ply")).value();
-        String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "repositories" + scope.getFileSuffix() + ".properties";
-        return PropFiles.load(loadPath, true, false);
-    }
-
     private static void storeDependenciesFile(PropFile dependencies, Scope scope) {
         String localDir = Props.get("project.dir", Context.named("ply")).value();
         String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "dependencies" + scope.getFileSuffix() + ".properties";
         if (!PropFiles.store(dependencies, storePath, true)) {
-            System.exit(1);
-        }
-    }
-
-    private static void storeRepositoriesFile(PropFile repositories, Scope scope) {
-        String localDir = Props.get("project.dir", Context.named("ply")).value();
-        String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "repositories" + scope.getFileSuffix() + ".properties";
-        if (!PropFiles.store(repositories, storePath, true)) {
             System.exit(1);
         }
     }
@@ -409,7 +314,7 @@ public class DependencyManager {
             String namespace = dep.dependencyAtom.namespace;
             String name = dep.dependencyAtom.name;
             String version = dep.dependencyAtom.getPropertyValueWithoutTransient();
-            Output.print("%s%s^black^%s:^r^^b^%s:%s^r^%s%s", indent, getDepthSubscript(depth), namespace, name, version, (dep.dependencyAtom.transientDep ? TRANSIENT_PRINT : ""),
+            Output.print("%s%s^grey^%s:^r^^b^%s:%s^r^%s%s", indent, getDepthSubscript(depth), namespace, name, version, (dep.dependencyAtom.transientDep ? TRANSIENT_PRINT : ""),
                     (enc ? " (already printed)" : ""));
             if (!enc && !dep.dependencyAtom.transientDep) {
                 printDependencyGraph(vertex.getChildren(), String.format("  %s %s", PlyUtil.isUnicodeSupported() ? "\u2937" : "\\", indent),
@@ -452,11 +357,8 @@ public class DependencyManager {
         Output.print("    ^b^remove <dep-atom>^r^ : removes dep-atom from the list of dependencies (within scope).");
         Output.print("    ^b^list^r^ : list all direct dependencies (within scope excluding transitive dependencies).");
         Output.print("    ^b^tree^r^ : print all dependencies in a tree view (within scope including transitive dependencies).");
-        Output.print("    ^b^add-repo <rep-atom>^r^ : adds rep-atom to the list of repositories.");
-        Output.print("    ^b^remove-repo <rep-atom>^r^ : removes rep-atom from the list of repositories.");
         Output.print("    ^b^resolve-classifiers <classifiers>^r^ : resolves dependencies with each of the (comma delimited) classifiers.");
         Output.print("  ^b^dep-atom^r^ is namespace:name:version[:artifactName] (artifactName is optional and defaults to name-version.jar).");
-        Output.print("  ^b^rep-atom^r^ is [type:]repoURI (type is optional and defaults to ply, must be either ply or maven).");
         Output.print("  if no command is passed then dependency resolution is done for all dependencies against the known repositories.");
         Output.print("  Dependencies can be grouped by ^b^scope^r^ (i.e. test).  The default scope is null.");
     }

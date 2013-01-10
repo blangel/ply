@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Comparator;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static net.ocheyedan.ply.props.PropFile.Prop;
 
@@ -51,10 +52,13 @@ public class RepositoryAtom {
 
     public final Type type;
 
+    private final AtomicReference<Auth> auth;
+
     public RepositoryAtom(String preResolvedUri, URI repositoryUri, Type type) {
         this.preResolvedUri = preResolvedUri;
         this.repositoryUri = repositoryUri;
         this.type = type;
+        this.auth = new AtomicReference<Auth>();
     }
     public RepositoryAtom(String preResolvedUri, URI repositoryUri) {
         this(preResolvedUri, repositoryUri, null);
@@ -71,11 +75,17 @@ public class RepositoryAtom {
     public Type getResolvedType() {
         return (type == null ? Type.ply : type);
     }
+    public Auth getAuth() {
+        return auth.get();
+    }
     public boolean isPlyType() {
         return (getResolvedType() == Type.ply);
     }
     public String getResolvedPropertyValue() {
         return getResolvedType().name();
+    }
+    public void setAuth(Auth auth) {
+        this.auth.set(auth);
     }
     @Override public String toString() {
         return getResolvedPropertyValue() + ":" + getPropertyName();
@@ -129,7 +139,7 @@ public class RepositoryAtom {
         File localRef = new File(atom);
         try {
             localRef = localRef.getCanonicalFile();
-            if (localRef.exists()) {
+            if (localRef.isDirectory()) {
                 if (!atom.startsWith("/")) {
                     return new RepositoryAtom(preResolved, localRef.toURI(), type); // TODO - should always do this, why below for unix?
                 }

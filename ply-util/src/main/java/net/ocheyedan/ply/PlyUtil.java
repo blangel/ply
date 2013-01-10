@@ -59,6 +59,10 @@ public final class PlyUtil {
         return "true".equalsIgnoreCase(Props.get("unicode", Context.named("ply")).value());
     }
 
+    public static String getProjectDir(File configDirectory) {
+        return FileUtil.getCanonicalPath(FileUtil.fromParts(configDirectory.getPath(), ".."));
+    }
+
     /**
      * This directory has to be resolved as ply can be invoked from within a nested directory.
      * @return the resolved local ply project directory

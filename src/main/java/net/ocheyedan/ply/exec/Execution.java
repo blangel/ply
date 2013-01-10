@@ -2,13 +2,11 @@ package net.ocheyedan.ply.exec;
 
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.OutputExt;
+import net.ocheyedan.ply.PwdUtil;
 import net.ocheyedan.ply.cmd.build.Script;
-import net.ocheyedan.ply.props.PropsExt;
+import net.ocheyedan.ply.props.Context;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -91,6 +89,26 @@ public class Execution {
     }
 
     /**
+     * Constructs an appropriate environment variable name for the given execution.
+     * @param prefix to prepend to the variable name to distinguish this variable as a ply variable
+     * @param context of the property
+     * @param propName of the property
+     * @return the execution specific environment variable name
+     */
+    public String getEnvKey(String prefix, Context context, String propName) {
+        return prefix + context.name + "." + propName;
+    }
+
+    /**
+     * @return an id for the type of environment key; override this method when overriding
+     *         {@link #getEnvKey(String, net.ocheyedan.ply.props.Context, String)} to allow for proper caching
+     *         of resolved environment keys.
+     */
+    public String getEnvKeyId() {
+        return "execution";
+    }
+
+    /**
      * Allows executions the ability to startup and then pause. If an implementation allows for this then they will pause
      * after starting up and then wait until {@link #invoke(String)} is called.
      * This functionality is useful for slow-starting executions like {@link JvmExecution} where the time to start
@@ -134,7 +152,22 @@ public class Execution {
         // take the child's input and reformat for output on parent process
         String processStdoutLine;
         while ((processStdoutLine = processStdout.get().readLine()) != null) {
-            OutputExt.printFromExec("[^green^%s^r^] %s", outputScriptName, processStdoutLine);
+            PwdUtil.Request request = PwdUtil.isPwdRequest(processStdoutLine);  // determine if the line is a password request
+            OutputExt.printFromExec("[^green^%s^r^] %s", outputScriptName, request.getLine());
+            if (!request.isPwd()) {
+                continue;
+            }
+            // child-process is requesting a password-read; handle via {@link System#console()} if available
+            Console console = System.console();
+            char[] pwd;
+            if (console != null) {
+                pwd = console.readPassword();
+            } else { // no console available, simply read (potentially with echo-on)
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                pwd = reader.readLine().toCharArray();
+            }
+            STDIN_PROCESS_PIPE.get().write(pwd);
+            Arrays.fill(pwd, ' ');
         }
         int result = process.get().waitFor();
         STDIN_PROCESS_PIPE.get().pausePipe();

@@ -342,25 +342,18 @@ public final class Deps {
         List<RepositoryAtom> nonLocalRepos = repositoryRegistry.remoteRepositories;
         for (RepositoryAtom remoteRepo : nonLocalRepos) {
             String remotePathDir = getDependencyDirectoryPathForRepo(dependencyAtom, remoteRepo);
-            String remotePath = FileUtil.pathFromParts(remotePathDir, dependencyAtom.getArtifactName());
+            String unauthRemotePath = FileUtil.pathFromParts(remotePathDir, dependencyAtom.getArtifactName());
+            Auth auth = remoteRepo.getAuth();
+            String remotePath;
+            Map<String, String> headers = Collections.emptyMap();
+            if (auth != null) {
+                remotePath = auth.getArtifactPath(remotePathDir, dependencyAtom);
+                headers = auth.getHeaders();
+            } else {
+                remotePath = unauthRemotePath;
+            }
             URL remoteUrl = getUrl(remotePath);
-            if (remoteUrl == null) {
-                continue;
-            }
-            InputStream stream;
-            try {
-                // TODO - proxy info (see http://download.oracle.com/javase/6/docs/technotes/guides/net/proxies.html)
-                URLConnection urlConnection = remoteUrl.openConnection();
-                stream = urlConnection.getInputStream();
-            } catch (FileNotFoundException fnfe) {
-                // this is fine, check next repo
-                continue;
-            } catch (IOException ioe) {
-                Output.print(ioe); // TODO - parse exception and more gracefully handle http-errors.
-                continue;
-            }
-            Output.print("^info^ Downloading %s from %s...", dependencyAtom.toString(), remoteRepo.toString());
-            if (FileUtil.copy(stream, localDepFile)) {
+            if (FileUtil.download(remoteUrl, headers, localDepFile, dependencyAtom.toString(), remoteRepo.toString(), true)) {
                 return resolveDependency(dependencyAtom, remoteRepo, remotePathDir, localPaths.localDirPath);
             }
         }
@@ -582,17 +575,16 @@ public final class Deps {
     private static PropFile getDependenciesFile(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
                                                   String repoDepDir) {
         if (repositoryAtom.getResolvedType() == RepositoryAtom.Type.ply) {
-            // no dependencies file just means no dependencies, skip.
-            URL url = null;
-            try {
-                url = new URL(repoDepDir.replaceAll("\\\\", "/"));
-            } catch (MalformedURLException murle) {
-                Output.print(murle);
+            Auth auth = repositoryAtom.getAuth();
+            String path;
+            Map<String, String> headers = Collections.emptyMap();
+            if (auth != null) {
+                path = auth.getDependenciesPath(repoDepDir, "dependencies.properties");
+                headers = auth.getHeaders();
+            } else {
+                path = FileUtil.pathFromParts(repoDepDir, "dependencies.properties");
             }
-            if ((url == null) || !new File(url.getFile()).exists()) {
-                return null;
-            }
-            return getDependenciesFromPlyRepo(FileUtil.pathFromParts(repoDepDir, "dependencies.properties"));
+            return getDependenciesFromPlyRepo(path, headers);
         } else {
             // maven pom files are never saved with classifiers
             // @see 'classifier' under 'dependencies' in 'Pom Relationships' - http://maven.apache.org/pom.html
@@ -602,10 +594,14 @@ public final class Deps {
         }
     }
 
-    private static PropFile getDependenciesFromPlyRepo(String urlPath) {
+    private static PropFile getDependenciesFromPlyRepo(String urlPath, Map<String, String> headers) {
         try {
             URL url = new URL(urlPath.replaceAll("\\\\", "/"));
-            PropFile loaded = PropFiles.load(url.getFile(), false, false);
+            String localPath = FileUtil.getLocalPath(url, headers, urlPath, "[tmp location]");
+            if ((localPath == null) || !new File(localPath).exists()) {
+                return null;
+            }
+            PropFile loaded = PropFiles.load(localPath, false, false);
             if (loaded.isEmpty()) {
                 return null;
             } else {
