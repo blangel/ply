@@ -244,3 +244,9 @@ METHOD=download=https://raw.github.com/blangel/ply/997d6d2d7fde0e228117a7b8e09dc
 METHOD=download=https://raw.github.com/blangel/ply/997d6d2d7fde0e228117a7b8e09dcd924ddaa804/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/997d6d2d7fde0e228117a7b8e09dcd924ddaa804/dist/ply/version to version
 VERSION=1.0_40
+OUTPUT=Downloading new ply-dependency-copy script
+METHOD=download=https://raw.github.com/blangel/ply/8fade442c762dbe79ee4d1f58a16e748a968f4be/dist/ply/config/aliases.properties to config/aliases.properties
+METHOD=download=https://raw.github.com/blangel/ply/8fade442c762dbe79ee4d1f58a16e748a968f4be/dist/ply/config/scripts-jar.properties to config/scripts-jar.properties
+METHOD=download=https://raw.github.com/blangel/ply/8fade442c762dbe79ee4d1f58a16e748a968f4be/dist/ply/scripts/ply-dependency-copy-1.0.jar to scripts/ply-dependency-copy-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/8fade442c762dbe79ee4d1f58a16e748a968f4be/dist/ply/version to version
+VERSION=1.0_41
