@@ -34,11 +34,6 @@ import java.util.regex.Pattern;
 public class Script {
 
     /**
-     * @see #splitScript(String)
-     */
-    static final Pattern SPLIT_REG_EX = Pattern.compile("[^\\s\"'`]+|(`[^`]*`)|\"([^\"]*)\"|'([^']*)'");
-
-    /**
      * Splits {@code script} by ' ', ignoring space characters within quotation or tick marks.
      * @param script to split
      * @return the split list of {@code script}
@@ -48,23 +43,55 @@ public class Script {
             return Collections.emptyList();
         }
         List<String> matchList = new ArrayList<String>();
-        Matcher regexMatcher = SPLIT_REG_EX.matcher(script);
-        while (regexMatcher.find()) {
-            String match = regexMatcher.group(1);
-            if (match != null) {
-                // Add tick string with the ticks
-                matchList.add(match);
-            } else if ((match = regexMatcher.group(2)) != null) {
-                // Add double-quoted string without the quotes
-                matchList.add(match);
-            } else if ((match = regexMatcher.group(3)) != null) {
-                // Add single-quoted string without the quotes
-                matchList.add(match);
-            } else {
-                // Add unquoted word
-                matchList.add(regexMatcher.group());
+
+        char[] characters = script.toCharArray();
+        StringBuilder buffer = new StringBuilder();
+        boolean within = false, escaped = false;
+        char withinChar = '\0';
+        for (char character : characters) {
+            switch (character) {
+                case ' ':
+                    if (!within) {
+                        matchList.add(buffer.toString());
+                        buffer = new StringBuilder();
+                    } else {
+                        buffer.append(character);
+                    }
+                    escaped = false;
+                    break;
+                case '\'':
+                case '"':
+                case '`':
+                    if (!escaped && !within) {
+                        within = true;
+                        withinChar = character;
+                        if (character == '`') {
+                            buffer.append(character); // ' and " are grouping characters, ` has special meaning
+                        }
+                    } else if (!escaped && within && (character == withinChar)) {
+                        within = false;
+                        if (character == '`') {
+                            buffer.append(character); // ' and " are grouping characters, ` has special meaning
+                        }
+                    } else { // (escaped && within) || (escaped && !within) // latter case should not happen
+                        buffer.append(character);
+                        escaped = false;
+                    }
+                    break;
+                case '\\':
+                    escaped = true;
+                    buffer.append(character);
+                    break;
+                default:
+                    escaped = false; // no matter what (i.e., escape of non break character)
+                    buffer.append(character);
+
             }
         }
+        if (buffer.length() > 0) {
+            matchList.add(buffer.toString());
+        }
+
         return matchList;
     }
 

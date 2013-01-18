@@ -1,6 +1,7 @@
 package net.ocheyedan.ply.props;
 
 import net.ocheyedan.ply.FileUtil;
+import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 
 import java.io.File;
@@ -80,7 +81,10 @@ final class Loader {
             String propertyValue = env.get(key);
             key = key.substring(4); // strip ply_
             // extract context (note, this is java code and so the delimiter should be a '.')
-            int index = key.indexOf("."); // error if -1; must have been set by Ply itself
+            int index = key.indexOf(".");
+            if (index == -1) { // shell scripts invoke with '_' delimiters, ignore these
+                continue;
+            }
             Context context = Context.named(key.substring(0, index));
             key = key.substring(index + 1); // error if (length == index + 1) as property name's are non-null
             PropFile propFile = propFiles.get(context);

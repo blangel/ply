@@ -30,7 +30,10 @@ public final class ShellScript extends Script {
     @Override protected List<Execution> convert(String overriddenExecutionName) {
         String[] executableArgs = new String[1];
         // remove the '`' leading and trailing tick marks
-        StringBuilder shellScript = new StringBuilder(name.substring(1, name.length() - 1));
+        String cleaned = name.substring(1, name.length() - 1);
+        // replace any "\`" with simply '`'
+        cleaned = cleaned.replace("\\`", "`");
+        StringBuilder shellScript = new StringBuilder(cleaned);
         for (String arg : arguments) {
             shellScript.append(" ");
             shellScript.append(arg);

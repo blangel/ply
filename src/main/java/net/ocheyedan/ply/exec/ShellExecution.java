@@ -46,7 +46,7 @@ final class ShellExecution extends Execution {
         // combine the script and its own args into one arg at end of the shell invocation (so that script args are properly
         // passed to script and not to shell)
         args[supplimentalArgLength] = combine(execution.executionArgs);
-        if (execution.script instanceof ShellScript) {
+        if (Output.isDebug() && (execution.script instanceof ShellScript)) {
             return new ShellExecution(executable, execution.script, args);
         } else {
             return new ShellExecution(execution.name, execution.script, args);

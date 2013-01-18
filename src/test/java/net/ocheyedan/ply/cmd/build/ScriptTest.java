@@ -175,6 +175,11 @@ public class ScriptTest {
         assertEquals("`some \"more\" thing`", scripts.get(0));
         assertEquals("more", scripts.get(1));
         assertEquals("and `diff diff` more", scripts.get(2));
+
+        script = "`j2objc -classpath \\`ply classpath\\` -sourcepath src/main/java/ -d target/ios/ \\`cat target/changed.properties | tr '=\n' ' '\\``";
+        scripts = Script.splitScript(script);
+        assertEquals(1, scripts.size());
+        assertEquals(script, scripts.get(0));
     }
 
     @Test public void parseArgs() {
