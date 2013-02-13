@@ -10,9 +10,9 @@ Features
 
 ![ply-util: ply clean test](https://github.com/blangel/ply/raw/master/docs/imgs/ply-util-test.png "ply-util: ply clean test")
 
-* __No xml__ - Ply has no xml configuration. Its configuration is simple and familiar; java-style [properties](ply/tree/master/docs/Properties.md) files. Ply even has tools built-in to help you manage your project's properties. And yes, just properties files. Good ol' simple key-value pairs, no complex syntax or DSL to learn.
+* __No xml__ - Ply has no xml configuration. Its configuration is simple and familiar; java-style [properties](docs/Properties.md) files. Ply even has tools built-in to help you manage your project's properties. And yes, just properties files. Good ol' simple key-value pairs, no complex syntax or DSL to learn.
 * __Sensible defaults__ - ply uses defaults which are intuitive (e.g., the default _java_ source/target for compilation is the version of the `$JAVA_HOME` jdk). And because ply has sensible and intuitive defaults starting a new project is as simple as running `ply init`.
-* __Easily extensible__ - since ply simply executes scripts (or aliases of scripts; i.e., _clean_, _install_, _test_) changing or augmenting a build lifecycle is just a matter of adding/removing/replacing scripts (or re-aliasing them).  The default scripts and aliases provided specify a best practice for development but if your project wants/needs to deviate from this approach doing so shouldn't feel like working against the grain.  And keep in mind, [scripts](ply/tree/master/docs/Scripts.md) are anything executable (bash, perl, ruby, python, ...) so even though your project's written in one language feel free to flex your polyglot-muscles and augment your build process in any language you like! 
+* __Easily extensible__ - since ply simply executes scripts (or aliases of scripts; i.e., _clean_, _install_, _test_) changing or augmenting a build lifecycle is just a matter of adding/removing/replacing scripts (or re-aliasing them).  The default scripts and aliases provided specify a best practice for development but if your project wants/needs to deviate from this approach doing so shouldn't feel like working against the grain.  And keep in mind, [scripts](docs/Scripts.md) are anything executable (bash, perl, ruby, python, ...) so even though your project's written in one language feel free to flex your polyglot-muscles and augment your build process in any language you like!
 
 Why Another Build Tool?
 -----------------------
@@ -26,12 +26,12 @@ Other build tools make you work harder than you should have to.  How hard? Stupi
 Concepts
 --------
 
-* [Scripts](ply/tree/master/docs/Scripts.md)
-* [Properties](ply/tree/master/docs/Properties.md)
-* [Aliases](ply/tree/master/docs/Aliases.md)
-* [Scopes](ply/tree/master/docs/Scopes.md)
-* [Dependencies](ply/tree/master/docs/Dependencies.md)
-* [Submodules](ply/tree/master/docs/Submodules.md)
+* [Scripts](docs/Scripts.md)
+* [Properties](docs/Properties.md)
+* [Aliases](docs/Aliases.md)
+* [Scopes](docs/Scopes.md)
+* [Dependencies](docs/Dependencies.md)
+* [Submodules](docs/Submodules.md)
 
 At its simplest _ply_ just invokes a series of scripts. The following is a valid series of scripts for ply:
 
@@ -39,9 +39,9 @@ At its simplest _ply_ just invokes a series of scripts. The following is a valid
 
 The series is space delimited so the previous example ran two scripts: `clean` and `compile`
 
-[Scripts](ply/tree/master/docs/Scripts.md) can be extended and [aliased](ply/tree/master/docs/Aliases.md).
+[Scripts](docs/Scripts.md) can be extended and [aliased](docs/Aliases.md).
 Ply ships with property defaults and packaged scripts which allow most java projects to
-build with no configuration.  For a list of all scripts which ply ships with see [Included Scripts](ply/tree/master/docs/IncludedScripts.md).
+build with no configuration.  For a list of all scripts which ply ships with see [Included Scripts](docs/IncludedScripts.md).
 
 To enable a directory/project to use ply, simply run `init` from within the directory:
 
@@ -76,9 +76,9 @@ Once installed, ply can update itself to the most recent version.  Simply run:
 Tutorials
 --------
 
-* [Project setup](ply/tree/master/docs/ProjectSetup.md)
-* [Building](ply/tree/master/docs/BuildingProject.md)
-* [Adding dependencies](ply/tree/master/docs/DependenciesTutorial.md)
-* [Managing repositories](ply/tree/master/docs/Repositories.md)
-* [Running tests](ply/tree/master/docs/RunningTests.md)
-* [Changing log levels](ply/tree/master/docs/Logging.md)
+* [Project setup](docs/ProjectSetup.md)
+* [Building](docs/BuildingProject.md)
+* [Adding dependencies](docs/DependenciesTutorial.md)
+* [Managing repositories](docs/Repositories.md)
+* [Running tests](docs/RunningTests.md)
+* [Changing log levels](docs/Logging.md)
