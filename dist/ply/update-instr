@@ -259,3 +259,7 @@ METHOD=download=https://raw.github.com/blangel/ply/2b85c3563db6ac14621e1e473c6c6
 METHOD=download=https://raw.github.com/blangel/ply/2b85c3563db6ac14621e1e473c6c6645305e6acc/dist/ply/scripts/ply-test-junit-1.0.jar to scripts/ply-test-junit-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/2b85c3563db6ac14621e1e473c6c6645305e6acc/dist/ply/version to version
 VERSION=1.0_43
+METHOD=download=https://raw.github.com/blangel/ply/01c54d19d8b970c1a54b515d0259a7965b4ba9bc/dist/ply/config/aliases.properties to config/aliases.properties
+METHOD=download=https://raw.github.com/blangel/ply/01c54d19d8b970c1a54b515d0259a7965b4ba9bc/dist/ply/scripts/ply-repo-install-1.0.jar to scripts/ply-repo-install-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/01c54d19d8b970c1a54b515d0259a7965b4ba9bc/dist/ply/version to version
+VERSION=1.0_44
