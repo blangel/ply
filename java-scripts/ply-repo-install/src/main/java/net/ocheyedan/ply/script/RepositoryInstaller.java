@@ -10,6 +10,7 @@ import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
 import java.io.File;
+import java.util.Arrays;
 
 /**
  * User: blangel
@@ -52,8 +53,13 @@ public class RepositoryInstaller {
             // optionally; '... namespace name version file packaging classifier dependencies-file'
             if (args.length > 3) {
                 installFile(args, localRepo, scope);
-            } else {
+            } else if (args.length == 0) {
                 installProject(localRepo, scope);
+            } else {
+                Output.print("^error^ Missing parameters to install-file.");
+                Output.print("^error^   expected: ^b^namespace^r^ ^b^name^r^ ^b^version^r^ ^b^file^r^ [ ^b^packaging^r^ ^b^classifier^r^ ^b^dependencies-file^r^ ]");
+                Output.print("^error^   given: ^b^%s^r^", Arrays.toString(args));
+                System.exit(1);
             }
         } catch (Exception e) {
             Output.print(e);
@@ -84,7 +90,14 @@ public class RepositoryInstaller {
         String artifactName = Deps.getArtifactName(name, version, classifier, packaging);
         DependencyAtom dependencyAtom = Deps.getDepFromParts(namespace, name, version, artifactName);
         File dependenciesFile = (dependenciesFilePath.isEmpty() ? null : new File(dependenciesFilePath));
-        Repos.installArtifact(artifact, dependenciesFile, dependencyAtom, localRepo);
+        Output.print("^info^ Copying ^b^%s^r^ into ^b^%s^r^.", file, localRepo.getPropertyName());
+        Output.print("^info^ using namespace=^b^%s^r^ | name=^b^%s^r^ | version=^b^%s^r^ | packaging=^b^%s^r^ | classifier=^b^%s^r^ | dependencies-file=^b^%s^r^",
+                     namespace, name, version, packaging, classifier, dependenciesFilePath);
+        if (Repos.installArtifact(artifact, dependenciesFile, dependencyAtom, localRepo)) {
+            Output.print("Successfully copied ^b^%s^r^ into ^b^%s^r^.", file, localRepo.getPropertyName());
+        } else {
+            Output.print("^error^ failed to copy ^b^%s^r^ into ^b^%s^r^.", file, localRepo.getPropertyName());
+        }
     }
 
     private static void installProject(RepositoryAtom localRepo, Scope scope) {

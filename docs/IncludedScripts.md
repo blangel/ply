@@ -19,6 +19,8 @@ __ply-package-1.0.jar__ - packages compiled code (within `compiler.build.path`) 
 
 __ply-repo-install-1.0.jar__ - copies the packaged code/resources into the `depmng.localRepo`
 
+__ply-repo-manager-1.0.jar__ - resolves repository-atoms from the `repositories` context property file.
+
 __ply-test-junit-1.0.jar__ - runs all junit tests found within the package `project.artifact.name` in directory `project.build.dir`
 
 __ply-exec-1.0.jar__ - executes the current project using the specified main class (via `exec.class` and if that property is not specified looks at the `package.manifest.mainClass`)
