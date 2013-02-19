@@ -44,6 +44,7 @@ _ply_completion() {
     local has_compopt=`type -t compopt`
     local cur prev tasks defaultaliases projectaliases aliases configtasks projectdir defaultcontexts projectcontexts
     local deptasks="add remove add-repo remove-repo list tree"
+    local repotasks="add remove auth auth-local"
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -174,7 +175,7 @@ _ply_completion() {
 	--version | --usage | --help)
 	    ;;
 	remove)
-	    # remove could be for the 'dep' alias
+	    # remove could be for the 'dep' / 'repo' aliases
 	    if [[ ($nonscopedPrev == "remove") && ("${COMP_WORDS[COMP_CWORD-prevIndex-1]}" == "dep") ]]; then
 	        local depFile="dependencies.properties"
             if [[ -n $scope ]]; then
@@ -182,6 +183,16 @@ _ply_completion() {
             fi
             if [ -e $projectdir/config/$depFile ]; then
                 local prop=`less $projectdir/config/$depFile | sed 's/^#.*//' | grep -v '^$' \
+                            | sed "s/^\([^=]*\)=.*/\1/"`
+                COMPREPLY=( $(compgen -W "${prop}" -- ${cur}) )
+            fi
+        elif [[ ($nonscopedPrev == "remove") && ("${COMP_WORDS[COMP_CWORD-prevIndex-1]}" == "repo") ]]; then
+            local repoFile="repositories.properties"
+            if [[ -n $scope ]]; then
+                repoFile=`echo "repositories.$scope.properties"`
+            fi
+            if [ -e $projectdir/config/$repoFile ]; then
+                local prop=`less $projectdir/config/$repoFile | sed 's/^#.*//' | grep -v '^$' \
                             | sed "s/^\([^=]*\)=.*/\1/"`
                 COMPREPLY=( $(compgen -W "${prop}" -- ${cur}) )
             fi
@@ -199,6 +210,13 @@ _ply_completion() {
 	        COMPREPLY=( $(compgen -W "${aliases}" -- '') )
 	    else
 	        COMPREPLY=( $(compgen -W "${deptasks} ${aliases}" -- ${cur}) )
+	    fi
+	    ;;
+	repo)
+	    if [[ $cur == : ]]; then
+	        COMPREPLY=( $(compgen -W "${aliases}" -- '') )
+	    else
+	        COMPREPLY=( $(compgen -W "${repotasks} ${aliases}" -- ${cur}) )
 	    fi
 	    ;;
 	*)
@@ -220,18 +238,23 @@ _ply_completion() {
 	        remove)
 	            # handled by 'remove' case above (as maybe the 'remove' is a config-task)
 	            ;;
-	        remove-repo)
-	            local repoFile="repositories.properties"
-	            if [[ -n $scope ]]; then
-	                repoFile=`echo "repositories.$scope.properties"`
-	            fi
-	            if [ -e $projectdir/config/$repoFile ]; then
-                    local prop=`less $projectdir/config/$repoFile | sed 's/^#.*//' | grep -v '^$' \
-                                | sed "s/^\([^=]*\)=.*/\1/"`
-                    COMPREPLY=( $(compgen -W "${prop}" -- ${cur}) )
-	            fi
-	            ;;
 	        esac
+	    # handle the next repo case
+	    elif [[ (${repotasks} == *${nonscopedPrev}*) && ("${COMP_WORDS[COMP_CWORD - prevIndex - 1]}" == "repo") ]]; then
+            case "${nonscopedPrev}" in
+            add)
+                # TODO - augment with known remote repos (like maven central, etc)...
+                ;;
+            auth)
+                # TODO - username
+                ;;
+            auth-local)
+                # TODO - username
+                ;;
+            remove)
+                # handled by 'remove' case above (as maybe the 'remove' is a config-task)
+                ;;
+            esac
 	    # handle the next config-task (get/get-all/set/append/prepend/remove) case
 	    elif [[ (${configtasks} == *${COMP_WORDS[COMP_CWORD - prevIndex - 1]}*) ]]; then
 	        local configTask=${COMP_WORDS[COMP_CWORD - prevIndex - 1]}
