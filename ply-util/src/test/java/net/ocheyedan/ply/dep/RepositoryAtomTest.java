@@ -39,11 +39,17 @@ public class RepositoryAtomTest {
         assertEquals("http://www.anothertest.com/test.txt", atom.getPropertyName());
 
         File tmp = File.createTempFile("test", "parse");
-        String path = tmp.getPath();
+        String path = tmp.getParent(); // parent directory
         atom = RepositoryAtom.parse(path);
         assertNotNull(atom);
         assertEquals(RepositoryAtom.Type.ply, atom.type);
-        assertEquals("file://" + path, atom.getPropertyName());
+        // mac-adds private/ onto var directories
+        String actualPath = atom.getPropertyName();
+        if (actualPath.startsWith("file:///private")) {
+            assertEquals("file:///private" + path, atom.getPropertyName());
+        } else {
+            assertEquals("file://" + path, atom.getPropertyName());
+        }
 
         atom = RepositoryAtom.parse("~/");
         assertNotNull(atom);

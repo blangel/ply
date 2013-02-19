@@ -4,6 +4,7 @@ import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PlyUtil;
 import net.ocheyedan.ply.dep.Deps;
+import net.ocheyedan.ply.dep.Repos;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.input.Resources;
 import net.ocheyedan.ply.props.Context;
@@ -185,7 +186,7 @@ public class JunitTester {
             }
             System.exit(1);
         }
-        String localRepoDirectoryPath = Deps.getDirectoryPathForRepo(localRepo);
+        String localRepoDirectoryPath = Repos.getDirectoryPathForRepo(localRepo);
         // TODO - how to resolve own namespace/name/version and dependencies
         if (!includesPlyUtil) {
             URL plyUtil = getUrl(FileUtil.fromParts(PlyUtil.INSTALL_DIRECTORY, "lib", "ply-util-1.0.jar"));

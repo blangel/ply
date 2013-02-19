@@ -57,9 +57,8 @@ import java.net.URLConnection;
  * <pre>dep add|remove|auth|auth-local</pre>
  * The {@literal add} command takes an atom and adds it as a repository for the supplied scope.
  * The {@literal remove} command takes an atom and removes it from the repositories scope, if it exists.
- * The {@literal auth} command takes an atom, an auth-type and a username (prompts for password) and stores as the
+ * The {@literal auth} command takes an atom, an auth-type and a username (prompts for password) and stores as the authentication type for the given atom.
  * The {@literal auth-local} is the same as auth except saves the authentication information into the local {@literal repomngr} file.
- * authentication type for the given atom.
  */
 public final class RepoManager {
 

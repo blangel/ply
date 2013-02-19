@@ -13,9 +13,6 @@ import net.ocheyedan.ply.mvn.MavenPomParser;
 import net.ocheyedan.ply.props.*;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -50,7 +47,8 @@ public final class Deps {
 
         static LocalPaths get(DependencyAtom dependencyAtom, RepositoryAtom localRepo) {
             String localDirUrlPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
-            String localPath = getDependencyPathForRepo(dependencyAtom, localDirUrlPath);
+            String localPath = getDependencyArtifactPathForRepo(dependencyAtom, localRepo);
+            localPath = ensureProtocol(localPath);
             URL localUrl = getUrl(localPath);
             if (localUrl == null) {
                 throw new AssertionError(String.format("The local path is not valid [ %s ]", localPath));
@@ -511,7 +509,18 @@ public final class Deps {
         String name = Props.get("name", projectContext).value();
         String version = Props.get("version", projectContext).value();
         String artifactName = Props.get("artifact.name", projectContext).value();
-        String defaultArtifactName = name + "-" + version + "." + DependencyAtom.DEFAULT_PACKAGING;
+        return getDepFromParts(namespace, name, version, artifactName);
+    }
+
+    /**
+     * @param namespace of the dependency
+     * @param name of the dependency
+     * @param version of the dependency
+     * @param artifactName of the dependency
+     * @return a {@link DependencyAtom} composed of parts {@code namespace}, {@code name}, {@code version} and {@code artifactName}
+     */
+    public static DependencyAtom getDepFromParts(String namespace, String name, String version, String artifactName) {
+        String defaultArtifactName = getArtifactName(name, version, "", DependencyAtom.DEFAULT_PACKAGING);
         // don't pollute by placing artifactName explicitly even though it's the default
         if (artifactName.equals(defaultArtifactName)) {
             return new DependencyAtom(namespace, name, version);
@@ -520,49 +529,50 @@ public final class Deps {
         }
     }
 
-    private static String getDependencyPathForRepo(DependencyAtom dependencyAtom, String dependencyDirectoryPath) {
-        return FileUtil.pathFromParts(dependencyDirectoryPath, dependencyAtom.getArtifactName());
+    /**
+     * The {@code name} and {@code version} must not be null.  If {@code classifier} is null/empty none is assumed.  If
+     * {@code packaging} is null/empty then {@link DependencyAtom#DEFAULT_PACKAGING} is used.
+     * @param name of the artifact
+     * @param version of the artifact
+     * @param classifier of the artifact (or null/empty)
+     * @param packaging of the artifact (or null/empty)
+     * @return the artifact name corresponding to {@code name}, {@code version}, {@code classifier} and {@code packaging}
+     */
+    public static String getArtifactName(String name, String version, String classifier, String packaging) {
+        packaging = ((packaging == null) || packaging.isEmpty() ? DependencyAtom.DEFAULT_PACKAGING : packaging);
+        if ((classifier == null) || classifier.isEmpty()) {
+            return name + "-" + version + "." + packaging;
+        } else {
+            return name + "-" + version + "-" + classifier + packaging;
+        }
     }
 
     /**
-     * Resolves {@code repositoryAtom} to a canonical directory path and returns that value.
-     * @param repositoryAtom assumed to be a {@link RepositoryAtom} to a local directory
-     * @return the canonical directory path of {@code repositoryAtom}
+     * @param dependencyAtom for which to resolve the directory path within {@code repositoryAtom}
+     * @param repositoryAtom from which to resolve the directory path for {@code dependencyAtom}
+     * @return the directory path for {@code dependencyAtom} within {@code repositoryAtom}
      */
-    public static String getDirectoryPathForRepo(RepositoryAtom repositoryAtom) {
-        try {
-            String repoPath = repositoryAtom.getPropertyName();
-            repoPath = FileUtil.stripFileUriPrefix(repoPath);
-            return FileUtil.getCanonicalPath(new File(repoPath));
-        } catch (RuntimeException re) {
-            // the path is likely invalid, attempt resolution anyway and let the subsequent code determine the
-            // actual reason the path is invalid.
-        }
-        return repositoryAtom.getPropertyName();
-    }
-
-    private static String getDependencyDirectoryPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
-        String startPath = repositoryAtom.getPropertyName();
-        if (!startPath.contains(":")) {
-            startPath = getDirectoryPathForRepo(repositoryAtom);
-            if (!startPath.startsWith("/")) {
-                startPath = "/" + startPath;
-            }
-            // a file path without prefix, make absolute for URL handling
-            startPath = "file://" + startPath;
-        }
+    public static String getDependencyDirectoryPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
+        String startPath = Repos.getDirectoryPathForRepo(repositoryAtom);
         RepositoryAtom.Type type = repositoryAtom.getResolvedType();
         String namespace = (type == RepositoryAtom.Type.ply ? dependencyAtom.namespace : dependencyAtom.namespace.replaceAll("\\.", File.separator));
         String endPath = FileUtil.pathFromParts(namespace, dependencyAtom.name, dependencyAtom.version);
-        // hygiene the start separator
-        if (endPath.startsWith("/") || endPath.startsWith("\\")) {
-            endPath = endPath.substring(1, endPath.length());
-        }
         return FileUtil.pathFromParts(startPath, endPath);
+    }
+
+    /**
+     * @param dependencyAtom for which to resolve the artifact path within {@code repositoryAtom}
+     * @param repositoryAtom from which to resolve the artifact path for {@code dependencyAtom}
+     * @return the artifact path for {@code dependencyAtom} within {@code repositoryAtom}
+     */
+    public static String getDependencyArtifactPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
+        String dependencyDirectoryPath = getDependencyDirectoryPathForRepo(dependencyAtom, repositoryAtom);
+        return FileUtil.pathFromParts(dependencyDirectoryPath, dependencyAtom.getArtifactName());
     }
 
     private static URL getUrl(String path) {
         try {
+            path = ensureProtocol(path);
             return new URI(path.replaceAll("\\\\", "/")).toURL();
         } catch (URISyntaxException urise) {
             Output.print(urise);
@@ -595,22 +605,20 @@ public final class Deps {
     }
 
     private static PropFile getDependenciesFromPlyRepo(String urlPath, Map<String, String> headers) {
-        try {
-            URL url = new URL(urlPath.replaceAll("\\\\", "/"));
-            String localPath = FileUtil.getLocalPath(url, headers, urlPath, "[tmp location]");
-            if ((localPath == null) || !new File(localPath).exists()) {
-                return null;
-            }
-            PropFile loaded = PropFiles.load(localPath, false, false);
-            if (loaded.isEmpty()) {
-                return null;
-            } else {
-                return loaded;
-            }
-        } catch (MalformedURLException murle) {
-            Output.print(murle);
+        URL url = getUrl(urlPath);
+        if (url == null) {
+            return null;
         }
-        return null;
+        String localPath = FileUtil.getLocalPath(url, headers, urlPath, "[tmp location]");
+        if ((localPath == null) || !new File(localPath).exists()) {
+            return null;
+        }
+        PropFile loaded = PropFiles.load(localPath, false, false);
+        if (loaded.isEmpty()) {
+            return null;
+        } else {
+            return loaded;
+        }
     }
 
     private static PropFile getDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
@@ -621,6 +629,17 @@ public final class Deps {
 
     private static void storeDependenciesFile(PropFile transitiveDependencies, String localRepoDepDirPath) {
         PropFiles.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, "dependencies.properties").replaceAll("\\\\", "/"), true);
+    }
+
+    private static String ensureProtocol(String localPath) {
+        if (!localPath.contains(":")) {
+            if (!localPath.startsWith("/")) {
+                localPath = "/" + localPath;
+            }
+            // a file path without prefix, make absolute for URL handling
+            localPath = "file://" + localPath;
+        }
+        return localPath;
     }
 
     private Deps() { }

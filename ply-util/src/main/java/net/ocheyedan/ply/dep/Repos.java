@@ -36,6 +36,23 @@ public final class Repos {
     }
 
     /**
+     * Resolves {@code repositoryAtom} to a canonical directory path and returns that value.
+     * @param repositoryAtom assumed to be a {@link RepositoryAtom} to a local directory
+     * @return the canonical directory path of {@code repositoryAtom}
+     */
+    public static String getDirectoryPathForRepo(RepositoryAtom repositoryAtom) {
+        try {
+            String repoPath = repositoryAtom.getPropertyName();
+            repoPath = FileUtil.stripFileUriPrefix(repoPath);
+            return FileUtil.getCanonicalPath(new File(repoPath));
+        } catch (RuntimeException re) {
+            // the path is likely invalid, attempt resolution anyway and let the subsequent code determine the
+            // actual reason the path is invalid.
+        }
+        return repositoryAtom.getPropertyName();
+    }
+
+    /**
      * Copies the project artifact ({@literal project.artifact.name} from {@literal project.build.dir}) into
      * {@code localRepo}
      * @param localRepo into which to install the artifact
@@ -53,17 +70,28 @@ public final class Repos {
         String plyProjectDirPath = Props.get("project.dir", Context.named("ply")).value();
         File dependenciesFile = FileUtil.fromParts(plyProjectDirPath, "config", "dependencies.properties");
 
-        String namespace = Props.get("namespace", Context.named("project")).value();
-        String name = Props.get("name", Context.named("project")).value();
-        String version = Props.get("version", Context.named("project")).value();
-        String convertedNamespace = (localRepo.isPlyType() ? namespace : namespace.replaceAll("\\.", File.separator));
-        String localRepoPath = Deps.getDirectoryPathForRepo(localRepo);
-        String localRepoArtifactBasePath = FileUtil.pathFromParts(localRepoPath, convertedNamespace, name, version);
-        File localRepoArtifact = FileUtil.fromParts(localRepoArtifactBasePath, artifactName);
+        DependencyAtom dependencyAtom = Deps.getProjectDep();
+        return installArtifact(artifact, dependenciesFile, dependencyAtom, localRepo);
+    }
+
+    /**
+     * Copies the project artifact ({@literal project.artifact.name} from {@literal project.build.dir}) into
+     * {@code localRepo}
+     * @param artifact from which to copy into {@code localRepo}
+     * @param dependenciesFile the dependencies file (or empty) associated with {@code artifact}
+     * @param dependencyAtom representing meta-information about {@code artifact}
+     * @param localRepo into which to install the {@code artifact}
+     * @return true on success, false if the artifact does not exist or there was an error saving
+     */
+    public static boolean installArtifact(File artifact, File dependenciesFile, DependencyAtom dependencyAtom,
+                                          RepositoryAtom localRepo) {
+        String localRepoDirPath = Deps.getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
+        String localRepoArtifactPath = Deps.getDependencyArtifactPathForRepo(dependencyAtom, localRepo);
+        File localRepoArtifact = new File(localRepoArtifactPath);
         FileUtil.copy(artifact, localRepoArtifact);
 
-        File localRepoDependenciesFile = FileUtil.fromParts(localRepoArtifactBasePath, "dependencies.properties");
-        if (dependenciesFile.exists()) {
+        File localRepoDependenciesFile = FileUtil.fromParts(localRepoDirPath, "dependencies.properties");
+        if ((dependenciesFile != null) && dependenciesFile.exists()) {
             return FileUtil.copy(dependenciesFile, localRepoDependenciesFile);
         } else {
             // need to override (perhaps there were dependencies but now none.
