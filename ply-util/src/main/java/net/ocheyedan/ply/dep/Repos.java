@@ -44,6 +44,9 @@ public final class Repos {
         try {
             String repoPath = repositoryAtom.getPropertyName();
             repoPath = FileUtil.stripFileUriPrefix(repoPath);
+            if (repoPath.contains(":")) { // non-file uri; keep as is
+                return repoPath;
+            }
             return FileUtil.getCanonicalPath(new File(repoPath));
         } catch (RuntimeException re) {
             // the path is likely invalid, attempt resolution anyway and let the subsequent code determine the

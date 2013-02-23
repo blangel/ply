@@ -576,8 +576,13 @@ public final class Deps {
             return new URI(path.replaceAll("\\\\", "/")).toURL();
         } catch (URISyntaxException urise) {
             Output.print(urise);
+            Output.print("^error^ for %s", path);
         } catch (MalformedURLException murle) {
             Output.print(murle);
+            Output.print("^error^ for %s", path);
+        } catch (IllegalArgumentException iae) {
+            Output.print(iae);
+            Output.print("^error^ for %s", path);
         }
         return null;
     }
