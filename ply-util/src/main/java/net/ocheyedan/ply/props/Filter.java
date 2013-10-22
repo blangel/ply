@@ -131,8 +131,15 @@ public final class Filter {
                     }
                 }
             }
+            // next, check if the property is a system property
+            String replacement = System.getProperty(propertyPlaceholder);
+            if (replacement != null) {
+                filtered = filtered.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
+                        Matcher.quoteReplacement(replacement));
+                continue;
+            }
             // lastly, check if the property is an environment variable
-            String replacement = System.getenv(propertyPlaceholder);
+            replacement = System.getenv(propertyPlaceholder);
             if (replacement != null) {
                 filtered = filtered.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
                         Matcher.quoteReplacement(replacement));
