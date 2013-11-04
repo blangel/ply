@@ -52,6 +52,7 @@ public final class ProjectUtil {
         IntellijUtil.removeElements(modules, "module");
         addModule(modules, "", iprDocument.projectName);
         List<String> submodules = IntellijUtil.getModules();
+        submodules.remove(iprDocument.projectName); // remove self if present
         addModules(modules, submodules);
         // add all the dependencies from the project's {@literal resolved-deps.properties} file
         File projectConfigDir = FileUtil.fromParts(FileUtil.getCanonicalPath(projectDir), ".ply", "config");
