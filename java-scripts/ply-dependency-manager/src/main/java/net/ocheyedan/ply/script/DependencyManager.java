@@ -236,7 +236,7 @@ public class DependencyManager {
         }
         PropFile exclusions = loadExclusionsFile(scope);
         exclusions.add(atom.getPropertyName(), atom.getPropertyValue());
-        storeDependenciesFile(exclusions, scope);
+        storeExclusionsFile(exclusions, scope);
         Output.print("Excluded dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
             String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
     }
@@ -328,6 +328,15 @@ public class DependencyManager {
         String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + "dependencies" + scope.getFileSuffix() + ".properties";
         if (!PropFiles.store(dependencies, storePath, true)) {
+            System.exit(1);
+        }
+    }
+
+    private static void storeExclusionsFile(PropFile exclusions, Scope scope) {
+        String localDir = Props.get("project.dir", Context.named("ply")).value();
+        String storePath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
+                File.separator + "exclusions" + scope.getFileSuffix() + ".properties";
+        if (!PropFiles.store(exclusions, storePath, true)) {
             System.exit(1);
         }
     }
