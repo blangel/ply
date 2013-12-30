@@ -121,7 +121,7 @@ public class DependencyManager {
             if (dependencies.isEmpty()) {
                 Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.get("name", projectContext).value(), scope.getPrettyPrint());
             } else {
-                Set<DependencyAtom> exclusions = new HashSet<DependencyAtom>(Deps.parse(loadExclusionsFile(scope)));
+                Set<DependencyAtom> exclusions = new HashSet<DependencyAtom>(Deps.parse(getExclusions(scope)));
                 DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(dependencies, exclusions, createRepositoryList(null, null));
                 int size = dependencies.size();
                 int graphSize = depGraph.getRootVertices().size();
@@ -138,12 +138,16 @@ public class DependencyManager {
             String[] classifiers = args[1].split(",");
             for (String classifier : classifiers) {
                 PropFile dependencies = getDependencies(scope);
-                PropFile exclusions = loadExclusionsFile(scope);
+                PropFile exclusions = getExclusions(scope);
                 resolveDependencies(dependencies, exclusions, classifier, false);
             }
         } else if (args.length == 0) {
             PropFile dependencies = getDependencies(scope);
-            PropFile exclusions = loadExclusionsFile(scope);
+            PropFile exclusions = getExclusions(scope);
+            if (!scope.equals(Scope.Default)) {
+                Output.print("Found ^b^%d^r^ exclusions (in scope %s)", exclusions.size(), scope.getPrettyPrint());
+                exclusions.size();
+            }
             int size = dependencies.size();
             if (size > 0) {
                 Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^.", size, scope.getPrettyPrint(), (size == 1 ? "y" : "ies"),
@@ -183,7 +187,7 @@ public class DependencyManager {
         }
         dependencies.add(atom.getPropertyName(), atom.getPropertyValue());
         final List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
-        PropFile exclusions = loadExclusionsFile(scope);
+        PropFile exclusions = getExclusions(scope);
         final Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parse(exclusions));
         final RepositoryRegistry repositoryRegistry = createRepositoryList(Deps.getProjectDep(), dependencyAtoms);
         DirectedAcyclicGraph<Dep> resolvedDeps = invokeWithSlowResolutionThread(new Callable<DirectedAcyclicGraph<Dep>>() {
@@ -292,20 +296,29 @@ public class DependencyManager {
         // note, for non-default scoped invocations this is redundant as we add a dependency to the
         // default scope itself (which via transitive deps will depend upon all the inherited deps anyway).
         // TODO - is this wrong? essentially saying transitive deps are first level deps for test scope
-        PropFileChain scopedDependencies = Props.get(Context.named("dependencies"));
-        PropFile dependencies = new PropFile(Context.named("dependencies"), scope, PropFile.Loc.Local);
+        PropFileChain nonScopedDependencies = Props.get(Context.named("dependencies"));
+        PropFile scopedDependencies = new PropFile(Context.named("dependencies"), scope, PropFile.Loc.Local);
         if (!scope.name.isEmpty() && "test".equals(scope.name)) {
             // add the project itself as this is not the default scope
             DependencyAtom self = DependencyAtom.parse(Props.get("nonscoped.artifact.name", Context.named("project")).value(), null);
             if (self == null) {
                 throw new AssertionError("Could not determine the project information.");
             }
-            dependencies.add(self.namespace + ":" + self.name, self.version + ":" + self.getArtifactName());
+            scopedDependencies.add(self.namespace + ":" + self.name, self.version + ":" + self.getArtifactName());
         }
-        for (Prop dependency : scopedDependencies.props()) {
-            dependencies.add(dependency.name, dependency.value());
+        for (Prop dependency : nonScopedDependencies.props()) {
+            scopedDependencies.add(dependency.name, dependency.value());
         }
-        return dependencies;
+        return scopedDependencies;
+    }
+
+    private static PropFile getExclusions(Scope scope) {
+        PropFileChain exclusions = Props.get(Context.named("exclusions"), scope);
+        PropFile scopedExclusions = new PropFile(Context.named("exclusions"), scope, PropFile.Loc.Local);
+        for (Prop exclusion : exclusions.props()) {
+            scopedExclusions.add(exclusion.name, exclusion.value());
+        }
+        return scopedExclusions;
     }
 
     private static PropFile loadDependenciesFile(Scope scope) {
