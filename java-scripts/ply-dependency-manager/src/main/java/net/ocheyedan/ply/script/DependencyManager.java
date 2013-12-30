@@ -144,10 +144,6 @@ public class DependencyManager {
         } else if (args.length == 0) {
             PropFile dependencies = getDependencies(scope);
             PropFile exclusions = getExclusions(scope);
-            if (!scope.equals(Scope.Default)) {
-                Output.print("Found ^b^%d^r^ exclusions (in scope %s)", exclusions.size(), scope.getPrettyPrint());
-                exclusions.size();
-            }
             int size = dependencies.size();
             if (size > 0) {
                 Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^.", size, scope.getPrettyPrint(), (size == 1 ? "y" : "ies"),
