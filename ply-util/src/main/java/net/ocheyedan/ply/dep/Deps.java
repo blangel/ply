@@ -228,7 +228,7 @@ public final class Deps {
                 resolvedDep.toString(), diffVersionDep.dependencyAtom.getPropertyValue(), resolvedDep.dependencyAtom.getPropertyValue());
         Output.print("^warn^   ^b^%s^r^ => %s", diffVersionDep.dependencyAtom.getPropertyValue(), (diffVersionPath == null ? "<direct dependency>" : diffVersionPath));
         Output.print("^warn^   ^b^%s^r^ => %s", resolvedDep.dependencyAtom.getPropertyValue(), (path == null ? "<direct dependency>" : path));
-        Output.print("^warn^ You can resolve this warning by excluding one of these versions from your project's dependency graph: ^b^ply dep exclude^r^ [ %s | %s ]",
+        Output.print("^warn^ You can resolve this warning by excluding one of these versions from your project's dependency graph: ^b^ply dep exclude^r^ [ ^b^%s^r^ | ^b^%s^r^ ]",
                 diffVersionDep.toVersionString(), resolvedDep.toVersionString());
     }
 
