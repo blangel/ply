@@ -134,7 +134,7 @@ final class JvmExecution extends Execution {
             }
             List<DependencyAtom> deps = Deps.parse(dependencies);
             RepositoryRegistry repos = Repos.createRepositoryRegistry(projectConfigDir, scope, null, null);
-            DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(deps, repos);
+            DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(deps, Collections.<DependencyAtom>emptySet(), repos);
             PropFile resolvedDependencies = Deps.convertToResolvedPropertiesFile(depGraph);
             return Deps.getClasspath(resolvedDependencies, jarPath);
         } catch (IOException ioe) {

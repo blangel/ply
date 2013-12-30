@@ -309,18 +309,18 @@ public class DependencyManager {
     }
 
     private static PropFile loadDependenciesFile(Scope scope) {
-        return loadFile(scope, "dependencies");
+        return loadFile(scope, "dependencies", true);
     }
 
     private static PropFile loadExclusionsFile(Scope scope) {
-        return loadFile(scope, "exclusions");
+        return loadFile(scope, "exclusions", false);
     }
 
-    private static PropFile loadFile(Scope scope, String fileName) {
+    private static PropFile loadFile(Scope scope, String fileName, boolean create) {
         String localDir = Props.get("project.dir", Context.named("ply")).value();
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
                 File.separator + fileName + scope.getFileSuffix() + ".properties";
-        return PropFiles.load(loadPath, true, false);
+        return PropFiles.load(loadPath, create, false);
     }
 
     private static void storeDependenciesFile(PropFile dependencies, Scope scope) {
