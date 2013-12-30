@@ -281,3 +281,8 @@ METHOD=download=https://raw.github.com/blangel/ply/d3cf7c6ab9ac67c2f4731005b48f4
 METHOD=download=https://raw.github.com/blangel/ply/d3cf7c6ab9ac67c2f4731005b48f439ea935378f/dist/ply/scripts/ply-repo-manager-1.0.jar to scripts/ply-repo-manager-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/d3cf7c6ab9ac67c2f4731005b48f439ea935378f/dist/ply/version to version
 VERSION=1.0_49
+METHOD=download=https://raw.github.com/blangel/ply/27cfbd4475c1b6622f40dc5150fcc2c3034ebf55/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/27cfbd4475c1b6622f40dc5150fcc2c3034ebf55/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/27cfbd4475c1b6622f40dc5150fcc2c3034ebf55/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/27cfbd4475c1b6622f40dc5150fcc2c3034ebf55/dist/ply/version to version
+VERSION=1.0_50
