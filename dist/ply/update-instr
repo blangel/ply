@@ -293,3 +293,6 @@ VERSION=1.0_51
 METHOD=download=https://raw.github.com/blangel/ply/01adfd247f49b28e1bb381f899df15d1c063d57e/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/f8a88193506a8baf53613755f5c94c22acb30ad4/dist/ply/version to version
 VERSION=1.0_52
+METHOD=download=https://raw.github.com/blangel/ply/abd43327375fdb2d7009d1bcbb23fe7576bdb62c/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/abd43327375fdb2d7009d1bcbb23fe7576bdb62c/dist/ply/version to version
+VERSION=1.0_53
