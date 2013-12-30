@@ -275,3 +275,9 @@ VERSION=1.0_47
 OUTPUT=Downloading update to ply intellij script
 METHOD=download=https://github.com/blangel/ply/raw/12b00e087d41ab12c3e26695ff737685b34f5927/dist/ply/scripts/ply-intellij-1.0.jar to scripts/ply-intellij-1.0.jar
 VERSION=1.0_48
+METHOD=download=https://raw.github.com/blangel/ply/d3cf7c6ab9ac67c2f4731005b48f439ea935378f/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/d3cf7c6ab9ac67c2f4731005b48f439ea935378f/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/d3cf7c6ab9ac67c2f4731005b48f439ea935378f/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/d3cf7c6ab9ac67c2f4731005b48f439ea935378f/dist/ply/scripts/ply-repo-manager-1.0.jar to scripts/ply-repo-manager-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/d3cf7c6ab9ac67c2f4731005b48f439ea935378f/dist/ply/version to version
+VERSION=1.0_49
