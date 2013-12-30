@@ -15,7 +15,7 @@ handle_get_set() {
         fi
     done
     case "${nonscopedPrev}" in
-    remove | get)
+    rm | get)
         ;;
     *)
         # need to get system props as well
@@ -29,7 +29,7 @@ handle_get_set() {
         done
     esac
     case "${nonscopedPrev}" in
-    remove)
+    rm)
         COMPREPLY=( $(compgen -W "${allprops}" -- ${cur}) );;
     set)
         if [ "$has_compopt" == "builtin" ]; then
@@ -43,8 +43,8 @@ handle_get_set() {
 _ply_completion() {
     local has_compopt=`type -t compopt`
     local cur prev tasks defaultaliases projectaliases aliases configtasks projectdir defaultcontexts projectcontexts
-    local deptasks="add remove add-repo remove-repo list tree"
-    local repotasks="add remove auth auth-local"
+    local deptasks="add rm exclude list tree"
+    local repotasks="add rm auth auth-local"
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -70,7 +70,7 @@ _ply_completion() {
 	    projectaliases=$(less ${projectdir}/config/aliases.properties | sed 's/^#.*//' | grep -v '^$' | sed 's/^\([^=]*\)=.*/\1/')
     fi
     aliases="${defaultaliases} ${projectaliases}"
-    configtasks="get get-all set append prepend remove"
+    configtasks="get get-all set append prepend rm"
     tasks="init --version --usage --help update ${configtasks} ${aliases}"
     defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" | \
     sed 's/\(\/.*\/\)\(.*\)\.properties/-P\2/' | sed 's/\./#/')
@@ -174,9 +174,9 @@ _ply_completion() {
 	    COMPREPLY=( $(compgen -S '=' -W "--from-pom" -- ${cur}) );;
 	--version | --usage | --help)
 	    ;;
-	remove)
-	    # remove could be for the 'dep' / 'repo' aliases
-	    if [[ ($nonscopedPrev == "remove") && ("${COMP_WORDS[COMP_CWORD-prevIndex-1]}" == "dep") ]]; then
+	rm)
+	    # rm could be for the 'dep' / 'repo' aliases
+	    if [[ ($nonscopedPrev == "rm") && ("${COMP_WORDS[COMP_CWORD-prevIndex-1]}" == "dep") ]]; then
 	        local depFile="dependencies.properties"
             if [[ -n $scope ]]; then
                 depFile=`echo "dependencies.$scope.properties"`
@@ -186,7 +186,7 @@ _ply_completion() {
                             | sed "s/^\([^=]*\)=.*/\1/"`
                 COMPREPLY=( $(compgen -W "${prop}" -- ${cur}) )
             fi
-        elif [[ ($nonscopedPrev == "remove") && ("${COMP_WORDS[COMP_CWORD-prevIndex-1]}" == "repo") ]]; then
+        elif [[ ($nonscopedPrev == "rm") && ("${COMP_WORDS[COMP_CWORD-prevIndex-1]}" == "repo") ]]; then
             local repoFile="repositories.properties"
             if [[ -n $scope ]]; then
                 repoFile=`echo "repositories.$scope.properties"`
@@ -235,8 +235,8 @@ _ply_completion() {
 	        add)
 	            # TODO - augment with values within localRepo/...
 	            ;;
-	        remove)
-	            # handled by 'remove' case above (as maybe the 'remove' is a config-task)
+	        rm)
+	            # handled by 'rm' case above (as maybe the 'rm' is a config-task)
 	            ;;
 	        esac
 	    # handle the next repo case
@@ -251,11 +251,11 @@ _ply_completion() {
             auth-local)
                 # TODO - username
                 ;;
-            remove)
-                # handled by 'remove' case above (as maybe the 'remove' is a config-task)
+            rm)
+                # handled by 'rm' case above (as maybe the 'rm' is a config-task)
                 ;;
             esac
-	    # handle the next config-task (get/get-all/set/append/prepend/remove) case
+	    # handle the next config-task (get/get-all/set/append/prepend/rm) case
 	    elif [[ (${configtasks} == *${COMP_WORDS[COMP_CWORD - prevIndex - 1]}*) ]]; then
 	        local configTask=${COMP_WORDS[COMP_CWORD - prevIndex - 1]}
 
@@ -274,7 +274,7 @@ _ply_completion() {
 	                COMPREPLY=( $(compgen -W "from --unfiltered" -- ${cur}) )
                 fi
                 ;;
-            remove)
+            rm)
                 COMPREPLY=( $(compgen -W "from" -- '') );;
             append | prepend)
                 COMPREPLY=( $(compgen -W "to" -- '') );;
@@ -283,7 +283,7 @@ _ply_completion() {
         elif [[ (${configtasks} == *${COMP_WORDS[COMP_CWORD - prevIndex - 2]}*) ]]; then
             local configTask=${COMP_WORDS[COMP_CWORD - prevIndex - 2]}
 	        case "${configTask}" in
-	        get | get-all | remove)
+	        get | get-all | rm)
 	            if [[ ${nonscopedPrev} == from ]]; then
 	                local propName=${COMP_WORDS[COMP_CWORD - prevIndex - 1]}
                     local contexts=${prjContexts}

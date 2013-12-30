@@ -54,9 +54,9 @@ import java.net.URLConnection;
  * are resolved to forward slashes as is convention in the {@literal Maven} build system.
  *
  * The repository manager script's usage is:
- * <pre>dep add|remove|auth|auth-local</pre>
+ * <pre>dep add|rm|auth|auth-local</pre>
  * The {@literal add} command takes an atom and adds it as a repository for the supplied scope.
- * The {@literal remove} command takes an atom and removes it from the repositories scope, if it exists.
+ * The {@literal rm} command takes an atom and removes it from the repositories scope, if it exists.
  * The {@literal auth} command takes an atom, an auth-type and a username (prompts for password) and stores as the authentication type for the given atom.
  * The {@literal auth-local} is the same as auth except saves the authentication information into the local {@literal repomngr} file.
  */
@@ -69,7 +69,7 @@ public final class RepoManager {
         Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
         if ((args.length > 1) && "add".equals(args[0])) {
             addRepository(args[1], scope);
-        } else if ((args.length > 1) && "remove".equals(args[0])) {
+        } else if ((args.length > 1) && "rm".equals(args[0])) {
             removeRepository(args[1], scope);
         } else if ((args.length == 4) && "auth".equals(args[0])) {
             authRepository(args[1], args[2], args[3], scope, false);
@@ -141,7 +141,7 @@ public final class RepoManager {
                 if (atom == null) {
                     addRepository(repository, scope);
                     Output.print("^warn^ Added repository ^b^%s^r^ automatically.", repository);
-                    Output.print("^warn^   if this was a mistake, revert via command: ^b^ply repo remove %s^r^", repository);
+                    Output.print("^warn^   if this was a mistake, revert via command: ^b^ply repo rm %s^r^", repository);
                 }
             } catch (SystemExit se) {
                 System.exit(se.exitCode);
@@ -314,7 +314,7 @@ public final class RepoManager {
         Output.print("repo <^b^command^r^>");
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^add <repo-atom>^r^ : adds repo-atom to the list of repositories.");
-        Output.print("    ^b^remove <repo-atom>^r^ : removes repo-atom from the list of repositories.");
+        Output.print("    ^b^rm <repo-atom>^r^ : removes repo-atom from the list of repositories.");
         Output.print("    ^b^auth <repo-atom> <auth-type> <username>^r^ : adds authentication information for repo-atom (prompting for password).");
         Output.print("    ^b^auth-local <repo-atom> <auth-type> <username>^r^ : same as auth but stores the information within the project configuration.");
         Output.print("  ^b^repo-atom^r^ is [type:]repoURI (type is optional and defaults to ply, must be either ply or maven).");

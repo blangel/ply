@@ -39,7 +39,7 @@ public final class CommandLineParser {
             return new GetAll(parseArgs(Iter.sized(args)));
         } else if ("set".equals(args[0]) || args[0].endsWith(":set")) {
             return new Set(parseArgs(Iter.sized(args)));
-        } else if ("remove".equals(args[0]) || args[0].endsWith(":remove")) {
+        } else if ("rm".equals(args[0]) || args[0].endsWith(":rm")) {
             return new Remove(parseArgs(Iter.sized(args)));
         } else if ("append".equals(args[0]) || args[0].endsWith(":append")) {
             return new Append(parseArgs(Iter.sized(args)));

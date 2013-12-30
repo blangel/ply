@@ -50,7 +50,7 @@ To set a property named _url_ in a context called `environ` to _http://mydomain.
 
 To delete the property _url_ from the context `environ` (note, if after removal of _url_ there are no properties left the whole `environ.properties` file will be deleted)
 
-    $ ply remove url from environ
+    $ ply rm url from environ
 
 Ad-Hoc Properties
 -----------------

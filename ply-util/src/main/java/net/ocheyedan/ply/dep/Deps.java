@@ -89,27 +89,32 @@ public final class Deps {
 
     /**
      * @param dependencyAtoms the direct dependencies from which to create a dependency graph
+     * @param exclusionAtoms the {@link DependencyAtom} to exclude when resolving transitive dependencies.
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @return a DAG {@link Graph<Dep>} implementation representing the resolved {@code dependencyAtoms} and its tree of
      *         transitive dependencies.
      */
     public static DirectedAcyclicGraph<Dep> getDependencyGraph(List<DependencyAtom> dependencyAtoms,
+                                                               Set<DependencyAtom> exclusionAtoms,
                                                                RepositoryRegistry repositoryRegistry) {
-        return getDependencyGraph(dependencyAtoms, repositoryRegistry, true);
+        return getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, true);
     }
 
     /**
      * @param dependencyAtoms the direct dependencies from which to create a dependency graph
+     * @param exclusionAtoms the {@link DependencyAtom} to exclude when resolving transitive dependencies.
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @param failMissingDependency true to fail on missing dependencies; false to ignore and continue resolution
      * @return a DAG {@link Graph<Dep>} implementation representing the resolved {@code dependencyAtoms} and its tree of
      *         transitive dependencies.
      */
     public static DirectedAcyclicGraph<Dep> getDependencyGraph(List<DependencyAtom> dependencyAtoms,
+                                                               Set<DependencyAtom> exclusionAtoms,
                                                                RepositoryRegistry repositoryRegistry,
                                                                boolean failMissingDependency) {
         DirectedAcyclicGraph<Dep> dependencyDAG = new DirectedAcyclicGraph<Dep>();
-        fillDependencyGraph(null, dependencyAtoms, repositoryRegistry, dependencyDAG, new FillGraphState(), false, failMissingDependency);
+        fillDependencyGraph(null, dependencyAtoms, exclusionAtoms, repositoryRegistry, dependencyDAG, new FillGraphState(),
+                            false, failMissingDependency);
         return dependencyDAG;
     }
 
@@ -126,6 +131,7 @@ public final class Deps {
      * pom must be present.
      * @param parentVertex the parent of {@code dependencyAtoms}
      * @param dependencyAtoms the dependencies which to resolve and place into {@code graph}
+     * @param exclusionAtoms the {@link DependencyAtom} to exclude when resolving transitive dependencies.
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @param graph to fill with the resolved {@link Dep} objects of {@code dependencyAtoms}.
      * @param state the {@link FillGraphState} used to track previously resolved dependencies, etc.
@@ -135,6 +141,7 @@ public final class Deps {
      *                              ignore and continue resolution
      */
     private static void fillDependencyGraph(Vertex<Dep> parentVertex, List<DependencyAtom> dependencyAtoms,
+                                            Set<DependencyAtom> exclusionAtoms,
                                             RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph,
                                             FillGraphState state, boolean pomSufficient, boolean failMissingDependency) {
         if (repositoryRegistry.isEmpty()) {
@@ -144,6 +151,16 @@ public final class Deps {
         for (DependencyAtom dependencyAtom : dependencyAtoms) {
             if ((parentVertex != null) && dependencyAtom.transientDep) {
                 continue; // non-direct (transitive) transient dependencies should be skipped
+            }
+            // strip any classifier information for exclusion check
+            DependencyAtom exclusionCheck = dependencyAtom.withoutClassifier();
+            if ((parentVertex != null) && exclusionAtoms.contains(dependencyAtom)) {
+                Output.print("^info^ Skipping excluded dependency ^b^%s^r^.", dependencyAtom.toString());
+                continue; // non-direct dependency listed in exclusions, skip
+            } else if ((parentVertex == null) && exclusionAtoms.contains(dependencyAtom)) {
+                Output.print("^error^ Direct dependency ^b^%s^r^ listed in exclusions, remove as dependency or as exclusion.",
+                        dependencyAtom.toString());
+                SystemExit.exit(1);
             }
             // pom is sufficient for resolution if this is a transient dependency
             Dep resolvedDep;
@@ -197,7 +214,7 @@ public final class Deps {
                 state.unversionedResolved.put(resolvedDep.toString(), resolvedDep);
             }
             if (!dependencyAtom.transientDep) { // direct transient dependencies are not recurred upon
-                fillDependencyGraph(vertex, vertex.getValue().dependencies, repositoryRegistry, graph, state, true, failMissingDependency);
+                fillDependencyGraph(vertex, vertex.getValue().dependencies, exclusionAtoms, repositoryRegistry, graph, state, true, failMissingDependency);
             }
         }
     }
@@ -211,6 +228,8 @@ public final class Deps {
                 resolvedDep.toString(), diffVersionDep.dependencyAtom.getPropertyValue(), resolvedDep.dependencyAtom.getPropertyValue());
         Output.print("^warn^   ^b^%s^r^ => %s", diffVersionDep.dependencyAtom.getPropertyValue(), (diffVersionPath == null ? "<direct dependency>" : diffVersionPath));
         Output.print("^warn^   ^b^%s^r^ => %s", resolvedDep.dependencyAtom.getPropertyValue(), (path == null ? "<direct dependency>" : path));
+        Output.print("^warn^ You can resolve this warning by excluding one of these versions from your project's dependency graph: ^b^ply dep exclude^r^ [ %s ] | [ %s]",
+                diffVersionDep.toVersionString(), resolvedDep.toVersionString());
     }
 
     /**

@@ -70,11 +70,12 @@ import static net.ocheyedan.ply.props.PropFile.Prop;
  * for dependencies and transitive dependencies so that compilation and packaging may succeed.
  *
  * The dependency script's usage is:
- * <pre>dep [--usage] [add|remove|list|tree|add-repo|remove-repo]</pre>
+ * <pre>dep [--usage] [add|rm|exclude|list|tree]</pre>
  * where {@literal --usage} prints the usage information.
  * The {@literal add} command takes an atom and adds it as a dependency for the supplied scope, resolving it eagerly
  * from the known repos and failing if it cannot be resolved.
- * The {@literal remove} command takes an atom and removes it from the dependencies scope, if it exists.
+ * The {@literal rm} command takes an atom and removes it from the dependencies scope, if it exists.
+ * The {@literal exclude} command takes an atom and excludes it from the dependency graph for the local project.
  * The {@literal list} command lists all direct dependencies for the scope (transitive dependencies are not listed).
  * The {@literal tree} command lists all dependencies for the scope in a tree format (including transitive).
  *
@@ -94,8 +95,10 @@ public class DependencyManager {
         Context projectContext = Context.named("project");
         if ((args.length > 1) && "add".equals(args[0])) {
             addDependency(args[1], scope);
-        } else if ((args.length > 1) && "remove".equals(args[0])) {
+        } else if ((args.length > 1) && "rm".equals(args[0])) {
             removeDependency(args[1], scope);
+        } else if ((args.length > 1) && "exclude".equals(args[0])) {
+            excludeDependency(args[1], scope);
         } else if ((args.length == 1) && "list".equals(args[0])) {
             PropFile dependencies = getDependencies(scope);
             int size = dependencies.size();
@@ -118,7 +121,8 @@ public class DependencyManager {
             if (dependencies.isEmpty()) {
                 Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.get("name", projectContext).value(), scope.getPrettyPrint());
             } else {
-                DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(dependencies, createRepositoryList(null, null));
+                Set<DependencyAtom> exclusions = new HashSet<DependencyAtom>(Deps.parse(loadExclusionsFile(scope)));
+                DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(dependencies, exclusions, createRepositoryList(null, null));
                 int size = dependencies.size();
                 int graphSize = depGraph.getRootVertices().size();
                 if (graphSize > size) {
@@ -134,15 +138,17 @@ public class DependencyManager {
             String[] classifiers = args[1].split(",");
             for (String classifier : classifiers) {
                 PropFile dependencies = getDependencies(scope);
-                resolveDependencies(dependencies, classifier, false);
+                PropFile exclusions = loadExclusionsFile(scope);
+                resolveDependencies(dependencies, exclusions, classifier, false);
             }
         } else if (args.length == 0) {
             PropFile dependencies = getDependencies(scope);
+            PropFile exclusions = loadExclusionsFile(scope);
             int size = dependencies.size();
             if (size > 0) {
                 Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^.", size, scope.getPrettyPrint(), (size == 1 ? "y" : "ies"),
                         Props.get("name", projectContext).value());
-                PropFile dependencyFiles = resolveDependencies(dependencies, null, true);
+                PropFile dependencyFiles = resolveDependencies(dependencies, exclusions, null, true);
                 storeResolvedDependenciesFile(dependencyFiles, scope);
             }
         } else {
@@ -177,10 +183,12 @@ public class DependencyManager {
         }
         dependencies.add(atom.getPropertyName(), atom.getPropertyValue());
         final List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
+        PropFile exclusions = loadExclusionsFile(scope);
+        final Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parse(exclusions));
         final RepositoryRegistry repositoryRegistry = createRepositoryList(Deps.getProjectDep(), dependencyAtoms);
         DirectedAcyclicGraph<Dep> resolvedDeps = invokeWithSlowResolutionThread(new Callable<DirectedAcyclicGraph<Dep>>() {
             @Override public DirectedAcyclicGraph<Dep> call() throws Exception {
-                return Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry);
+                return Deps.getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry);
             }
         }, String.format("^b^Hang tight,^r^ %s has a lot of dependencies. ^b^Ply^r^'s downloading them...", dependency));
         if (resolvedDeps != null) { // getDependencyGraph returns => ok
@@ -214,6 +222,25 @@ public class DependencyManager {
         }
     }
 
+    private static void excludeDependency(String dependency, Scope scope) {
+        DependencyAtom atom = DependencyAtom.parse(dependency, null);
+        if (atom == null) {
+            // allow non-version specification.
+            String[] split = dependency.split(":");
+            if (split.length < 2) {
+                Output.print("^error^ Dependency ^b^%s^r^ ^b^%s^r^ (format namespace:name[:version:artifactName]).",
+                        dependency, (split.length == 1 ? "name" : "namespace and name"));
+                System.exit(1);
+            }
+            atom = new DependencyAtom(split[0], split[1], null);
+        }
+        PropFile exclusions = loadExclusionsFile(scope);
+        exclusions.add(atom.getPropertyName(), atom.getPropertyValue());
+        storeDependenciesFile(exclusions, scope);
+        Output.print("Excluded dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
+            String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
+    }
+
     private static RepositoryRegistry createRepositoryList(DependencyAtom dependencyAtom, List<DependencyAtom> dependencyAtoms) {
         try {
             return Repos.createRepositoryRegistry(PlyUtil.LOCAL_CONFIG_DIR, Props.getScope(), dependencyAtom, dependencyAtoms);
@@ -223,21 +250,27 @@ public class DependencyManager {
         }
     }
 
-    private static PropFile resolveDependencies(final PropFile dependencies, final String classifier,
+    private static PropFile resolveDependencies(final PropFile dependencies, final PropFile exclusions, final String classifier,
                                                   final boolean failMissingDependency) {
         return invokeWithSlowResolutionThread(new Callable<PropFile>() {
             @Override public PropFile call() throws Exception {
                 DependencyAtom self = Deps.getProjectDep();
                 List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
+                Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parse(exclusions));
                 if (classifier != null) {
                     List<DependencyAtom> dependencyAtomWithClassifiers = new ArrayList<DependencyAtom>(dependencyAtoms.size());
                     for (DependencyAtom dependencyAtom : dependencyAtoms) {
                         dependencyAtomWithClassifiers.add(dependencyAtom.withClassifier(classifier));
                     }
                     dependencyAtoms = dependencyAtomWithClassifiers;
+                    Set<DependencyAtom> exclusionAtomWithClassifiers = new HashSet<DependencyAtom>(exclusionAtoms.size());
+                    for (DependencyAtom exclusionAtom : exclusionAtoms) {
+                        exclusionAtomWithClassifiers.add(exclusionAtom.withClassifier(classifier));
+                    }
+                    exclusionAtoms = exclusionAtomWithClassifiers;
                 }
                 RepositoryRegistry repositoryRegistry = createRepositoryList(self, dependencyAtoms);
-                DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, repositoryRegistry, failMissingDependency);
+                DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, failMissingDependency);
                 return Deps.convertToResolvedPropertiesFile(dependencyGraph);
             }
         }, "^b^Hang tight,^r^ your project needs a lot of dependencies. ^b^Ply^r^'s downloading them...");
@@ -276,9 +309,17 @@ public class DependencyManager {
     }
 
     private static PropFile loadDependenciesFile(Scope scope) {
+        return loadFile(scope, "dependencies");
+    }
+
+    private static PropFile loadExclusionsFile(Scope scope) {
+        return loadFile(scope, "exclusions");
+    }
+
+    private static PropFile loadFile(Scope scope, String fileName) {
         String localDir = Props.get("project.dir", Context.named("ply")).value();
         String loadPath = localDir + (localDir.endsWith(File.separator) ? "" : File.separator) + "config" +
-                File.separator + "dependencies" + scope.getFileSuffix() + ".properties";
+                File.separator + fileName + scope.getFileSuffix() + ".properties";
         return PropFiles.load(loadPath, true, false);
     }
 
@@ -354,7 +395,7 @@ public class DependencyManager {
         Output.print("dep [--usage] <^b^command^r^>");
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^add <dep-atom>^r^ : adds dep-atom to the list of dependencies (within scope) (or replacing the version if it already exists).");
-        Output.print("    ^b^remove <dep-atom>^r^ : removes dep-atom from the list of dependencies (within scope).");
+        Output.print("    ^b^rm <dep-atom>^r^ : removes dep-atom from the list of dependencies (within scope).");
         Output.print("    ^b^list^r^ : list all direct dependencies (within scope excluding transitive dependencies).");
         Output.print("    ^b^tree^r^ : print all dependencies in a tree view (within scope including transitive dependencies).");
         Output.print("    ^b^resolve-classifiers <classifiers>^r^ : resolves dependencies with each of the (comma delimited) classifiers.");

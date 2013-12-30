@@ -10,10 +10,7 @@ import org.junit.Test;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -45,8 +42,28 @@ public class DepsTest {
                 synthetic.put(atom, Collections.<DependencyAtom>emptyList());
             }
         }
-        DirectedAcyclicGraph<Dep> graph = Deps.getDependencyGraph(deps, new RepositoryRegistry(mockRepo, null, synthetic));
+        DirectedAcyclicGraph<Dep> graph = Deps.getDependencyGraph(deps, Collections.<DependencyAtom>emptySet(), new RepositoryRegistry(mockRepo, null, synthetic));
         List<Vertex<Dep>> resolved = graph.getVertices();
+        assertEquals(3, resolved.size());
+
+        // now, rerun but include stax:stax-api:1.0.1 as a transitive dependency
+        synthetic = new HashMap<DependencyAtom, List<DependencyAtom>>(1);
+        for (DependencyAtom atom : deps) {
+            if ("slf4j-api".equals(atom.name)) {
+                List<DependencyAtom> slf4jDependencies = new ArrayList<DependencyAtom>(1);
+                slf4jDependencies.add(new DependencyAtom("stax", "stax-api", "1.0.1"));
+                synthetic.put(atom, slf4jDependencies);
+            }
+        }
+        graph = Deps.getDependencyGraph(deps, Collections.<DependencyAtom>emptySet(), new RepositoryRegistry(mockRepo, null, synthetic));
+        resolved = graph.getVertices();
+        assertEquals(4, resolved.size());
+
+        // now, rerun but exclude the stax:stax-api:1.0.1 transitive dependency
+        Set<DependencyAtom> exclusions = new HashSet<DependencyAtom>(1);
+        exclusions.add(new DependencyAtom("stax", "stax-api", "1.0.1"));
+        graph = Deps.getDependencyGraph(deps, exclusions, new RepositoryRegistry(mockRepo, null, synthetic));
+        resolved = graph.getVertices();
         assertEquals(3, resolved.size());
     }
 
