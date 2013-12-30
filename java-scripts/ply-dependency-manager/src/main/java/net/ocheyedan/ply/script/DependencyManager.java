@@ -396,6 +396,7 @@ public class DependencyManager {
         Output.print("  where ^b^command^r^ is either:");
         Output.print("    ^b^add <dep-atom>^r^ : adds dep-atom to the list of dependencies (within scope) (or replacing the version if it already exists).");
         Output.print("    ^b^rm <dep-atom>^r^ : removes dep-atom from the list of dependencies (within scope).");
+        Output.print("    ^b^exclude <dep-atom>^r^ : excludes dep-atom from the list of dependencies (within scope).");
         Output.print("    ^b^list^r^ : list all direct dependencies (within scope excluding transitive dependencies).");
         Output.print("    ^b^tree^r^ : print all dependencies in a tree view (within scope including transitive dependencies).");
         Output.print("    ^b^resolve-classifiers <classifiers>^r^ : resolves dependencies with each of the (comma delimited) classifiers.");
