@@ -145,9 +145,14 @@ public class DependencyManager {
             PropFile dependencies = getDependencies(scope);
             PropFile exclusions = getExclusions(scope);
             int size = dependencies.size();
+            int exclusionsSize = exclusions.size();
             if (size > 0) {
-                Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^.", size, scope.getPrettyPrint(), (size == 1 ? "y" : "ies"),
-                        Props.get("name", projectContext).value());
+                String exclusionsDescription = "";
+                if (exclusionsSize > 0) {
+                    exclusionsDescription = String.format(" (with ^b^%d^r^ exclusion%s)", exclusionsSize, (exclusionsSize == 1 ? "" : "s"));
+                }
+                Output.print("Resolving ^b^%d^r^ %sdependenc%s for ^b^%s^r^%s.", size, scope.getPrettyPrint(), (size == 1 ? "y" : "ies"),
+                        Props.get("name", projectContext).value(), exclusionsDescription);
                 PropFile dependencyFiles = resolveDependencies(dependencies, exclusions, null, true);
                 storeResolvedDependenciesFile(dependencyFiles, scope);
             }
