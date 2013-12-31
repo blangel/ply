@@ -121,7 +121,7 @@ public class DependencyManager {
             if (dependencies.isEmpty()) {
                 Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.get("name", projectContext).value(), scope.getPrettyPrint());
             } else {
-                Set<DependencyAtom> exclusions = new HashSet<DependencyAtom>(Deps.parse(getExclusions(scope)));
+                Set<DependencyAtom> exclusions = new HashSet<DependencyAtom>(Deps.parseExclusions(getExclusions(scope)));
                 DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(dependencies, exclusions, createRepositoryList(null, null));
                 int size = dependencies.size();
                 int graphSize = depGraph.getRootVertices().size();
@@ -145,7 +145,7 @@ public class DependencyManager {
             PropFile dependencies = getDependencies(scope);
             PropFile exclusions = getExclusions(scope);
             int size = dependencies.size();
-            int exclusionsSize = exclusions.size();
+            int exclusionsSize = getExclusionsSize(exclusions);
             if (size > 0) {
                 String exclusionsDescription = "";
                 if (exclusionsSize > 0) {
@@ -159,6 +159,27 @@ public class DependencyManager {
         } else {
             usage();
         }
+    }
+
+    private static int getExclusionsSize(PropFile exclusions) {
+        int size = exclusions.size();
+        for (Prop exclusion : exclusions.props()) {
+            size += countMatches(exclusion.value(), ' ');
+        }
+        return size;
+    }
+
+    private static int countMatches(String value, char character) {
+        if ((value == null) || value.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        int index = 0;
+        while ((index = value.indexOf(character, index)) != -1) {
+            count++;
+            index += 1;
+        }
+        return count;
     }
 
     private static void addDependency(String dependency, Scope scope) {
@@ -189,7 +210,7 @@ public class DependencyManager {
         dependencies.add(atom.getPropertyName(), atom.getPropertyValue());
         final List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
         PropFile exclusions = getExclusions(scope);
-        final Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parse(exclusions));
+        final Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parseExclusions(exclusions));
         final RepositoryRegistry repositoryRegistry = createRepositoryList(Deps.getProjectDep(), dependencyAtoms);
         DirectedAcyclicGraph<Dep> resolvedDeps = invokeWithSlowResolutionThread(new Callable<DirectedAcyclicGraph<Dep>>() {
             @Override public DirectedAcyclicGraph<Dep> call() throws Exception {
@@ -240,7 +261,12 @@ public class DependencyManager {
             atom = new DependencyAtom(split[0], split[1], null);
         }
         PropFile exclusions = loadExclusionsFile(scope);
-        exclusions.add(atom.getPropertyName(), atom.getPropertyValue());
+        if (exclusions.contains(atom.getPropertyName())) {
+            String versions = String.format("%s %s", exclusions.get(atom.getPropertyName()).value(), atom.getPropertyValue());
+            exclusions.set(atom.getPropertyName(), versions);
+        } else {
+            exclusions.add(atom.getPropertyName(), atom.getPropertyValue());
+        }
         storeExclusionsFile(exclusions, scope);
         Output.print("Excluded dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
             String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
@@ -261,7 +287,7 @@ public class DependencyManager {
             @Override public PropFile call() throws Exception {
                 DependencyAtom self = Deps.getProjectDep();
                 List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
-                Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parse(exclusions));
+                Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parseExclusions(exclusions));
                 if (classifier != null) {
                     List<DependencyAtom> dependencyAtomWithClassifiers = new ArrayList<DependencyAtom>(dependencyAtoms.size());
                     for (DependencyAtom dependencyAtom : dependencyAtoms) {

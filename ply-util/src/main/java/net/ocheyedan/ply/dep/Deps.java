@@ -430,12 +430,49 @@ public final class Deps {
         }
         AtomicReference<String> error = new AtomicReference<String>();
         String dependencyValue = dependencyProp.value();
-        DependencyAtom dependency = DependencyAtom.parse(dependencyProp.name + ":" + dependencyValue, error);
+        return parse(dependencyProp.name, dependencyValue, error);
+    }
+
+    private static DependencyAtom parse(String name, String value, AtomicReference<String> error) {
+        DependencyAtom dependency = DependencyAtom.parse(name + ":" + value, error);
         if (dependency == null) {
-            Output.print("^warn^ Invalid dependency %s:%s; %s", dependencyProp.name, dependencyValue, error.get());
+            Output.print("^warn^ Invalid dependency %s:%s; %s", name, value, error.get());
             return null;
         }
         return dependency;
+    }
+
+    /**
+     * Converts {@code exclusions} into a list of {@link DependencyAtom} objects
+     *
+     * @param exclusions to convert
+     * @return the converted {@code exclusions}
+     */
+    public static List<DependencyAtom> parseExclusions(PropFile exclusions) {
+        List<DependencyAtom> exclusionAtoms = new ArrayList<DependencyAtom>();
+        AtomicReference<String> error = new AtomicReference<String>();
+        for (Prop exclusion : exclusions.props()) {
+            if (exclusion.value().contains(" ")) {
+                String[] versions = exclusion.value().split(" ");
+                for (String version : versions) {
+                    error.set(null);
+                    parseExclusionVersion(exclusion, exclusionAtoms, version, error);
+                }
+            } else {
+                error.set(null);
+                parseExclusionVersion(exclusion, exclusionAtoms, exclusion.value(), error);
+            }
+        }
+        return exclusionAtoms;
+    }
+
+    private static void parseExclusionVersion(Prop exclusion, List<DependencyAtom> exclusionAtoms, String version,
+                                              AtomicReference<String> error) {
+        DependencyAtom exclusionAtom = parse(exclusion.name, version, error);
+        if (exclusionAtom == null) {
+            return;
+        }
+        exclusionAtoms.add(exclusionAtom);
     }
 
     /**

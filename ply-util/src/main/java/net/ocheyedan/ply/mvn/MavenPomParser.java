@@ -391,10 +391,8 @@ public class MavenPomParser {
                     optional = child.getTextContent().trim();
                 } else if ("systemPath".equals(child.getNodeName())) {
                     systemPath = true;
-                }
-                // although ply doesn't support exclusions it must honor those specified by a maven project
-                else if ("exclusions".equals(dependencies.item(i).getNodeName())) {
-                    // TODO - honor maven's (ah-hm, broken) notion of exclusions
+                } else if ("exclusions".equals(dependencies.item(i).getNodeName())) {
+                    // ply treats exclusions much differently than maven, balk here and force project to specify explicitly
                 }
             }
             version = Version.resolve(version, getMetadataBaseUrl(repositoryAtom, groupId, artifactId));

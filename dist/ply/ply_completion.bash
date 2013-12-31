@@ -175,7 +175,7 @@ _ply_completion() {
 	--version | --usage | --help)
 	    ;;
 	rm)
-	    # rm could be for the 'dep' / 'repo' aliases
+	    # rm could be a sub-task for the 'dep' / 'repo' aliases
 	    if [[ ($nonscopedPrev == "rm") && ("${COMP_WORDS[COMP_CWORD-prevIndex-1]}" == "dep") ]]; then
 	        local depFile="dependencies.properties"
             if [[ -n $scope ]]; then
