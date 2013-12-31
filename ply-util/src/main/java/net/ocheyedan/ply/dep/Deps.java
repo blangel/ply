@@ -73,7 +73,7 @@ public final class Deps {
          * A mapping from {@link String} to {@link Dep} of already resolved dependencies where the key represents
          * the un-versioned dependency (to warn about conflicting versions within the graph).
          */
-        Map<String, Dep> unversionedResolved;
+        Map<String, Set<Dep>> unversionedResolved;
 
         /**
          * Set of {@literal namespace:name} strings for which a conflicting version warning has already been printed.
@@ -82,7 +82,7 @@ public final class Deps {
 
         private FillGraphState() {
             this.resolved = new HashMap<DependencyAtom, Dep>();
-            this.unversionedResolved = new HashMap<String, Dep>();
+            this.unversionedResolved = new HashMap<String, Set<Dep>>();
             this.unversionedResolvedAlreadyWarned = new HashSet<String>();
         }
     }
@@ -97,13 +97,14 @@ public final class Deps {
     public static DirectedAcyclicGraph<Dep> getDependencyGraph(List<DependencyAtom> dependencyAtoms,
                                                                Set<DependencyAtom> exclusionAtoms,
                                                                RepositoryRegistry repositoryRegistry) {
-        return getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, true);
+        return getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, null, true);
     }
 
     /**
      * @param dependencyAtoms the direct dependencies from which to create a dependency graph
      * @param exclusionAtoms the {@link DependencyAtom} to exclude when resolving transitive dependencies.
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
+     * @param classifier to use when resolving all transitive dependencies
      * @param failMissingDependency true to fail on missing dependencies; false to ignore and continue resolution
      * @return a DAG {@link Graph<Dep>} implementation representing the resolved {@code dependencyAtoms} and its tree of
      *         transitive dependencies.
@@ -111,9 +112,10 @@ public final class Deps {
     public static DirectedAcyclicGraph<Dep> getDependencyGraph(List<DependencyAtom> dependencyAtoms,
                                                                Set<DependencyAtom> exclusionAtoms,
                                                                RepositoryRegistry repositoryRegistry,
+                                                               String classifier,
                                                                boolean failMissingDependency) {
         DirectedAcyclicGraph<Dep> dependencyDAG = new DirectedAcyclicGraph<Dep>();
-        fillDependencyGraph(null, dependencyAtoms, exclusionAtoms, repositoryRegistry, dependencyDAG, new FillGraphState(),
+        fillDependencyGraph(null, dependencyAtoms, exclusionAtoms, classifier, repositoryRegistry, dependencyDAG, new FillGraphState(),
                             false, failMissingDependency);
         return dependencyDAG;
     }
@@ -132,6 +134,7 @@ public final class Deps {
      * @param parentVertex the parent of {@code dependencyAtoms}
      * @param dependencyAtoms the dependencies which to resolve and place into {@code graph}
      * @param exclusionAtoms the {@link DependencyAtom} to exclude when resolving transitive dependencies.
+     * @param classifier to use when resolving transitive dependencies, or null
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @param graph to fill with the resolved {@link Dep} objects of {@code dependencyAtoms}.
      * @param state the {@link FillGraphState} used to track previously resolved dependencies, etc.
@@ -141,7 +144,7 @@ public final class Deps {
      *                              ignore and continue resolution
      */
     private static void fillDependencyGraph(Vertex<Dep> parentVertex, List<DependencyAtom> dependencyAtoms,
-                                            Set<DependencyAtom> exclusionAtoms,
+                                            Set<DependencyAtom> exclusionAtoms, String classifier,
                                             RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph,
                                             FillGraphState state, boolean pomSufficient, boolean failMissingDependency) {
         if (repositoryRegistry.isEmpty()) {
@@ -168,11 +171,16 @@ public final class Deps {
                 if (state.resolved.containsKey(dependencyAtom)) {
                     resolvedDep = state.resolved.get(dependencyAtom);
                 } else {
-                    resolvedDep = resolveDependency(dependencyAtom, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep),
+                    resolvedDep = resolveDependency(dependencyAtom, classifier, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep),
                                                 failMissingDependency);
                     state.resolved.put(dependencyAtom, resolvedDep);
                     String key = (resolvedDep == null ? dependencyAtom.getPropertyName() : resolvedDep.toString());
-                    state.unversionedResolved.put(key, resolvedDep);
+                    Set<Dep> alreadyResolved = state.unversionedResolved.get(key);
+                    if (alreadyResolved == null) {
+                        alreadyResolved = new HashSet<Dep>(4, 1.0f);
+                        state.unversionedResolved.put(key, alreadyResolved);
+                    }
+                    alreadyResolved.add(resolvedDep);
                 }
                 if ((resolvedDep == null) && !failMissingDependency) {
                     if (Output.isInfo()) {
@@ -204,17 +212,24 @@ public final class Deps {
                     SystemExit.exit(1);
                 }
             }
-            Dep diffVersionDep = state.unversionedResolved.get(resolvedDep.toString());
-            if (state.unversionedResolved.containsKey(resolvedDep.toString())
-                    && !resolvedDep.toVersionString().equals(diffVersionDep.toVersionString())
+            Set<Dep> resolved = state.unversionedResolved.get(resolvedDep.toString());
+            if ((resolved != null)
+                    && (resolved.size() > 1)
                     && !state.unversionedResolvedAlreadyWarned.contains(resolvedDep.toString())) {
-                warnAboutMultipleVersions(diffVersionDep, resolvedDep, parentVertex, dependencyAtom, graph);
-                state.unversionedResolvedAlreadyWarned.add(resolvedDep.toString());
-            } else {
-                state.unversionedResolved.put(resolvedDep.toString(), resolvedDep);
+                Dep diffVersionDep = null;
+                for (Dep dep : resolved) {
+                    if (!dep.toVersionString().equals(resolvedDep.toVersionString())) {
+                        diffVersionDep = dep;
+                        break;
+                    }
+                }
+                if (diffVersionDep != null) {
+                    warnAboutMultipleVersions(diffVersionDep, resolvedDep, parentVertex, dependencyAtom, graph);
+                    state.unversionedResolvedAlreadyWarned.add(resolvedDep.toString());
+                }
             }
             if (!dependencyAtom.transientDep) { // direct transient dependencies are not recurred upon
-                fillDependencyGraph(vertex, vertex.getValue().dependencies, exclusionAtoms, repositoryRegistry, graph, state, true, failMissingDependency);
+                fillDependencyGraph(vertex, vertex.getValue().dependencies, exclusionAtoms, classifier, repositoryRegistry, graph, state, true, failMissingDependency);
             }
         }
     }
@@ -297,6 +312,7 @@ public final class Deps {
      * javax.jms:jms:1.1 but not require the packaged artifact (which is defaulted to jar) be present.  The
      * pom must be present however.
      * @param dependencyAtom to resolve
+     * @param classifier to use when resolving transitive dependencies, or null
      * @param repositoryRegistry repositories to use when resolving {@code dependencyAtom}
      * @param pomSufficient if true, then only the pom from a maven repository is necessary to have successfully
      *                      resolved the {@code dependencyAtom}.
@@ -304,7 +320,7 @@ public final class Deps {
      * @return a {@link Dep} representation of {@code dependencyAtom} or null if {@code dependencyAtom} could
      *         not be resolved.
      */
-    static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry,
+    static Dep resolveDependency(DependencyAtom dependencyAtom, String classifier, RepositoryRegistry repositoryRegistry,
                                  boolean pomSufficient, boolean failMissingDependency) {
         // determine the local-repository directory for dependencyAtom; as it is needed regardless of where the dependency
         // if found.
@@ -316,7 +332,7 @@ public final class Deps {
             return new Dep(dependencyAtom, repositoryRegistry.syntheticRepository.get(dependencyAtom), localPaths.localDirPath);
         }
         // not present within the synthetic, check the local and other (likely remote) repositories
-        Dep resolved = resolveDependency(dependencyAtom, repositoryRegistry, localRepo, pomSufficient);
+        Dep resolved = resolveDependency(dependencyAtom, classifier, repositoryRegistry, localRepo, pomSufficient);
         if (resolved != null) {
             return resolved;
         }
@@ -331,7 +347,7 @@ public final class Deps {
         return null;
     }
 
-    private static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryRegistry repositoryRegistry,
+    private static Dep resolveDependency(DependencyAtom dependencyAtom, String classifier, RepositoryRegistry repositoryRegistry,
                                          RepositoryAtom localRepo, boolean pomSufficient) {
         LocalPaths localPaths = LocalPaths.get(dependencyAtom, localRepo);
         // also create pom-only objects
@@ -341,19 +357,19 @@ public final class Deps {
         File localDepFile = new File(localPaths.localUrl.getFile());
         File localPomDepFile = new File(localPomPaths.localUrl.getFile());
         if (localDepFile.exists()) {
-            return resolveDependency(dependencyAtom, localRepo, localPaths.localDirUrlPath, localPaths.localDirPath);
+            return resolveDependency(dependencyAtom, classifier, localRepo, localPaths.localDirUrlPath, localPaths.localDirPath);
         } else if (pomSufficient && localPomDepFile.exists()) {
-            return resolveDependency(pomDependencyAtom, localRepo, localPomPaths.localDirUrlPath, localPomPaths.localDirPath);
+            return resolveDependency(pomDependencyAtom, classifier, localRepo, localPomPaths.localDirUrlPath, localPomPaths.localDirPath);
         }
         // not in the local repository, check each other repository.
-        Dep resolved = resolveDependencyFromRemoteRepos(dependencyAtom, repositoryRegistry, localPaths, localDepFile);
+        Dep resolved = resolveDependencyFromRemoteRepos(dependencyAtom, classifier, repositoryRegistry, localPaths, localDepFile);
         if ((resolved == null) && pomSufficient) {
-            resolved = resolveDependencyFromRemoteRepos(pomDependencyAtom, repositoryRegistry, localPomPaths, localPomDepFile);
+            resolved = resolveDependencyFromRemoteRepos(pomDependencyAtom, classifier, repositoryRegistry, localPomPaths, localPomDepFile);
         }
         return resolved;
     }
 
-    private static Dep resolveDependencyFromRemoteRepos(DependencyAtom dependencyAtom,
+    private static Dep resolveDependencyFromRemoteRepos(DependencyAtom dependencyAtom, String classifier,
                                                         RepositoryRegistry repositoryRegistry, LocalPaths localPaths,
                                                         File localDepFile) {
         List<RepositoryAtom> nonLocalRepos = repositoryRegistry.remoteRepositories;
@@ -371,7 +387,7 @@ public final class Deps {
             }
             URL remoteUrl = getUrl(remotePath);
             if (FileUtil.download(remoteUrl, headers, localDepFile, dependencyAtom.toString(), remoteRepo.toString(), true)) {
-                return resolveDependency(dependencyAtom, remoteRepo, remotePathDir, localPaths.localDirPath);
+                return resolveDependency(dependencyAtom, classifier, remoteRepo, remotePathDir, localPaths.localDirPath);
             }
         }
         return null;
@@ -381,13 +397,14 @@ public final class Deps {
      * Retrieves the direct dependencies of {@code dependencyAtom} (which is located within {@code repoDirPath}
      * of {@code repositoryAtom}) and saves them to {@code saveToRepoDirPath} as a dependencies property file.
      * @param dependencyAtom to retrieve the dependencies file
+     * @param classifier to use when resolving transitive dependencies, or null
      * @param repositoryAtom from which {@code dependencyAtom} was resolved.
      * @param repoDirPath the directory location of {@code dependencyAtom} within the {@code repositoryAtom}.
      * @param saveToRepoDirPath to save the found dependency property file (should be within the local repository).
      * @return the property file associated with {@code dependencyAtom} (could be empty if {@code dependencyAtom}
      *         has no dependencies).
      */
-    private static Dep resolveDependency(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
+    private static Dep resolveDependency(DependencyAtom dependencyAtom, String classifier, RepositoryAtom repositoryAtom,
                                          String repoDirPath, String saveToRepoDirPath) {
         PropFile dependenciesFile = getDependenciesFile(dependencyAtom, repositoryAtom, repoDirPath);
         if (dependenciesFile == null) {
@@ -396,16 +413,17 @@ public final class Deps {
         }
         // TODO - only store if necessary (also add force-update command like Maven's -U)
         storeDependenciesFile(dependenciesFile, saveToRepoDirPath);
-        List<DependencyAtom> dependencyAtoms = parse(dependenciesFile);
+        List<DependencyAtom> dependencyAtoms = parse(dependenciesFile, classifier);
         return new Dep(dependencyAtom, dependencyAtoms, saveToRepoDirPath);
     }
 
     /**
      * Converts {@code dependencies} into a list of {@link DependencyAtom} objects
      * @param dependencies to convert
+     * @param classifier to use when constructing the {@link DependencyAtom} or null
      * @return the converted {@code dependencies}
      */
-    public static List<DependencyAtom> parse(PropFile dependencies) {
+    public static List<DependencyAtom> parse(PropFile dependencies, String classifier) {
         List<DependencyAtom> dependencyAtoms = new ArrayList<DependencyAtom>();
         AtomicReference<String> error = new AtomicReference<String>();
         for (Prop dependency : dependencies.props()) {
@@ -414,7 +432,11 @@ public final class Deps {
             if (dependencyAtom == null) {
                 continue;
             }
-            dependencyAtoms.add(dependencyAtom);
+            if (classifier == null) {
+                dependencyAtoms.add(dependencyAtom);
+            } else {
+                dependencyAtoms.add(dependencyAtom.withClassifier(classifier));
+            }
         }
         return dependencyAtoms;
     }
@@ -448,7 +470,7 @@ public final class Deps {
      * @param exclusions to convert
      * @return the converted {@code exclusions}
      */
-    public static List<DependencyAtom> parseExclusions(PropFile exclusions) {
+    public static List<DependencyAtom> parseExclusions(PropFile exclusions, String classifier) {
         List<DependencyAtom> exclusionAtoms = new ArrayList<DependencyAtom>();
         AtomicReference<String> error = new AtomicReference<String>();
         for (Prop exclusion : exclusions.props()) {
@@ -456,23 +478,27 @@ public final class Deps {
                 String[] versions = exclusion.value().split(" ");
                 for (String version : versions) {
                     error.set(null);
-                    parseExclusionVersion(exclusion, exclusionAtoms, version, error);
+                    parseExclusionVersion(exclusion, exclusionAtoms, version, classifier, error);
                 }
             } else {
                 error.set(null);
-                parseExclusionVersion(exclusion, exclusionAtoms, exclusion.value(), error);
+                parseExclusionVersion(exclusion, exclusionAtoms, exclusion.value(), classifier, error);
             }
         }
         return exclusionAtoms;
     }
 
-    private static void parseExclusionVersion(Prop exclusion, List<DependencyAtom> exclusionAtoms, String version,
+    private static void parseExclusionVersion(Prop exclusion, List<DependencyAtom> exclusionAtoms, String version, String classifier,
                                               AtomicReference<String> error) {
         DependencyAtom exclusionAtom = parse(exclusion.name, version, error);
         if (exclusionAtom == null) {
             return;
         }
-        exclusionAtoms.add(exclusionAtom);
+        if (classifier == null) {
+            exclusionAtoms.add(exclusionAtom);
+        } else {
+            exclusionAtoms.add(exclusionAtom.withClassifier(classifier));
+        }
     }
 
     /**

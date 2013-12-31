@@ -117,11 +117,11 @@ public class DependencyManager {
                 Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.get("name", projectContext).value(), scope.getPrettyPrint());
             }
         } else if ((args.length == 1) && "tree".equals(args[0])) {
-            List<DependencyAtom> dependencies = Deps.parse(getDependencies(scope));
+            List<DependencyAtom> dependencies = Deps.parse(getDependencies(scope), null);
             if (dependencies.isEmpty()) {
                 Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.get("name", projectContext).value(), scope.getPrettyPrint());
             } else {
-                Set<DependencyAtom> exclusions = new HashSet<DependencyAtom>(Deps.parseExclusions(getExclusions(scope)));
+                Set<DependencyAtom> exclusions = new HashSet<DependencyAtom>(Deps.parseExclusions(getExclusions(scope), null));
                 DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(dependencies, exclusions, createRepositoryList(null, null));
                 int size = dependencies.size();
                 int graphSize = depGraph.getRootVertices().size();
@@ -208,9 +208,9 @@ public class DependencyManager {
             }
         }
         dependencies.add(atom.getPropertyName(), atom.getPropertyValue());
-        final List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
+        final List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies, null);
         PropFile exclusions = getExclusions(scope);
-        final Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parseExclusions(exclusions));
+        final Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parseExclusions(exclusions, null));
         final RepositoryRegistry repositoryRegistry = createRepositoryList(Deps.getProjectDep(), dependencyAtoms);
         DirectedAcyclicGraph<Dep> resolvedDeps = invokeWithSlowResolutionThread(new Callable<DirectedAcyclicGraph<Dep>>() {
             @Override public DirectedAcyclicGraph<Dep> call() throws Exception {
@@ -286,22 +286,10 @@ public class DependencyManager {
         return invokeWithSlowResolutionThread(new Callable<PropFile>() {
             @Override public PropFile call() throws Exception {
                 DependencyAtom self = Deps.getProjectDep();
-                List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies);
-                Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parseExclusions(exclusions));
-                if (classifier != null) {
-                    List<DependencyAtom> dependencyAtomWithClassifiers = new ArrayList<DependencyAtom>(dependencyAtoms.size());
-                    for (DependencyAtom dependencyAtom : dependencyAtoms) {
-                        dependencyAtomWithClassifiers.add(dependencyAtom.withClassifier(classifier));
-                    }
-                    dependencyAtoms = dependencyAtomWithClassifiers;
-                    Set<DependencyAtom> exclusionAtomWithClassifiers = new HashSet<DependencyAtom>(exclusionAtoms.size());
-                    for (DependencyAtom exclusionAtom : exclusionAtoms) {
-                        exclusionAtomWithClassifiers.add(exclusionAtom.withClassifier(classifier));
-                    }
-                    exclusionAtoms = exclusionAtomWithClassifiers;
-                }
+                List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies, classifier);
+                Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parseExclusions(exclusions, classifier));
                 RepositoryRegistry repositoryRegistry = createRepositoryList(self, dependencyAtoms);
-                DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, failMissingDependency);
+                DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, classifier, failMissingDependency);
                 return Deps.convertToResolvedPropertiesFile(dependencyGraph);
             }
         }, "^b^Hang tight,^r^ your project needs a lot of dependencies. ^b^Ply^r^'s downloading them...");

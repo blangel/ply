@@ -132,7 +132,7 @@ final class JvmExecution extends Execution {
             if (dependencies.isEmpty()) {
                 return null;
             }
-            List<DependencyAtom> deps = Deps.parse(dependencies);
+            List<DependencyAtom> deps = Deps.parse(dependencies, null);
             RepositoryRegistry repos = Repos.createRepositoryRegistry(projectConfigDir, scope, null, null);
             DirectedAcyclicGraph<Dep> depGraph = Deps.getDependencyGraph(deps, Collections.<DependencyAtom>emptySet(), repos);
             PropFile resolvedDependencies = Deps.convertToResolvedPropertiesFile(depGraph);

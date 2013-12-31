@@ -33,7 +33,7 @@ public class DepsTest {
         RepositoryAtom mockRepo = new RepositoryAtom(repoPath, new URI("file://" + repoPath), RepositoryAtom.Type.maven);
 
         MavenPom pom = parser.parsePom("file://" + repoPath + "/net/sf/ehcache/ehcache-core/2.2.0/ehcache-core-2.2.0.pom", mockRepo);
-        List<DependencyAtom> deps = Deps.parse(pom.dependencies);
+        List<DependencyAtom> deps = Deps.parse(pom.dependencies, null);
         assertEquals(3, deps.size());
 
         Map<DependencyAtom, List<DependencyAtom>> synthetic = new HashMap<DependencyAtom, List<DependencyAtom>>(1);
