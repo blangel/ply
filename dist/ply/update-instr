@@ -306,7 +306,7 @@ METHOD=download=https://raw.github.com/blangel/ply/9b42bb792f4b1ba59186b9a7069d4
 METHOD=download=https://raw.github.com/blangel/ply/9b42bb792f4b1ba59186b9a7069d405845a362a0/dist/ply/ply_completion.bash to ply_completion.bash
 VERSION=1.0_55
 METHOD=download=https://raw.github.com/blangel/ply/a743710cbada733f338f091f65ff161500c2dd8c/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
-METHOD=download=https://raw.github.com/blangel/ply/a743710cbada733f338f091f65ff161500c2dd8c/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/a3af2653fa7004157f7bafe77412470b8af987a7/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/a743710cbada733f338f091f65ff161500c2dd8c/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/a743710cbada733f338f091f65ff161500c2dd8c/dist/ply/version to version
 VERSION=1.0_56
