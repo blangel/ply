@@ -299,3 +299,9 @@ VERSION=1.0_53
 METHOD=download=https://raw.github.com/blangel/ply/8289b04598b21b3fc49a9c8bc6ce0b48bff34576/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/cf54a10e656074ae04e87c17ca6ed7e9c7495b40/dist/ply/version to version
 VERSION=1.0_54
+OUTPUT=Downloading update to ply dependency manager to allow for exclusions of multiple versions of the same namespace/name
+METHOD=download=https://raw.github.com/blangel/ply/9b42bb792f4b1ba59186b9a7069d405845a362a0/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/9b42bb792f4b1ba59186b9a7069d405845a362a0/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/9b42bb792f4b1ba59186b9a7069d405845a362a0/dist/ply/version to version
+METHOD=download=https://raw.github.com/blangel/ply/9b42bb792f4b1ba59186b9a7069d405845a362a0/dist/ply/ply_completion.bash to ply_completion.bash
+VERSION=1.0_55
