@@ -343,7 +343,12 @@ public class DependencyManager {
         PropFileChain exclusions = Props.get(Context.named("exclusions"), scope);
         PropFile scopedExclusions = new PropFile(Context.named("exclusions"), scope, PropFile.Loc.Local);
         for (Prop exclusion : exclusions.props()) {
-            scopedExclusions.add(exclusion.name, exclusion.value());
+            if (scopedExclusions.contains(exclusion.name)) {
+                String versions = String.format("%s %s", scopedExclusions.get(exclusion.name).value(), exclusion.value());
+                scopedExclusions.set(exclusion.name, versions);
+            } else {
+                scopedExclusions.add(exclusion.name, exclusion.value());
+            }
         }
         return scopedExclusions;
     }
