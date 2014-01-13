@@ -36,8 +36,8 @@ public class GetAll extends Get {
         return "";
     }
 
-    @Override protected void printAppendix(Scope scope) {
-        super.printAppendix(scope);
+    @Override protected void printAppendix(Scope scope, Result result) {
+        super.printAppendix(scope, result);
         Output.print("^green^*^r^ indicates system-wide property.");
     }
 }

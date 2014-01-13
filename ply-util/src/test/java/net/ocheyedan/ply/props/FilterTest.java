@@ -180,11 +180,12 @@ public class FilterTest {
         chain.set(container, PropFile.Loc.System);
         filterConsultant.put(Context.named("test"), chain);
 
-        PropFile.Prop expected = contextProvidedProp.with(buildDir.value());
+        PropFile.Prop expected = contextProvidedProp.with(buildDir.value(), buildDir.value());
         PropFile.Prop filteredContextProvidedProp = Filter.filter(contextProvidedProp, "test", filterConsultant);
 
         Assert.assertEquals(expected, filteredContextProvidedProp);
         Assert.assertEquals("usr/src/something-else", filteredContextProvidedProp.value());
+        Assert.assertEquals(String.format("%susr/src%s/something-else", Filter.DECORATOR, Filter.DECORATOR_END), filteredContextProvidedProp.valueDecorated());
         Assert.assertEquals("${build.dir}/something-else", filteredContextProvidedProp.unfilteredValue);
 
         filtered = Filter.filter("${build.dir}/something-else", Context.named("test"), "test", filterConsultant);
@@ -199,11 +200,14 @@ public class FilterTest {
         filterConsultant.put(Context.named("other-context"), otherChain);
         PropFile.Prop otherContextProp = container.add("other-context-prop", "{before/${test.build.dir}/other$context}");
 
-        expected = otherContextProp.with("{before/" + buildDir.value() + "/other$context}");
+        String value = "{before/" + buildDir.value() + "/other$context}";
+        String valueDecorated = String.format("{before/%s%s%s/other$context}", Filter.DECORATOR, buildDir.value(), Filter.DECORATOR_END);
+        expected = otherContextProp.with(value, valueDecorated);
         PropFile.Prop filteredOtherContextProp = Filter.filter(otherContextProp, "test", filterConsultant);
 
         Assert.assertEquals(expected, filteredOtherContextProp);
         Assert.assertEquals("{before/usr/src/other$context}", filteredOtherContextProp.value());
+        Assert.assertEquals(expected.valueDecorated(), filteredOtherContextProp.valueDecorated());
         Assert.assertEquals("{before/${test.build.dir}/other$context}", filteredOtherContextProp.unfilteredValue);
 
         filtered = Filter.filter("{before/${test.build.dir}/other$context}", Context.named("other-context"), "test", filterConsultant);
@@ -217,10 +221,13 @@ public class FilterTest {
         }
         String environVarKey = System.getenv().keySet().iterator().next();
         PropFile.Prop environmentProp = otherContainer.add("environ-var", "something-${" + environVarKey + "}");
-        expected = environmentProp.with("something-" + System.getenv(environVarKey));
+        value = "something-" + System.getenv(environVarKey);
+        valueDecorated = String.format("something-%s%s%s", Filter.DECORATOR, System.getenv(environVarKey), Filter.DECORATOR_END);
+        expected = environmentProp.with(value, valueDecorated);
 
         PropFile.Prop filteredEnvironmentProp = Filter.filter(environmentProp, "test", filterConsultant);
         Assert.assertEquals(expected, filteredEnvironmentProp);
+        Assert.assertEquals(expected.valueDecorated(), filteredEnvironmentProp.valueDecorated());
         Assert.assertEquals(expected.value(), filteredEnvironmentProp.value());
 
         filtered = Filter.filter("something-${" + environVarKey + "}", Context.named("test"), "test", filterConsultant);
@@ -233,10 +240,13 @@ public class FilterTest {
         // multiple of same context
         PropFile.Prop srcDirProp = container.add("src.dir", "something");
         PropFile.Prop multipleSameContextProp = container.add("multiple-context", "${src.dir} and ${build.dir}");
-        expected = multipleSameContextProp.with(srcDirProp.value() + " and " + buildDir.value());
+        valueDecorated = String.format("%s%s%s and %s%s%s", Filter.DECORATOR, srcDirProp.value(), Filter.DECORATOR_END, Filter.DECORATOR,
+                buildDir.value(), Filter.DECORATOR_END);
+        expected = multipleSameContextProp.with(srcDirProp.value() + " and " + buildDir.value(), valueDecorated);
 
         PropFile.Prop filteredMultiSameContextProp = Filter.filter(multipleSameContextProp, "test", filterConsultant);
         Assert.assertEquals(expected, filteredMultiSameContextProp);
+        Assert.assertEquals(expected.valueDecorated(), filteredMultiSameContextProp.valueDecorated());
         Assert.assertEquals(expected.value(), filteredMultiSameContextProp.value());
         Assert.assertEquals("${src.dir} and ${build.dir}", filteredMultiSameContextProp.unfilteredValue);
 
@@ -245,10 +255,13 @@ public class FilterTest {
 
         // multiple of different context
         PropFile.Prop multiDiffContextProp = otherContainer.add("multi-diff-context", "${test.src.dir} with ${test.build.dir}");
-        expected = multiDiffContextProp.with(srcDirProp.value() + " with " + buildDir.value());
+        valueDecorated = String.format("%s%s%s with %s%s%s", Filter.DECORATOR, srcDirProp.value(), Filter.DECORATOR_END,
+                Filter.DECORATOR, buildDir.value(), Filter.DECORATOR_END);
+        expected = multiDiffContextProp.with(srcDirProp.value() + " with " + buildDir.value(), valueDecorated);
 
         PropFile.Prop filteredMultiDiffContextProp = Filter.filter(multiDiffContextProp, "test", filterConsultant);
         Assert.assertEquals(expected, filteredMultiDiffContextProp);
+        Assert.assertEquals(expected.valueDecorated(), filteredMultiDiffContextProp.valueDecorated());
         Assert.assertEquals(expected.value(), filteredMultiDiffContextProp.value());
         Assert.assertEquals("${test.src.dir} with ${test.build.dir}", filteredMultiDiffContextProp.unfilteredValue);
 
@@ -264,10 +277,13 @@ public class FilterTest {
         String environVarKey2 = environIter.next();
 
         PropFile.Prop multiEnvVarProp = container.add("multi-env-var", "${" + environVarKey + "} env with env of ${" + environVarKey2 + "}");
-        expected = multiEnvVarProp.with(System.getenv(environVarKey) + " env with env of " + System.getenv(environVarKey2));
+        valueDecorated = String.format("%s%s%s env with env of %s%s%s", Filter.DECORATOR, System.getenv(environVarKey), Filter.DECORATOR_END,
+                Filter.DECORATOR, System.getenv(environVarKey2), Filter.DECORATOR_END);
+        expected = multiEnvVarProp.with(System.getenv(environVarKey) + " env with env of " + System.getenv(environVarKey2), valueDecorated);
 
         PropFile.Prop filteredMultiEnvVarProp = Filter.filter(multiEnvVarProp, "test", filterConsultant);
         Assert.assertEquals(expected, filteredMultiEnvVarProp);
+        Assert.assertEquals(expected.valueDecorated(), filteredMultiEnvVarProp.valueDecorated());
         Assert.assertEquals(expected.value(), filteredMultiEnvVarProp.value());
         Assert.assertEquals("${" + environVarKey + "} env with env of ${" + environVarKey2 + "}",
                 filteredMultiEnvVarProp.unfilteredValue);
@@ -277,10 +293,14 @@ public class FilterTest {
 
         // multiple mix of same-context, diff-context and environment
         PropFile.Prop multiEverythingProp = otherContainer.add("multi-everything", "${multi-diff-context} and ${test.src.dir} and ${" + environVarKey + "}");
-        expected = multiEverythingProp.with(filteredMultiDiffContextProp.value() + " and " + srcDirProp.value() + " and " + System.getenv(environVarKey));
+        valueDecorated = String.format("%s%s%s and %s%s%s and %s%s%s", Filter.DECORATOR, filteredMultiDiffContextProp.value(), Filter.DECORATOR_END,
+                Filter.DECORATOR, srcDirProp.value(), Filter.DECORATOR_END,
+                Filter.DECORATOR, System.getenv(environVarKey), Filter.DECORATOR_END);
+        expected = multiEverythingProp.with(filteredMultiDiffContextProp.value() + " and " + srcDirProp.value() + " and " + System.getenv(environVarKey), valueDecorated);
 
         PropFile.Prop filteredMultiEverythingProp = Filter.filter(multiEverythingProp, "test", filterConsultant);
         Assert.assertEquals(expected, filteredMultiEverythingProp);
+        Assert.assertEquals(expected.valueDecorated(), filteredMultiEverythingProp.valueDecorated());
         Assert.assertEquals(expected.value(), filteredMultiEverythingProp.value());
         Assert.assertEquals("${multi-diff-context} and ${test.src.dir} and ${" + environVarKey + "}",
                 filteredMultiEverythingProp.unfilteredValue);
@@ -293,20 +313,24 @@ public class FilterTest {
         // test nested (un-resolved before invocation) within same context
         PropFile.Prop unresolvedOneProp = container.add("unresolved-one", "${unresolved-two} value");
         container.add("unresolved-two", "${build.dir} value");
-        expected = unresolvedOneProp.with(buildDir.value() + " value value");
+        valueDecorated = String.format("%s%s value%s value", Filter.DECORATOR, buildDir.value(), Filter.DECORATOR_END);
+        expected = unresolvedOneProp.with(buildDir.value() + " value value", valueDecorated);
 
         PropFile.Prop filteredUnresolvedOneProp = Filter.filter(unresolvedOneProp, "test", filterConsultant);
         Assert.assertEquals(unresolvedOneProp, filteredUnresolvedOneProp);
+        Assert.assertEquals(expected.valueDecorated(), filteredUnresolvedOneProp.valueDecorated());
         Assert.assertEquals(expected.value(), filteredUnresolvedOneProp.value());
         Assert.assertEquals("${unresolved-two} value", filteredUnresolvedOneProp.unfilteredValue);
 
         // test nested (un-resolved before invocation) across different contexts
         PropFile.Prop unresolvedThreeProp = container.add("unresolved-three", "${" + multiDiffContextProp.context() + ".unresolved-four} val");
         otherContainer.add("unresolved-four", "${test.src.dir} val");
-        expected = unresolvedThreeProp.with(srcDirProp.value() + " val val");
+        valueDecorated = String.format("%s%s val%s val", Filter.DECORATOR, srcDirProp.value(), Filter.DECORATOR_END);
+        expected = unresolvedThreeProp.with(srcDirProp.value() + " val val", valueDecorated);
 
         PropFile.Prop filteredUnresolvedThreeProp = Filter.filter(unresolvedThreeProp, "test", filterConsultant);
         Assert.assertEquals(expected, filteredUnresolvedThreeProp);
+        Assert.assertEquals(expected.valueDecorated(), filteredUnresolvedThreeProp.valueDecorated());
         Assert.assertEquals(expected.value(), filteredUnresolvedThreeProp.value());
         Assert.assertEquals("${" + multiDiffContextProp.context() + ".unresolved-four} val",
                 filteredUnresolvedThreeProp.unfilteredValue);
@@ -345,10 +369,12 @@ public class FilterTest {
         PropFile.Prop packageNameProp = packageFile.add("name", "${project.artifact.name}");
         packageChain.set(packageFile, PropFile.Loc.System);
         filterConsultant.put(Context.named("package"), packageChain);
-        
-        expected = packageNameProp.with(testScopedProjectArtifactNameProp.value());
+
+        valueDecorated = String.format("%s%s%s", Filter.DECORATOR_SCOPED, testScopedProjectArtifactNameProp.value(), Filter.DECORATOR_END);
+        expected = packageNameProp.with(testScopedProjectArtifactNameProp.value(), valueDecorated);
         PropFile.Prop filteredPackageNameProp = Filter.filter(packageNameProp, "test", filterConsultant);
         assertEquals(expected, filteredPackageNameProp);
+        assertEquals(expected.valueDecorated(), filteredPackageNameProp.valueDecorated());
         assertEquals(expected.value(), filteredPackageNameProp.value());
 
     }

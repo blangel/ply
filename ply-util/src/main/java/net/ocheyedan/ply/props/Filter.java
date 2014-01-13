@@ -26,14 +26,21 @@ public final class Filter {
 
     private static final class FilterResult {
         private final String filteredResult;
+        private final String filteredResultMarked;
         private final boolean filtered;
-        private FilterResult(String filteredResult, boolean filtered) {
+        private FilterResult(String filteredResult, String filteredResultMarked, boolean filtered) {
             this.filteredResult = filteredResult;
+            this.filteredResultMarked = filteredResultMarked;
             this.filtered = filtered;
         }
     }
 
+    public static final String DECORATOR = "_^$f$^_";
+    public static final String DECORATOR_SCOPED = "_^$fs$^_";
+    public static final String DECORATOR_END = "_$^f^$_";
+
     private static final Map<String, String> cache = new ConcurrentHashMap<String, String>();
+    private static final Map<String, String> cacheDecorated = new ConcurrentHashMap<String, String>();
 
     private static final Pattern propertyPlaceholderRegex = Pattern.compile("\\$\\{(.*?)\\}");
 
@@ -44,7 +51,7 @@ public final class Filter {
 
     /**
      * Filters {@code unfiltered} with the property values within {@code filterConsultant} and returns a copy
-     * of {@code unfiltered} with the filtered value set according to {@link PropFile.Prop#with(String)}
+     * of {@code unfiltered} with the filtered value set according to {@link PropFile.Prop#with(String, String)}
      * @param unfiltered property to filter
      * @param uniqueIdentifier to use to cache the filtered result
      * @param filterConsultant the property values which to use to filter {@code unfiltered}
@@ -68,7 +75,7 @@ public final class Filter {
                     unfiltered.context(), (Scope.Default.equals(unfiltered.scope())
                     ? "" : String.format(" with %s scope", unfiltered.scope().name)));
         }
-        return unfiltered.with(filterResult.filteredResult);
+        return unfiltered.with(filterResult.filteredResult, filterResult.filteredResultMarked);
     }
 
     /**
@@ -93,16 +100,17 @@ public final class Filter {
                     (filterConsultant == null ? "null" : "map")));
         }
         if (!toFilter.contains("${")) {
-            return new FilterResult(toFilter, false);
+            return new FilterResult(toFilter, toFilter, false);
         }
         String cacheKey = getKey(toFilter, uniqueIdentifier);
         if (cache.containsKey(cacheKey)) {
-            return new FilterResult(cache.get(cacheKey), false);
+            return new FilterResult(cache.get(cacheKey), cacheDecorated.get(cacheKey), false);
         }
         if (!resolvingCacheKeys.add(cacheKey)) {
             throw new Circular();
         }
         String filtered = toFilter;
+        String filteredMarked = toFilter;
         Matcher matcher = propertyPlaceholderRegex.matcher(toFilter);
         while (matcher.find()) {
             String propertyPlaceholder = matcher.group(1);
@@ -113,6 +121,9 @@ public final class Filter {
                 if (resolved != PropFile.Prop.Empty) {
                     filtered = filtered.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
                             Matcher.quoteReplacement(resolved.value()));
+                    boolean scoped = isScoped(resolved);
+                    filteredMarked = filteredMarked.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
+                            Matcher.quoteReplacement(String.format("%s%s%s", (scoped ? DECORATOR_SCOPED : DECORATOR), resolved.value(), DECORATOR_END)));
                     continue; // found!
                 }
             }
@@ -127,6 +138,9 @@ public final class Filter {
                     if (resolved != PropFile.Prop.Empty) {
                         filtered = filtered.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
                                 Matcher.quoteReplacement(resolved.value()));
+                        boolean scoped = isScoped(resolved);
+                        filteredMarked = filteredMarked.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
+                                Matcher.quoteReplacement(String.format("%s%s%s", (scoped ? DECORATOR_SCOPED : DECORATOR), resolved.value(), DECORATOR_END)));
                         continue; // found!
                     }
                 }
@@ -136,6 +150,8 @@ public final class Filter {
             if (replacement != null) {
                 filtered = filtered.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
                         Matcher.quoteReplacement(replacement));
+                filteredMarked = filteredMarked.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
+                        Matcher.quoteReplacement(String.format("%s%s%s", DECORATOR, replacement, DECORATOR_END)));
                 continue;
             }
             // lastly, check if the property is an environment variable
@@ -143,13 +159,20 @@ public final class Filter {
             if (replacement != null) {
                 filtered = filtered.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
                         Matcher.quoteReplacement(replacement));
+                filteredMarked = filteredMarked.replaceAll(Pattern.quote("${" + propertyPlaceholder + "}"),
+                        Matcher.quoteReplacement(String.format("%s%s%s", DECORATOR, replacement, DECORATOR_END)));
             } else {
                 Output.print("^warn^ No filter-value found for property ^b^%s^r^", propertyPlaceholder);
             }
         }
         cache.put(cacheKey, filtered);
+        cacheDecorated.put(cacheKey, filteredMarked);
         resolvingCacheKeys.remove(cacheKey);
-        return new FilterResult(filtered, true);
+        return new FilterResult(filtered, filteredMarked, true);
+    }
+
+    private static boolean isScoped(PropFile.Prop prop) {
+        return !Scope.Default.equals(prop.scope());
     }
 
     private static String getKey(String unfiltered, String uniqueIdentifier) {

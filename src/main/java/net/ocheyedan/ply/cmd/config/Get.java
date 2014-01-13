@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static net.ocheyedan.ply.props.PropFile.Prop;
 
@@ -36,6 +38,33 @@ public class Get extends Config {
             this.unfiltered = unfiltered;
         }
     }
+
+    static class Result {
+
+        static final Result NOTHING = new Result(false, false, false);
+
+        final boolean printedSomething;
+        final boolean printedSomethingDecorated;
+        final boolean printedSomethingScopedDecorated;
+
+        Result(boolean printedSomething, boolean printedSomethingDecorated, boolean printedSomethingScopedDecorated) {
+            this.printedSomething = printedSomething;
+            this.printedSomethingDecorated = printedSomethingDecorated;
+            this.printedSomethingScopedDecorated = printedSomethingScopedDecorated;
+        }
+
+        Result or(Result result) {
+            return new Result(printedSomething | result.printedSomething, printedSomethingDecorated | result.printedSomethingDecorated,
+                    printedSomethingScopedDecorated | result.printedSomethingScopedDecorated);
+        }
+    }
+
+    static final String QUOTED_DECORATOR = Pattern.quote(Filter.DECORATOR);
+    static final String QUOTED_DECORATOR_SCOPED = Pattern.quote(Filter.DECORATOR_SCOPED);
+    static final String QUOTED_DECORATOR_END = Pattern.quote(Filter.DECORATOR_END);
+    static final String QUOTED_DECORATOR_REPL = Matcher.quoteReplacement("^b^");
+    static final String QUOTED_DECORATOR_SCOPED_REPL = Matcher.quoteReplacement("^r^^magenta^");
+    static final String QUOTED_DECORATOR_END_REPL = Matcher.quoteReplacement("^r^^cyan^");
 
     public Get(Args args) {
         super(args);
@@ -64,21 +93,20 @@ public class Get extends Config {
         if (context == null) {
             List<Context> contexts = new ArrayList<Context>(contextMap.keySet());
             Collections.sort(contexts);
-            boolean printed = false;
+            Result result = Result.NOTHING;
             for (Context currentContext : contexts) {
-                if (printContext(currentContext, scope, contextMap.get(currentContext).props(), propName, unfiltered)) {
-                    printed = true;
-                }
+                result = result.or(printContext(currentContext, scope, contextMap.get(currentContext).props(), propName, unfiltered));
             }
-            if (printed) {
-                printAppendix(scope);
+            if (result.printedSomething) {
+                printAppendix(scope, result);
             } else {
                 printNothingMessage(context, propName);
             }
         } else {
+            Result result = Result.NOTHING;
             if (contextMap.containsKey(context)
-                    && printContext(context, scope, contextMap.get(context).props(), propName, unfiltered)) {
-                printAppendix(scope);
+                    && (result = result.or(printContext(context, scope, contextMap.get(context).props(), propName, unfiltered))).printedSomething) {
+                printAppendix(scope, result);
             } else {
                 printNothingMessage(context, propName);
             }
@@ -131,26 +159,42 @@ public class Get extends Config {
         }
     }
 
-    protected boolean printContext(Context context, Scope scope, Iterable<Prop> props, String likePropName, boolean unfiltered) {
+    protected Result printContext(Context context, Scope scope, Iterable<Prop> props, String likePropName, boolean unfiltered) {
         if (props == null) {
-            return false;
+            return Result.NOTHING;
         }
         List<Prop> properties = collect(props);
         Collections.sort(properties);
         boolean printedHeader = false;
         boolean printedSomething = false;
+        boolean printedDecorated = false;
+        boolean printedScopedDecorated = false;
         for (Prop prop : properties) {
             if ((likePropName == null) || matches(prop, likePropName)) {
                 if (!printedHeader) {
                     Output.print("Properties from ^b^%s^r^", context.name);
                     printedHeader = true;
                 }
-                Output.print("   ^b^%s^r^ = ^cyan^%s^r^%s", prop.name, (unfiltered ? prop.unfilteredValue : prop.value()),
-                        getSuffix(prop, scope));
+                String value;
+                if (unfiltered) {
+                    value = prop.unfilteredValue;
+                } else {
+                    String decoratedValue = prop.valueDecorated();
+                    printedDecorated |= decoratedValue.contains(Filter.DECORATOR);
+                    printedScopedDecorated |= decoratedValue.contains(Filter.DECORATOR_SCOPED);
+                    value = getDecoratedValue(decoratedValue);
+                }
+                Output.print("   ^b^%s^r^ = ^cyan^%s^r^%s", prop.name, value, getSuffix(prop, scope));
                 printedSomething = true;
             }
         }
-        return printedSomething;
+        return new Result(printedSomething, printedDecorated, printedScopedDecorated);
+    }
+
+    protected String getDecoratedValue(String decoratedValue) {
+        return decoratedValue.replaceAll(QUOTED_DECORATOR, QUOTED_DECORATOR_REPL)
+                .replaceAll(QUOTED_DECORATOR_SCOPED, QUOTED_DECORATOR_SCOPED_REPL)
+                .replaceAll(QUOTED_DECORATOR_END, QUOTED_DECORATOR_END_REPL);
     }
     
     protected List<Prop> collect(Iterable<Prop> props) {
@@ -189,7 +233,13 @@ public class Get extends Config {
         return " locally (try ^b^get-all^r^)";
     }
 
-    protected void printAppendix(Scope scope) {
+    protected void printAppendix(Scope scope, Result result) {
+        if (Output.isColoredOutput() && result.printedSomethingDecorated) {
+            Output.print("Text in ^cyan^^b^bold^r^ indicates parameterized replacement");
+        }
+        if (Output.isColoredOutput() && result.printedSomethingScopedDecorated) {
+            Output.print("Text in ^magenta^magenta^r^ indicates parameterized replacement from %s-scope", scope.name);
+        }
         if (!Scope.Default.equals(scope)) {
             Output.print("^magenta^**^r^ indicates %s-scoped property.", scope.name);
         }

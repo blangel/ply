@@ -32,7 +32,7 @@ public class Execution {
     };
 
     /**
-     * A name to use when identifying this exeuction.
+     * A name to use when identifying this execution.
      */
     public final String name;
 

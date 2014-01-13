@@ -38,6 +38,7 @@ public final class PropFile {
         private final Impl owner;
         private final AtomicReference<String> comments;
         private final AtomicReference<String> filteredValue;
+        private final AtomicReference<String> filteredValueMarked;
         
         Prop(Impl owner, String name, String unfilteredValue, String comments) {
             if ((name == null) || (owner == null)) {
@@ -48,6 +49,7 @@ public final class PropFile {
             this.owner = owner;
             this.comments = new AtomicReference<String>(comments);
             this.filteredValue = new AtomicReference<String>(unfilteredValue);
+            this.filteredValueMarked = new AtomicReference<String>(unfilteredValue);
         }
         
         public final String comments() {
@@ -56,6 +58,10 @@ public final class PropFile {
         
         public final String value() {
             return this.filteredValue.get();
+        }
+
+        public final String valueDecorated() {
+            return this.filteredValueMarked.get();
         }
         
         public final Context context() {
@@ -75,9 +81,10 @@ public final class PropFile {
             return this;
         }
 
-        final Prop with(String filteredValue) {
+        final Prop with(String filteredValue, String filteredValueMarked) {
             Prop filtered = new Prop(this.owner, this.name, this.unfilteredValue, this.comments.get());
             filtered.filteredValue.set(filteredValue);
+            filtered.filteredValueMarked.set(filteredValueMarked);
             return filtered;
         }
 
@@ -312,7 +319,7 @@ public final class PropFile {
      * <p/>
      * Note, if this properties file already contains a property named {@code name} this method has no effect.  This
      * implies that this method should not be used to set the filtered value of an existing property, that operation
-     * should be done with {@link Prop#with(String)}.
+     * should be done with {@link Prop#with(String, String)}.
      * @param name of the property
      * @param value of the property
      * @return the created {@link Prop} object or the existing object if this properties file itself already contained a
