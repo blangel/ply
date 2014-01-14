@@ -19,4 +19,15 @@ public final class Args {
         this.args = args;
         this.adHocProps = adHocProps;
     }
+
+    @Override public String toString() {
+        StringBuilder buffer = new StringBuilder();
+        for (String arg : args) {
+            buffer.append(arg); buffer.append(' ');
+        }
+        for (String adHocProp : adHocProps) {
+            buffer.append(adHocProp); buffer.append(' ');
+        }
+        return buffer.toString();
+    }
 }

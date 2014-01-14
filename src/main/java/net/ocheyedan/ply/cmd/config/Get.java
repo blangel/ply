@@ -235,10 +235,10 @@ public class Get extends Config {
 
     protected void printAppendix(Scope scope, Result result) {
         if (Output.isColoredOutput() && result.printedSomethingDecorated) {
-            Output.print("Text in ^cyan^^b^bold^r^ indicates parameterized replacement");
+            Output.print("Text in ^cyan^^b^bold^r^ are parameter replacements (use ^b^--unfiltered^r^ to see parameters; ^b^ply %s--unfiltered^r^)", args.toString());
         }
         if (Output.isColoredOutput() && result.printedSomethingScopedDecorated) {
-            Output.print("Text in ^magenta^magenta^r^ indicates parameterized replacement from %s-scope", scope.name);
+            Output.print("Text in ^magenta^magenta^r^ are parameter replacements from scope %s", scope.name);
         }
         if (!Scope.Default.equals(scope)) {
             Output.print("^magenta^**^r^ indicates %s-scoped property.", scope.name);
