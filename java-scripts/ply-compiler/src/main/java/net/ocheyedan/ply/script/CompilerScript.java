@@ -283,6 +283,12 @@ public class CompilerScript {
         } else {
             args.add(getJavaVersion());
         }
+        args.add("-target");
+        if (isSupportedJavaVersion(Props.get("java.target", compileContext).value())) {
+            args.add(Props.get("java.target", compileContext).value());
+        } else {
+            args.add(getJavaVersion());
+        }
 
         if (!isEmpty(Props.get("java.encoding", compileContext).value())) {
             args.add("-encoding");
