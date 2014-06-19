@@ -15,9 +15,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.*;
+import java.nio.charset.Charset;
+import java.util.HashMap;
 
 /**
  * User: blangel
@@ -211,11 +211,14 @@ public final class RepoManager {
 
     private static <T> T post(String urlPath, String username, String encryptedPwd, String data, Class<T> clazz) {
         URL url;
+        URLConnection urlConnection = null;
         try {
             url = URI.create(urlPath).toURL();
-            URLConnection urlConnection = url.openConnection();
+            urlConnection = url.openConnection();
             String pwd = PwdUtil.decrypt(encryptedPwd);
-            String userpass = username + ":" + pwd;
+            String urlEncodedUsername = URLEncoder.encode(username, "UTF-8");
+            String urlEncodedPwd = URLEncoder.encode(pwd, "UTF-8");
+            String userpass = String.format("%s:%s", urlEncodedUsername, urlEncodedPwd);
             BASE64Encoder encoder = new sun.misc.BASE64Encoder();
             String encodedUserpass = encoder.encode(userpass.getBytes());
             String basicAuth = "Basic " + encodedUserpass;
@@ -230,6 +233,19 @@ public final class RepoManager {
             return objectMapper.readValue(stream, clazz);
         } catch (IOException ioe) {
             Output.print(ioe);
+            if (urlConnection != null) {
+                try {
+                    InputStream stream = ((HttpURLConnection) urlConnection).getErrorStream();
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    objectMapper.disable(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES);
+                    HashMap map = objectMapper.readValue(stream, HashMap.class);
+                    String response = map.toString();
+                    Output.print("^error^ Response:");
+                    Output.print("^error^   %s", response);
+                } catch (IOException inputIoe) {
+                    Output.print(inputIoe);
+                }
+            }
             return null;
         }
     }
