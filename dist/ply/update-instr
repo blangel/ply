@@ -329,3 +329,8 @@ OUTPUT=Downloading update to ply repo-manager script
 METHOD=download=https://raw.github.com/blangel/ply/dc22607589a72e5d12f01c10bb619ecab193388f/dist/ply/scripts/ply-repo-manager-1.0.jar to scripts/ply-repo-manager-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/dc22607589a72e5d12f01c10bb619ecab193388f/dist/ply/version to version
 VERSION=1.0_61
+OUTPUT=Downloading update to ply util/repo-manager script to support http/https basic auth
+METHOD=download=https://raw.github.com/blangel/ply/0c5f556ab7e2bba10fe7e7766a1301b575aea9dd/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/0c5f556ab7e2bba10fe7e7766a1301b575aea9dd/dist/ply/scripts/ply-repo-manager-1.0.jar to scripts/ply-repo-manager-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/0c5f556ab7e2bba10fe7e7766a1301b575aea9dd/dist/ply/version to version
+VERSION=1.0_62
