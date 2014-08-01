@@ -161,6 +161,8 @@ public final class RepoManager {
                 switch (type) {
                     case git:
                         return getGitHubAuthToken(username, encryptedPwd);
+                    case basic:
+                        return getBasicAuth(username, encryptedPwd);
                     default:
                         throw new AssertionError(); // should not get here, see check above
                 }
@@ -169,6 +171,10 @@ public final class RepoManager {
         Repos.addAuthRepomngrProp(repomngr, repository, auth);
         store("repomngr", repomngr, scope, local);
         Output.print("Associated username/password with repository within ^b^repomngr^r^ context.");
+    }
+
+    private static String getBasicAuth(String username, String encryptedPwd) {
+        return PwdUtil.decrypt(encryptedPwd);
     }
 
     private static String getGitHubAuthToken(String username, String encryptedPwd) {
@@ -334,7 +340,7 @@ public final class RepoManager {
         Output.print("    ^b^auth <repo-atom> <auth-type> <username>^r^ : adds authentication information for repo-atom (prompting for password).");
         Output.print("    ^b^auth-local <repo-atom> <auth-type> <username>^r^ : same as auth but stores the information within the project configuration.");
         Output.print("  ^b^repo-atom^r^ is [type:]repoURI (type is optional and defaults to ply, must be either ply or maven).");
-        Output.print("  ^b^auth-type^r^ must be 'git' at this time (in future, 'oauth2', 'httpbasic' etc may be added).");
+        Output.print("  ^b^auth-type^r^ must be 'git' or 'basic' ('basic' is http/https basic authentication)");
         Output.print("  Repositories can be grouped by ^b^scope^r^ (i.e. test).  The default scope is null.");
     }
 

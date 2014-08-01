@@ -1,6 +1,7 @@
 package net.ocheyedan.ply.input;
 
 import java.net.MalformedURLException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -18,13 +19,13 @@ public final class Resources {
         LOADER.set(classLoader);
     }
 
-    public static Resource parse(String resource) {
+    public static Resource parse(String resource, Map<String, String> headers) {
 
         if (resource == null) {
             return null;
-        } else if (resource.startsWith("http:")) {
+        } else if (resource.startsWith("http:") || resource.startsWith("https:")) {
             try {
-                return new UrlResource(resource);
+                return new UrlResource(resource, headers);
             } catch (MalformedURLException murle) {
                 throw new RuntimeException(murle);
             }

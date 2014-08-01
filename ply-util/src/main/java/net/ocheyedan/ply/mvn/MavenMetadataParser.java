@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * User: blangel
@@ -35,7 +36,7 @@ public class MavenMetadataParser {
         }
     }
 
-    public Metadata parseMetadata(String baseUrl) {
+    public Metadata parseMetadata(String baseUrl, Map<String, String> headers) {
         if (baseUrl == null) {
             return null;
         }
@@ -43,10 +44,10 @@ public class MavenMetadataParser {
             baseUrl = baseUrl + "/";
         }
         try {
-            return parse(baseUrl + "maven-metadata.xml");
+            return parse(baseUrl + "maven-metadata.xml", headers);
         } catch (IOException ioe) {
             try {
-                return parse(baseUrl + "metadata.xml");
+                return parse(baseUrl + "metadata.xml", headers);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -55,8 +56,8 @@ public class MavenMetadataParser {
         }
     }
 
-    private Metadata parse(String metadataXmlUrl) throws IOException, ParserConfigurationException, SAXException {
-        Resource resource = Resources.parse(metadataXmlUrl);
+    private Metadata parse(String metadataXmlUrl, Map<String, String> headers) throws IOException, ParserConfigurationException, SAXException {
+        Resource resource = Resources.parse(metadataXmlUrl, headers);
         try {
             return parse(resource);
         } finally {

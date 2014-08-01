@@ -3,6 +3,7 @@ package net.ocheyedan.ply.mvn;
 import net.ocheyedan.ply.Output;
 
 import java.util.Comparator;
+import java.util.Map;
 
 /**
  * User: blangel
@@ -126,11 +127,12 @@ public final class Version {
      * @see {@link Version} class documentation for details
      * @param version to resolve
      * @param baseResource to download the 'maven-metadata.xml' (or 'metadata.xml') file if need be
+     * @param headers to use for making URL requests
      * @return the resolved version
      * @throws Invalid if the range is invalid
      * @throws UnsupportedRangeSet if the range includes a set which this method doesn't support
      */
-    public static String resolve(String version, String baseResource) throws Invalid, UnsupportedRangeSet {
+    public static String resolve(String version, String baseResource, Map<String, String> headers) throws Invalid, UnsupportedRangeSet {
         if ((version == null) || (!version.startsWith("[") && !version.startsWith("("))) {
             return version;
         }
@@ -158,7 +160,7 @@ public final class Version {
         }
         // need to go looking for available versions...
         MavenMetadataParser parser = new MavenMetadataParser();
-        MavenMetadataParser.Metadata metadata = parser.parseMetadata(baseResource);
+        MavenMetadataParser.Metadata metadata = parser.parseMetadata(baseResource, headers);
         if ((metadata == null) || ((metadata.latest == null) && (metadata.versions == null))) {
             Output.print("^warn^ Could not resolve the 'maven-metadata.xml' file from the repository at %s", baseResource);
             return null;

@@ -23,12 +23,16 @@ public final class Repos {
     public static enum AuthType {
 
         /* uses a git repo as a ply repository */
-        git;
+        git,
+        /* uses an http/https basic-auth repository */
+        basic;
 
         public Auth get(String username, String encryptedPwd, RepositoryAtom atom, File configDir, Scope scope) {
             switch (this) {
                 case git:
                     return new GitHubAuth(username, encryptedPwd, atom, configDir, scope);
+                case basic:
+                    return new BasicAuth(username, encryptedPwd, atom);
                 default:
                     throw new AssertionError("Unknown repo auth-type");
             }

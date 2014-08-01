@@ -2,6 +2,7 @@ package net.ocheyedan.ply.mvn;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.dep.Auth;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.input.Resource;
@@ -19,10 +20,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -263,7 +261,8 @@ public class MavenPomParser {
 
     private void parse(String pomUrlPath, PomUri pomUri, RepositoryAtom repositoryAtom, ParseResult parseResult)
             throws ParserConfigurationException, IOException, SAXException {
-        Resource pomResource = Resources.parse(pomUrlPath);
+        Map<String, String> headers = repositoryAtom.getAuthHeaders();
+        Resource pomResource = Resources.parse(pomUrlPath, headers);
         try {
             InputStream stream = pomResource.open();
             Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stream);
@@ -294,7 +293,7 @@ public class MavenPomParser {
                 } else if ("artifactId".equals(nodeName)) {
                     localArtifactId = child.getTextContent().trim();
                 } else if ("version".equals(nodeName) && !"${parent.version}".equals(child.getTextContent().trim())) {
-                    localVersion = Version.resolve(child.getTextContent().trim(), getMetadataBaseUrl(pomUrlPath));
+                    localVersion = Version.resolve(child.getTextContent().trim(), getMetadataBaseUrl(pomUrlPath), headers);
                 } else if ("packaging".equals(nodeName)) {
                     packaging = child.getTextContent().trim();
                 } else if ("parent".equals(nodeName)) { // parent
@@ -395,7 +394,7 @@ public class MavenPomParser {
                     // ply treats exclusions much differently than maven, balk here and force project to specify explicitly
                 }
             }
-            version = Version.resolve(version, getMetadataBaseUrl(repositoryAtom, groupId, artifactId));
+            version = Version.resolve(version, getMetadataBaseUrl(repositoryAtom, groupId, artifactId), repositoryAtom.getAuthHeaders());
             // iterating child->parent, per maven, child overrides parent, only place in if not already
             // exists (hence !override).
             parseResult.addDep(groupId, artifactId, version, classifier, type, scope, optional, systemPath, false, resolutionOnly);
@@ -564,7 +563,7 @@ public class MavenPomParser {
             endPath = endPath.substring(1, endPath.length());
         }
         String pomUrlPath = startPath + endPath;
-        parentVersion.set(Version.resolve(parentVersion.get(), getMetadataBaseUrl(pomUrlPath)));
+        parentVersion.set(Version.resolve(parentVersion.get(), getMetadataBaseUrl(pomUrlPath), repositoryAtom.getAuthHeaders()));
 
         if (relativePath.isEmpty()) {
             String currentDir = ((self.relativeUrl == null) || self.relativeUrl.isEmpty()) ? "../" : self.relativeUrl;

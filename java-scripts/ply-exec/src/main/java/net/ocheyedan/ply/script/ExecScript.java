@@ -49,6 +49,7 @@ public class ExecScript {
         } else {
             execArgs = getExecArgs();
         }
+        // TODO - add any -D system args
         String java = Props.get("java", Context.named("ply")).value();
         String execJvmArgs = "";
         PropFile.Prop execJvmArgsProp = Props.get("jvm.opts", Context.named("exec"));

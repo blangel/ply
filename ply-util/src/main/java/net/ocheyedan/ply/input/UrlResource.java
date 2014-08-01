@@ -2,8 +2,11 @@ package net.ocheyedan.ply.input;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -19,10 +22,13 @@ public class UrlResource implements Resource {
 
     private final AtomicReference<InputStream> ref;
 
-    public UrlResource(String url) throws MalformedURLException {
+    private final Map<String, String> headers;
+
+    public UrlResource(String url, Map<String, String> headers) throws MalformedURLException {
         this.name = url;
         this.url = new URL(url);
         this.ref = new AtomicReference<InputStream>();
+        this.headers = headers;
     }
 
     @Override public String name() {
@@ -30,7 +36,14 @@ public class UrlResource implements Resource {
     }
 
     @Override public InputStream open() throws IOException {
-        ref.set(url.openStream());
+        URLConnection urlConnection = url.openConnection();
+        if ((headers != null) && (urlConnection instanceof HttpURLConnection)) {
+            HttpURLConnection httpURLConnection = (HttpURLConnection) urlConnection;
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                httpURLConnection.setRequestProperty(entry.getKey(), entry.getValue());
+            }
+        }
+        ref.set(urlConnection.getInputStream());
         return ref.get();
     }
 

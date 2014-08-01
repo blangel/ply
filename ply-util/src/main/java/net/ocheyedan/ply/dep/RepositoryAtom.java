@@ -6,7 +6,9 @@ import net.ocheyedan.ply.Output;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static net.ocheyedan.ply.props.PropFile.Prop;
@@ -89,6 +91,14 @@ public class RepositoryAtom {
     }
     @Override public String toString() {
         return getResolvedPropertyValue() + ":" + getPropertyName();
+    }
+
+    public Map<String, String> getAuthHeaders() {
+        if (auth.get() != null) {
+            return auth.get().getHeaders();
+        } else {
+            return Collections.emptyMap();
+        }
     }
 
     @Override public boolean equals(Object o) {
