@@ -24,4 +24,26 @@ This will add your local __maven__ repository to the list of repositories _ply_ 
 
 Where, again, `~/.m2/repository` points to your local __maven__ repository.
 
+Adding Authentication Information for Repositories
+-------------------------------------------------
+
+Ply supports two authentication types for secured repositories.  One is __basic__ authentication (for http/https) repositories. This is the default authentication mechanism for __maven__ repositories like [Artifactory](http://www.jfrog.com/home/v_artifactory_opensource_overview) and [Nexus](http://www.sonatype.org/nexus/). The other type is __git__ which allows users to leverage git repositories as their dependency repositories. In conjunction with __GitHub__ this is very useful as teams can leverage existing Team/User management of __GitHub__ without replicating the logic within another tool.
+
+To add username/password for a repository do the following.
+
+     $ ply repo auth REPO_URL AUTH_TYPE USERNAME
+
+Where REPO_URL points to your repository URL.  AUTH_TYPE is either `basic` or `git` and USERNAME is the user's login name to the REPO_URL.  For instance, to add __basic__ authentication information to a __maven__ repository located at *http://mycompany.com/maven/repo* for the user *blangel* do the following:
+
+     $ ply repo auth http://mycompany.com/maven/repo basic blangel
+     
+After invoking, Ply will prompt for password. It then encrypts this value and stores for use when resolving dependencies from the added repository.  This command will add the information globally (i.e., you do not need to do this per project). If however, you wanted to add authentication information just within a project you can use the `repo auth-local` variant to do so.
+
+As a complete example, here is how one would add authentication information (globally) and then add the repository into a project's list of known repositories.
+
+     $ echo "Adding basic authentication information for user blangel for repository http://mycompany.com/maven/repo; this only needs to be done once as it'll be added globally"
+     $ ply repo auth http://mycompany.com/maven/repo basic blangel
+     $ echo "For each ply project needing access to http://mycompany.com/maven/repo do the following (or edit the global $PLY_HOME/config/repositories.properties once adding entry 'http://mycompany.com/maven/repo=maven')"
+     $ ply repo add maven:http://mycompany.com/maven/repo
+
 Continue on to [Running tests](RunningTests.md)
