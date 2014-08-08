@@ -26,7 +26,7 @@ public final class Args {
             buffer.append(arg); buffer.append(' ');
         }
         for (String adHocProp : adHocProps) {
-            buffer.append(adHocProp); buffer.append(' ');
+            buffer.append("-P"); buffer.append(adHocProp); buffer.append(' ');
         }
         return buffer.toString();
     }
