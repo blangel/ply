@@ -118,7 +118,7 @@ if [ -z "$JAVA_HOME" ] ; then
   echo "Warning: JAVA_HOME environment variable is not set."
 fi
 
-CLASSPATH="${PLY_HOME}/lib/ply-1.0.jar:${PLY_HOME}/lib/ply-util-1.0.jar"
+CLASSPATH="${PLY_HOME}/lib/ply-1.0.jar:${PLY_HOME}/lib/ply-util-1.0.jar:${PLY_HOME}/lib/asm-5.0.2.jar"
 
 # For Cygwin, switch paths to Windows format before running java
 if $cygwin; then
