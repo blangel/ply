@@ -506,7 +506,10 @@ public class IntellijUtil {
     }
 
     public static String getJavaVersion() {
-        String version = System.getProperty("java.version");
+        String version = Props.get("java.source", Context.named("compiler")).value();
+        if (version.isEmpty()) {
+            version = System.getProperty("java.version");
+        }
         // only take the first decimal if multiple
         if ((version.length() > 2) && (version.charAt(1) == '.')) {
             version = version.substring(0, 3);
