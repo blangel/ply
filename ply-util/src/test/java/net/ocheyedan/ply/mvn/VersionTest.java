@@ -38,95 +38,95 @@ public class VersionTest {
     @Test
     public void resolve() {
 
-        assertNull(Version.resolve(null, null));
+        assertNull(Version.resolve(null, null, null));
 
         String version = "1.0";
-        assertEquals(version, Version.resolve(version, null));
+        assertEquals(version, Version.resolve(version, null, null));
         version = "1.0-SNAPSHOT";
-        assertEquals(version, Version.resolve(version, null));
+        assertEquals(version, Version.resolve(version, null, null));
         version = "3.0.5.RELEASE";
-        assertEquals(version, Version.resolve(version, null));
+        assertEquals(version, Version.resolve(version, null, null));
 
         version = "[, 1.0 ]";
-        assertEquals("1.0", Version.resolve(version, null));
+        assertEquals("1.0", Version.resolve(version, null, null));
         version = "(,1.0]";
-        assertEquals("1.0", Version.resolve(version, null));
+        assertEquals("1.0", Version.resolve(version, null, null));
         version = "[0.1,1.0]";
-        assertEquals("1.0", Version.resolve(version, null));
+        assertEquals("1.0", Version.resolve(version, null, null));
         version = "(0.1,1.0]";
-        assertEquals("1.0", Version.resolve(version, null));
+        assertEquals("1.0", Version.resolve(version, null, null));
         version = "[,1.0-SNAPSHOT]";
-        assertEquals("1.0-SNAPSHOT", Version.resolve(version, null));
+        assertEquals("1.0-SNAPSHOT", Version.resolve(version, null, null));
         version = "(,1.0-SNAPSHOT]";
-        assertEquals("1.0-SNAPSHOT", Version.resolve(version, null));
+        assertEquals("1.0-SNAPSHOT", Version.resolve(version, null, null));
         version = "[0.1,1.0-SNAPSHOT]";
-        assertEquals("1.0-SNAPSHOT", Version.resolve(version, null));
+        assertEquals("1.0-SNAPSHOT", Version.resolve(version, null, null));
         version = "(0.1,1.0-SNAPSHOT]";
-        assertEquals("1.0-SNAPSHOT", Version.resolve(version, null));
+        assertEquals("1.0-SNAPSHOT", Version.resolve(version, null, null));
 
 
         version = "[,1.4.3)";
-        assertEquals("1.4.3-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.3-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "(,1.4.3)";
-        assertEquals("1.4.3-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.3-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "[1.4.3-rc1,1.4.3)";
-        assertEquals("1.4.3-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.3-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "( 1.4.3-rc1 ,1.4.3)";
-        assertNull(Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertNull(Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "[,1.4.4-rc1)";
-        assertEquals("1.4.3", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.3", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "(,1.4.4-rc1)";
-        assertEquals("1.4.3", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.3", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "[1.4.4-rc1,1.4.4)";
-        assertEquals("1.4.4-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "(1.4.4,1.4.4)";
-        assertNull(Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertNull(Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
 
         version = "[1.4.2,)";
-        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "(1.4.2,)";
-        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "[1.4.3-rc1,)";
-        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "(1.4.3-rc1,)";
-        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "[1.4.3,)";
-        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "(1.4.3,)";
-        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "[1.4.4-rc1,)";
-        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "(1.4.4-rc1,)";
-        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "[1.4.4,)";
-        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertEquals("1.4.4", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
         version = "(1.4.4,)";
-        assertNull(Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail"));
+        assertNull(Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
 
         version = "[1.0,2.0),[3.0,)";
         try {
-            Version.resolve(version, null);
+            Version.resolve(version, null, null);
             fail("Expecting a Version.UnsupportedRangeSet exception");
         } catch (Version.UnsupportedRangeSet vurs) {
             // expected
         }
         version = "(1.0,2.0],(3.0,]";
         try {
-            Version.resolve(version, null);
+            Version.resolve(version, null, null);
             fail("Expecting a Version.UnsupportedRangeSet exception");
         } catch (Version.UnsupportedRangeSet vurs) {
             // expected
         }
         version = "(,1.0],[1.2,)";
         try {
-            Version.resolve(version, null);
+            Version.resolve(version, null, null);
             fail("Expecting a Version.UnsupportedRangeSet exception");
         } catch (Version.UnsupportedRangeSet vurs) {
             // expected
         }
         version = "(,1.1),(1.1,)";
         try {
-            Version.resolve(version, null);
+            Version.resolve(version, null, null);
             fail("Expecting a Version.UnsupportedRangeSet exception");
         } catch (Version.UnsupportedRangeSet vurs) {
             // expected
@@ -134,28 +134,28 @@ public class VersionTest {
 
         version = "(,)";
         try {
-            Version.resolve(version, null);
+            Version.resolve(version, null, null);
             fail("Expecting a Version.Invalid exception");
         } catch (Version.Invalid vurs) {
             // expected
         }
         version = "(,]";
         try {
-            Version.resolve(version, null);
+            Version.resolve(version, null, null);
             fail("Expecting a Version.Invalid exception");
         } catch (Version.Invalid vurs) {
             // expected
         }
         version = "[,)";
         try {
-            Version.resolve(version, null);
+            Version.resolve(version, null, null);
             fail("Expecting a Version.Invalid exception");
         } catch (Version.Invalid vurs) {
             // expected
         }
         version = "[,]";
         try {
-            Version.resolve(version, null);
+            Version.resolve(version, null, null);
             fail("Expecting a Version.Invalid exception");
         } catch (Version.Invalid vurs) {
             // expected

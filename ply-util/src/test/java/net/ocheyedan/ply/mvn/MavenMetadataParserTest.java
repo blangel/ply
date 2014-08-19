@@ -15,18 +15,18 @@ public class MavenMetadataParserTest {
     @Test
     public void parseMetadata() {
         MavenMetadataParser parser = new MavenMetadataParser();
-        assertNull(parser.parseMetadata(null));
+        assertNull(parser.parseMetadata(null, null));
 
-        MavenMetadataParser.Metadata metadata = parser.parseMetadata("classpath:mock-mvn-repo/log4j/log4j");
+        MavenMetadataParser.Metadata metadata = parser.parseMetadata("classpath:mock-mvn-repo/log4j/log4j", null);
         assertEquals("1.2.16", metadata.latest);
         assertEquals(1, metadata.versions.size());
         assertEquals("1.2.16", metadata.versions.get(0));
-        metadata = parser.parseMetadata("classpath:mock-mvn-repo/log4j/log4j/"); // test with ending slash
+        metadata = parser.parseMetadata("classpath:mock-mvn-repo/log4j/log4j/", null); // test with ending slash
         assertEquals("1.2.16", metadata.latest);
         assertEquals(1, metadata.versions.size());
         assertEquals("1.2.16", metadata.versions.get(0));
 
-        metadata = parser.parseMetadata("classpath:mock-mvn-repo/javax/mail/mail");
+        metadata = parser.parseMetadata("classpath:mock-mvn-repo/javax/mail/mail", null);
         assertEquals("1.4.4", metadata.latest);
         assertEquals(5, metadata.versions.size());
         assertEquals("1.4.2", metadata.versions.get(0));
