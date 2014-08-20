@@ -23,9 +23,12 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
 
     private final Map<Type, Set<String>> statements;
 
+    private final Map<String, Set<String>> undecoratedErrors;
+
     public FormattedDiagnosticListener(String srcPath) {
         this.srcPath = srcPath;
         this.statements = new HashMap<Type, Set<String>>(3, 1.0f);
+        this.undecoratedErrors = new HashMap<String, Set<String>>();
     }
 
     @Override public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
@@ -53,8 +56,8 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
             default:
                 kind = "message";
         }
-        String className = diagnostic.getSource().toUri().toString();
-        className = className.replace(srcPath, "").replace(".java", "").replaceAll(File.separator, ".");
+        String classNamePath = diagnostic.getSource().toUri().toString();
+        String className = classNamePath.replace(srcPath, "").replace(".java", "").replaceAll(File.separator, ".");
         String classShortName = (className.lastIndexOf(".") != -1) ? className.substring(className.lastIndexOf(".") + 1) : className;
         classShortName = classShortName.replace("$", ".");
         className = className.replace("$", ".");
@@ -89,6 +92,21 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
         }
         messages.add(String.format("^%s^^i^%s%s%s^r^ %s^r^ @ line ^b^%s^r^ in ^b^%s^r^", color, pad, kind, pad,
                 message, lineNumber, className));
+
+        // if this is an error, create an undecorated version and map to the file in question
+        if (type == Type.Error) {
+            String key = classNamePath.startsWith("file:") ? classNamePath.substring(5) : classNamePath;
+            Set<String> fileErrors = undecoratedErrors.get(key);
+            if (fileErrors == null) {
+                fileErrors = new HashSet<String>(5);
+                undecoratedErrors.put(key, fileErrors);
+            }
+            fileErrors.add(String.format("%s %s @ line %s in %s", kind, message, lineNumber, className));
+        }
+    }
+
+    public Map<String, Set<String>> getFileErrors() {
+        return undecoratedErrors;
     }
 
     public Set<String> getErrors() {

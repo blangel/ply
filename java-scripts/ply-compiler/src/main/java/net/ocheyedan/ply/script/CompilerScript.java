@@ -2,6 +2,7 @@ package net.ocheyedan.ply.script;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.dep.ClassDeps;
 import net.ocheyedan.ply.dep.Deps;
 import net.ocheyedan.ply.props.*;
 
@@ -12,10 +13,7 @@ import javax.tools.ToolProvider;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * User: blangel
@@ -118,6 +116,8 @@ public class CompilerScript {
 
     private final File errorsPropertiesFile;
 
+    private final File changedDepsFile;
+
     private CompilerScript() {
         if (!isSupportedJavaVersion(getJavaVersion())) {
             System.exit(1);
@@ -135,11 +135,11 @@ public class CompilerScript {
         String buildClassesPath = Props.get("build.path", Context.named("compiler")).value();
         File buildClassesDir = new File(buildClassesPath);
         buildClassesDir.mkdirs();
-        // load the changed[.scope].properties file from the build  directory.
-        File changedPropertiesFile = FileUtil.fromParts(buildDir, "changed" + scope.getFileSuffix() + ".properties");
-        PropFile changedProperties = PropFiles.load(changedPropertiesFile.getPath(), false, false);
+        // load the files-to-compile[.scope].properties file from the build directory.
+        File filesToCompilePropertiesFile = FileUtil.fromParts(buildDir, "files-to-compile" + scope.getFileSuffix() + ".properties");
+        PropFile changedProperties = PropFiles.load(filesToCompilePropertiesFile.getPath(), false, false);
         if (changedProperties == PropFile.Empty) {
-            Output.print("^error^ changed%s.properties not found, please run 'file-changed' before 'compiler'.", scope.getFileSuffix());
+            Output.print("^error^ files-to-compile%s.properties not found, please run 'file-changed' before 'compiler'.", scope.getFileSuffix());
         } else {
             for (PropFile.Prop filePath : changedProperties.props()) {
                 if (filePath.name.endsWith(".java")) {
@@ -148,9 +148,11 @@ public class CompilerScript {
             }
         }
         this.errorsPropertiesFile = FileUtil.fromParts(buildDir, "compiler-errors" + scope.getFileSuffix() + ".properties");
+        this.changedDepsFile = FileUtil.fromParts(buildDir, "changed-deps" + scope.getFileSuffix() + ".properties");
     }
 
     private void invoke() {
+        cleanupClassFilesForDeletedSourceFiles(); // remove any existing artifacts which no longer have source code
         if (sourceFilePaths.isEmpty()) {
             if (handleExistingErrors()) {
                 System.exit(1);
@@ -172,7 +174,7 @@ public class CompilerScript {
         FormattedDiagnosticListener diagnosticListener = new FormattedDiagnosticListener(srcPath);
         JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
         StandardJavaFileManager fileManager = javac.getStandardFileManager(diagnosticListener, null, null);
-        Iterable<? extends JavaFileObject> sourceFiles = fileManager.getJavaFileObjects(sourceFilePaths.toArray(new String[sourceFilePaths.size()]));
+        Iterable<? extends JavaFileObject> sourceFiles = fileManager.getJavaFileObjectsFromStrings(sourceFilePaths);
         StringWriter extraPrintStatements = new StringWriter();
         JavaCompiler.CompilationTask compilationTask = javac.getTask(extraPrintStatements, fileManager, diagnosticListener,
                                                         getCompilerArgs(), null, sourceFiles);
@@ -193,9 +195,13 @@ public class CompilerScript {
         if (extraPrintStatements.getBuffer().length() > 0) {
             Output.print(extraPrintStatements.toString());
         }
-        handleFilesWithError(diagnosticListener.getErrors(), this.errorsPropertiesFile);
+        handleFilesWithError(diagnosticListener.getFileErrors(), this.errorsPropertiesFile);
+        generateClassDependenciesForSuccessfullyCompiled();
         if (!result) {
             System.exit(1);
+        } else if (changedDepsFile.exists()) {
+            Output.print("^debug^ Deleting changed-deps file (^yellow^%s^r^) as compilation succeeded", changedDepsFile.getAbsolutePath());
+            changedDepsFile.delete();
         }
     }
 
@@ -203,10 +209,11 @@ public class CompilerScript {
      * Saves all values within {@code errors} into {@code errorsPropertiesFile}.
      * This method will clear {@code errorsPropertiesFile} and if {@code errors} is empty then {@code errorsPropertiesFile}
      * will be deleted.
-     * @param errors the set of error statements
+     * Additionally, for all errors, remove any existing class or class-deps entries.
+     * @param errors the set of failed
      * @param errorsPropertiesFile the location of the properties file which manages errors between invocations.
      */
-    private void handleFilesWithError(Set<String> errors, File errorsPropertiesFile) {
+    private void handleFilesWithError(Map<String, Set<String>> errors, File errorsPropertiesFile) {
         if (errors.isEmpty()) {
             if (errorsPropertiesFile.exists()) {
                 FileUtil.delete(errorsPropertiesFile);
@@ -214,8 +221,37 @@ public class CompilerScript {
             return;
         }
         PropFile errorsProperties = new PropFile(Context.named("errors"), PropFile.Loc.Local);
-        for (String error : errors) {
-            errorsProperties.add(error, "error");
+
+        Context compileContext = Context.named("compiler");
+        File buildPath = new File(Props.get("build.path", compileContext).value());
+        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
+        PropFile.Prop prop = Props.get(Context.named("compiler"), scope).get("class.deps");
+        String classDepsDirectory = prop.value();
+
+        for (Map.Entry<String, Set<String>> entry : errors.entrySet()) {
+            String failedFile = entry.getKey();
+            StringBuilder buffer = new StringBuilder();
+            for (String error : entry.getValue()) {
+                if (buffer.length() > 0) {
+                    buffer.append(" & ");
+                }
+                buffer.append(error);
+            }
+            errorsProperties.add(failedFile, buffer.toString());
+            // remove any existing class / class-deps file for which we failed to compile
+            int index = failedFile.indexOf(srcDir);
+            String classSuffix = failedFile.substring(index + srcDir.length()).replace(".java", ".class");
+            File classFile = FileUtil.fromParts(buildPath.getAbsolutePath(), classSuffix);
+            if (classFile.exists()) {
+                Output.print("^dbug^ Deleting existing class file (^yellow^%s^r^) for failed compilation unit", classFile.getAbsolutePath());
+                classFile.delete();
+            }
+            File classDepEntry = FileUtil.fromParts(classDepsDirectory, classSuffix.replace(File.separatorChar, '.').replace(".class", ".properties"));
+            if (classDepEntry.exists()) {
+                Output.print("^dbug^ Deleting existing class-dependency file (^yellow^%s^r^) for failed compilation unit",
+                        classDepEntry.getAbsolutePath());
+                classDepEntry.delete();
+            }
         }
         PropFiles.store(errorsProperties, errorsPropertiesFile.getPath(), true);
     }
@@ -302,6 +338,64 @@ public class CompilerScript {
         args.add(srcDir);
 
         return args;
+    }
+
+    private void cleanupClassFilesForDeletedSourceFiles() {
+        Context compileContext = Context.named("compiler");
+        File directory = new File(Props.get("build.path", compileContext).value());
+        if (!directory.exists()) {
+            return;
+        }
+        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
+        PropFile.Prop prop = Props.get(Context.named("compiler"), scope).get("class.deps");
+        String classDepsDirectory = prop.value();
+        cleanupDeletedFiles(directory, directory.getAbsolutePath(), classDepsDirectory);
+    }
+
+    private void generateClassDependenciesForSuccessfullyCompiled() {
+        Context compileContext = Context.named("compiler");
+        File buildPath = new File(Props.get("build.path", compileContext).value());
+        Set<String> classes = new HashSet<String>();
+        for (String srcFile : sourceFilePaths) {
+            // find the corresponding class file associated with the source file
+            int index = srcFile.indexOf(srcDir);
+            String sourceName = srcFile.substring(index + srcDir.length());
+            File classFile = FileUtil.fromParts(buildPath.getAbsolutePath(), sourceName.replace(".java", ".class"));
+            if (classFile.exists()) {
+                classes.add(classFile.getAbsolutePath());
+            }
+        }
+        ClassDeps classDeps = new ClassDeps();
+        classDeps.processClassDependencies(buildPath.getAbsolutePath(), classes);
+    }
+
+    private void cleanupDeletedFiles(File directory, String buildDir, String classDepsDirectory) {
+        File[] entries = directory.listFiles();
+        if (entries == null) {
+            return;
+        }
+        for (File entry : entries) {
+            if (entry.isDirectory()) {
+                cleanupDeletedFiles(entry, buildDir, classDepsDirectory);
+                continue;
+            }
+            // get corresponding source directory
+            String className = entry.getAbsolutePath().substring(buildDir.length());
+            String withoutBuildAsJava = className.replace(".class", ".java");
+            if (withoutBuildAsJava.contains("$")) {
+                continue; // inner classes don't have source files themselves
+            }
+            File sourceFile = FileUtil.fromParts(srcDir, withoutBuildAsJava);
+            if (!sourceFile.exists()) {
+                Output.print("^dbug^ Deleting existing class file (^yellow^%s^r^) for removed source file", entry.getAbsolutePath());
+                entry.delete();
+                File classDepEntry = FileUtil.fromParts(classDepsDirectory, className.replace(File.separatorChar, '.').replace(".class", ".properties"));
+                if (classDepEntry.exists()) {
+                    Output.print("^dbug^ Deleting existing class-dependency file (^yellow^%s^r^) for removed source file", classDepEntry.getAbsolutePath());
+                    classDepEntry.delete();
+                }
+            }
+        }
     }
 
     /**

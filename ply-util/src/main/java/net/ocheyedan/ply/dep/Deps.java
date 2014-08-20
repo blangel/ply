@@ -157,7 +157,7 @@ public final class Deps {
             }
             // strip any classifier information for exclusion check
             DependencyAtom exclusionCheck = dependencyAtom.withoutClassifier();
-            if ((parentVertex != null) && exclusionAtoms.contains(dependencyAtom)) {
+            if ((parentVertex != null) && exclusionAtoms.contains(exclusionCheck)) {
                 Output.print("^info^ Skipping excluded dependency ^b^%s^r^.", dependencyAtom.toString());
                 continue; // non-direct dependency listed in exclusions, skip
             } else if ((parentVertex == null) && exclusionAtoms.contains(dependencyAtom)) {

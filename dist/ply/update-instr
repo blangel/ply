@@ -334,3 +334,12 @@ METHOD=download=https://raw.github.com/blangel/ply/b9b7a5c20f3c75164bdbfbc2c81b9
 METHOD=download=https://raw.github.com/blangel/ply/b9b7a5c20f3c75164bdbfbc2c81b9cffaaa27e2a/dist/ply/scripts/ply-repo-manager-1.0.jar to scripts/ply-repo-manager-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/b9b7a5c20f3c75164bdbfbc2c81b9cffaaa27e2a/dist/ply/version to version
 VERSION=1.0_62
+OUTPUT=Downloading update to ply util to add class dependency resolution
+METHOD=download=https://raw.github.com/blangel/ply/37272e7cf2f3895b5058200603d83776e0fa7315/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/37272e7cf2f3895b5058200603d83776e0fa7315/dist/ply/lib/asm-5.0.2.jar to lib/asm-5.0.2.jar
+METHOD=download=https://raw.github.com/blangel/ply/37272e7cf2f3895b5058200603d83776e0fa7315/dist/ply/config/compiler.properties to config/compiler.properties
+METHOD=download=https://raw.github.com/blangel/ply/37272e7cf2f3895b5058200603d83776e0fa7315/dist/ply/config/compiler.test.properties to config/compiler.test.properties
+OUTPUT=Downloading update to ply intellij to default to compiler flag before current JDK version if intellij languageLevel property not set
+METHOD=download=https://raw.github.com/blangel/ply/c5fadcf89c2f4bf99d100b6655e904fb1615ebff/dist/ply/scripts/ply-intellij-1.0.jar scripts/ply-intellij-1.0.jar
+
+VERSION=1.0_63

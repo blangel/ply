@@ -18,6 +18,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.jar.JarEntry;
+import java.util.jar.JarInputStream;
+import java.util.zip.ZipEntry;
 
 /**
  * User: blangel
@@ -49,13 +52,24 @@ public class ClassDeps {
         String classPath = Props.get("build.path", Context.named("compiler")).value();
         File classPathFile = new File(classPath);
         Set<String> classes = collectClasses(classPathFile);
+        processClassDependencies(classPath, classes);
+    }
+
+    /**
+     * Generates a dependency graph (according to the comments outlined above for this class).
+     * The dependencies for compilation (those nodes above the class node) are stored in directory
+     * {@literal compiler.class.deps} (for the current Scope) with the filename equalling the class name.
+     * @param classPath base directory for all {@code classes}
+     * @param classes the classes for which to create a dependency graph
+     */
+    public void processClassDependencies(String classPath, Set<String> classes) {
         Map<String, Set<String>> dependencies = collectDependencies(classPath, classes);
         String classDepsPath = Props.get("class.deps", Context.named("compiler")).value();
         File classDepsDirectory = new File(classDepsPath);
         if (!classDepsDirectory.exists()) {
             if (!classDepsDirectory.mkdirs()) {
                 Output.print("^error^Could not create directory ^b^%s^r^", classDepsPath);
-                System.exit(1);
+                SystemExit.exit(1);
             }
         }
         // see comment below regarding context; this value is irrelevant
@@ -71,6 +85,39 @@ public class ClassDeps {
             File location = FileUtil.fromParts(classDepsPath, className);
             String fileName = String.format("%s.properties", location.getAbsolutePath());
             PropFiles.store(propFile, fileName, true);
+        }
+    }
+
+    /**
+     * Reads {@code pathToJar} as a JAR file and returns all {@literal .class} files
+     * @param pathToJar to read as JAR
+     * @return all {@literal .class} files within {@code pathToJar}
+     */
+    public Set<String> getClasses(String pathToJar) {
+        JarInputStream jarInputStream = null;
+        try {
+            Set<String> jarClasses = new HashSet<String>();
+            jarInputStream = new JarInputStream(new FileInputStream(pathToJar));
+            JarEntry entry = null;
+            while ((entry = jarInputStream.getNextJarEntry()) != null) {
+                String name = entry.getName();
+                if (name.endsWith(".class")) {
+                    jarClasses.add(name.replace('/', '.'));
+                }
+            }
+            return jarClasses;
+        } catch (IOException ioe) {
+            Output.print("^error^Could not load JAR file ^b^%s^r^", pathToJar);
+            SystemExit.exit(1);
+            return Collections.emptySet();
+        } finally {
+            if (jarInputStream != null) {
+                try {
+                    jarInputStream.close();
+                } catch (IOException ioe) {
+                    Output.print("^warn^Could not close JAR file ^b^%s^r^", pathToJar);
+                }
+            }
         }
     }
 

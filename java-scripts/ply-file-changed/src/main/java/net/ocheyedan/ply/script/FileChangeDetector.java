@@ -46,6 +46,7 @@ public class FileChangeDetector {
         String buildDirPath = Props.get("build.dir", Context.named("project")).value();
         File lastSrcChanged = FileUtil.fromParts(buildDirPath, "changed-meta" + scope.getFileSuffix() + ".properties");
         File changedPropertiesFile = FileUtil.fromParts(buildDirPath, "changed" + scope.getFileSuffix() + ".properties");
+        File filesToCompilePropertiesFile = FileUtil.fromParts(buildDirPath, "files-to-compile" + scope.getFileSuffix() + ".properties");
         File srcDir = new File(srcDirPath);
         PropFile existing = PropFiles.load(lastSrcChanged.getPath(), true, false);
         try {
@@ -53,16 +54,21 @@ public class FileChangeDetector {
         } catch (IOException ioe) {
             Output.print(ioe);
         }
-        computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing, scope, computeSha1Hash);
+        PropFile changedList = computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing, scope, computeSha1Hash);
+        PropFile filesToCompile = new CompilableFiles().compute(changedList, scope, srcDirPath, buildDirPath);
+        PropFiles.store(filesToCompile, filesToCompilePropertiesFile.getPath(), true);
+        // TODO - need to ensure that any .class file already in existance but who's source no longer exists
+        // TODO - is removed from the classdeps and from the classes directory
     }
 
-    private static void computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir,
+    private static PropFile computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir,
                                             PropFile existing, Scope scope, boolean computeSha1Hash) {
         PropFile changedList = new PropFile(Context.named("changed"), PropFile.Loc.Local);
         PropFile properties = new PropFile(Context.named("changed-meta"), PropFile.Loc.Local);
         collectAllFileChanges(srcDir, changedList, properties, existing, scope, computeSha1Hash);
         PropFiles.store(changedList, changedPropertiesFile.getPath());
         PropFiles.store(properties, lastSrcChanged.getPath());
+        return changedList;
     }
 
     private static void collectAllFileChanges(File from, PropFile changedList, PropFile into, PropFile existing,

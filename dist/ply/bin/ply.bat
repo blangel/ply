@@ -139,7 +139,7 @@ SET PLY_JAVA_EXE="%JAVA_HOME%\bin\java.exe"
 set /p PLY_VERSION=<%PLY_HOME%/version
 set PLY_LAUNCHER=net.ocheyedan.ply.Ply
  
-%PLY_JAVA_EXE% -client -Xms32M -Xmx32M -noverify -Xbootclasspath/a:%PLY_HOME%\lib\ply-1.0.jar;%PLY_HOME%\lib\ply-util-1.0.jar;%PLY_HOME\lib\asm-5.0.2.jar "-Dply.java=%JAVA_HOME%\bin\java.exe" "-Dply.home=%PLY_HOME%" "-Dply.version=%PLY_VERSION%" %PLY_LAUNCHER% %PLY_CMD_LINE_ARGS%
+%PLY_JAVA_EXE% -client -Xms32M -Xmx32M -noverify -Xbootclasspath/a:%PLY_HOME%\lib\ply-1.0.jar;%PLY_HOME%\lib\ply-util-1.0.jar "-Dply.java=%JAVA_HOME%\bin\java.exe" "-Dply.home=%PLY_HOME%" "-Dply.version=%PLY_VERSION%" %PLY_LAUNCHER% %PLY_CMD_LINE_ARGS%
 if ERRORLEVEL 1 goto error
 goto end
  
