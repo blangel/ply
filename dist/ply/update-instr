@@ -339,7 +339,7 @@ METHOD=download=https://raw.github.com/blangel/ply/770f798a2bfff0365005665549b9f
 METHOD=download=https://raw.github.com/blangel/ply/37272e7cf2f3895b5058200603d83776e0fa7315/dist/ply/lib/asm-5.0.2.jar to lib/asm-5.0.2.jar
 METHOD=download=https://raw.github.com/blangel/ply/37272e7cf2f3895b5058200603d83776e0fa7315/dist/ply/config/compiler.properties to config/compiler.properties
 METHOD=download=https://raw.github.com/blangel/ply/37272e7cf2f3895b5058200603d83776e0fa7315/dist/ply/config/compiler.test.properties to config/compiler.test.properties
-METHOD=download=https://raw.github.com/blangel/ply/37272e7cf2f3895b5058200603d83776e0fa7315/dist/ply/config/scripts-jar.properties to config/scripts-jar.properties
+METHOD=download=https://raw.github.com/blangel/ply/6aeff1c213071964ef29bb41b751e0368e2a6ca7/dist/ply/config/scripts-jar.properties to config/scripts-jar.properties
 METHOD=download=https://raw.github.com/blangel/ply/770f798a2bfff0365005665549b9fa5803fa1316/dist/ply/scripts/ply-compiler-1.0.jar to scripts/ply-compiler-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/770f798a2bfff0365005665549b9fa5803fa1316/dist/ply/scripts/ply-file-changed-1.0.jar to scripts/ply-file-changed-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/770f798a2bfff0365005665549b9fa5803fa1316/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
