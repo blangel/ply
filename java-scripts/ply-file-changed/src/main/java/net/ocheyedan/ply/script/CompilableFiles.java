@@ -31,7 +31,7 @@ class CompilableFiles {
         String classDepsPath = Props.get("class.deps", Context.named("compiler")).value();
         File classDepsDirectory = new File(classDepsPath);
         if (!classDepsDirectory.exists()) {
-            // balk - nothing created, only those changed files and existing errors can be compiled
+            // balk - nothing created in terms of class deps, only those changed files and existing errors can be compiled
             addExistingErrors(buildDirPath, scope, changedFiles);
             return changedFiles;
         }
@@ -45,6 +45,19 @@ class CompilableFiles {
             String name = prop.name.substring(index + srcDirPath.length());
             String fileName = name.replace(File.separatorChar, '.').replace(".java", ".properties");
             addDependentClasses(classDepsDirectory, fileName, srcDirPath, needingCompiling);
+        }
+
+        // if in test-scope, need to add default-scope-compiled dependent files
+        if (!Scope.Default.equals(scope) && "test".equals(scope.name)) {
+            File compiledSinceTest = FileUtil.fromParts(buildDirPath, "default-scope-compiled.properties");
+            PropFile compiledSinceTestProps = PropFiles.load(compiledSinceTest.getAbsolutePath(), false, false);
+            for (PropFile.Prop compiledSinceTestProp : compiledSinceTestProps.props()) {
+                String defaultSrcDirPath = compiledSinceTestProp.value();
+                int index = compiledSinceTestProp.name.indexOf(defaultSrcDirPath);
+                String name = compiledSinceTestProp.name.substring(index + defaultSrcDirPath.length());
+                String fileName = name.replace(File.separatorChar, '.').replace(".java", ".properties");
+                addDependentClasses(classDepsDirectory, fileName, srcDirPath, needingCompiling);
+            }
         }
 
         // for any changed-dep-jar, find any file depending upon files within the jar and add
@@ -83,16 +96,16 @@ class CompilableFiles {
     }
 
     private String getSourceFile(PropFile.Prop dependentClass, String sourceDir) {
-        String dependentClassSourcePath;
+        File dependentClassSourcePath;
         // if the dependent class is an inner class (contains $ in name) then the container class
         // of the inner class needs to be compiled (as there's no way to simply compile the inner class)
         if (dependentClass.name.contains("$")) {
-            dependentClassSourcePath = FileUtil.pathFromParts(sourceDir, dependentClass.name.substring(0, dependentClass.name.indexOf('$'))
+            dependentClassSourcePath = FileUtil.fromParts(sourceDir, dependentClass.name.substring(0, dependentClass.name.indexOf('$'))
                     .replace('.', File.separatorChar) + ".java");
         } else {
-            dependentClassSourcePath = FileUtil.pathFromParts(sourceDir, dependentClass.name.replace('.', File.separatorChar) + ".java");
+            dependentClassSourcePath = FileUtil.fromParts(sourceDir, dependentClass.name.replace('.', File.separatorChar) + ".java");
         }
-        return dependentClassSourcePath;
+        return dependentClassSourcePath.getAbsolutePath();
     }
 
     private void addExistingErrors(String buildDir, Scope scope, PropFile into) {

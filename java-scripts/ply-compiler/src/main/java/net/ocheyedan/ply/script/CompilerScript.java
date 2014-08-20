@@ -110,6 +110,8 @@ public class CompilerScript {
         return ((value != null) && value.equalsIgnoreCase("true"));
     }
 
+    private final Scope scope;
+
     private final String srcDir;
 
     private final Set<String> sourceFilePaths;
@@ -118,11 +120,13 @@ public class CompilerScript {
 
     private final File changedDepsFile;
 
+    private final File defaultScopedCompiledFile;
+
     private CompilerScript() {
         if (!isSupportedJavaVersion(getJavaVersion())) {
             System.exit(1);
         }
-        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
+        this.scope = Scope.named(Props.get("scope", Context.named("ply")).value());
         String srcDir = Props.get("src.dir", Context.named("project")).value();
         String buildDir = Props.get("build.dir", Context.named("project")).value();
         if ((srcDir.isEmpty()) || (buildDir.isEmpty())) {
@@ -149,6 +153,7 @@ public class CompilerScript {
         }
         this.errorsPropertiesFile = FileUtil.fromParts(buildDir, "compiler-errors" + scope.getFileSuffix() + ".properties");
         this.changedDepsFile = FileUtil.fromParts(buildDir, "changed-deps" + scope.getFileSuffix() + ".properties");
+        this.defaultScopedCompiledFile = FileUtil.fromParts(buildDir, "default-scope-compiled.properties");
     }
 
     private void invoke() {
@@ -199,9 +204,18 @@ public class CompilerScript {
         generateClassDependenciesForSuccessfullyCompiled();
         if (!result) {
             System.exit(1);
-        } else if (changedDepsFile.exists()) {
-            Output.print("^debug^ Deleting changed-deps file (^yellow^%s^r^) as compilation succeeded", changedDepsFile.getAbsolutePath());
-            changedDepsFile.delete();
+        } else {
+            if (changedDepsFile.exists()) {
+                Output.print("^dbug^ Deleting changed-deps file (^yellow^%s^r^) as compilation succeeded",
+                        changedDepsFile.getAbsolutePath());
+                changedDepsFile.delete();
+            }
+            if (!Scope.Default.equals(scope) && "test".equals(scope.name)
+                    && defaultScopedCompiledFile.exists()) {
+                Output.print("^dbug^ Deleting default-scope-compiled file (^yellow^%s^r^) as test-compilation succeeded",
+                        defaultScopedCompiledFile.getAbsolutePath());
+                defaultScopedCompiledFile.delete();
+            }
         }
     }
 
@@ -224,7 +238,6 @@ public class CompilerScript {
 
         Context compileContext = Context.named("compiler");
         File buildPath = new File(Props.get("build.path", compileContext).value());
-        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
         PropFile.Prop prop = Props.get(Context.named("compiler"), scope).get("class.deps");
         String classDepsDirectory = prop.value();
 
@@ -346,7 +359,6 @@ public class CompilerScript {
         if (!directory.exists()) {
             return;
         }
-        Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
         PropFile.Prop prop = Props.get(Context.named("compiler"), scope).get("class.deps");
         String classDepsDirectory = prop.value();
         cleanupDeletedFiles(directory, directory.getAbsolutePath(), classDepsDirectory);

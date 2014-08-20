@@ -57,8 +57,16 @@ public class FileChangeDetector {
         PropFile changedList = computeFilesChanged(lastSrcChanged, changedPropertiesFile, srcDir, existing, scope, computeSha1Hash);
         PropFile filesToCompile = new CompilableFiles().compute(changedList, scope, srcDirPath, buildDirPath);
         PropFiles.store(filesToCompile, filesToCompilePropertiesFile.getPath(), true);
-        // TODO - need to ensure that any .class file already in existance but who's source no longer exists
-        // TODO - is removed from the classdeps and from the classes directory
+        // if in default scope, add to file for test-scoped compilation (test-scope is treated special here
+        // in that it automatically depends upon default-scope, so it needs to know of changes)
+        if (Scope.Default.equals(scope)) {
+            File compiledSinceTest = FileUtil.fromParts(buildDirPath, "default-scope-compiled.properties");
+            PropFile compiledSinceTestProps = PropFiles.load(compiledSinceTest.getAbsolutePath(), false, false);
+            for (PropFile.Prop prop : filesToCompile.props()) {
+                compiledSinceTestProps.add(prop.name, srcDirPath);
+            }
+            PropFiles.store(compiledSinceTestProps, compiledSinceTest.getAbsolutePath(), true);
+        }
     }
 
     private static PropFile computeFilesChanged(File lastSrcChanged, File changedPropertiesFile, File srcDir,

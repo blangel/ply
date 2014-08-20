@@ -202,7 +202,7 @@ public class DependencyManager {
                 Output.print("^warn^ overriding %sdependency %s; was %s now is %s.", scope.getPrettyPrint(), atom.getPropertyName(),
                         dependencies.get(atom.getPropertyName()).value(), atom.getPropertyValue());
                 Prop existingProp = dependencies.remove(atom.getPropertyName());
-                handleChangedDependency(scope, existingProp);
+                Deps.addChangedDependency(scope, Deps.parse(existingProp));
             }
         }
         dependencies.add(atom.getPropertyName(), atom.getPropertyValue());
@@ -241,7 +241,7 @@ public class DependencyManager {
             PropFile dependencies = loadDependenciesFile(scope);
             Prop existing = dependencies.remove(atom.getPropertyName());
             storeDependenciesFile(dependencies, scope);
-            handleChangedDependency(scope, existing);
+            Deps.addChangedDependency(scope, Deps.parse(existing));
             Output.print("Removed dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
                 String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
         }
@@ -340,35 +340,12 @@ public class DependencyManager {
         return scopedExclusions;
     }
 
-    private static void handleChangedDependency(Scope scope, Prop changed) {
-        DependencyAtom atom = Deps.parse(changed);
-        PropFile.Prop localRepoProp = Props.get("localRepo", Context.named("depmngr"), scope, PlyUtil.LOCAL_CONFIG_DIR);
-        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp.value());
-        PropFile changedDeps = loadChangedDependencies(scope);
-        String location = FileUtil.pathFromParts(Deps.getDependencyDirectoryPathForRepo(atom, localRepo), atom.getArtifactName());
-        // if the dependency was already changed, use first as that's what the source code is tied to
-        if (!changedDeps.contains(atom.getPropertyName())) {
-            changedDeps.add(atom.getPropertyName(), location);
-        }
-        storeDependenciesChangedFile(changedDeps, scope);
-    }
-
     private static PropFile loadDependenciesFile(Scope scope) {
         return loadFile(scope, "dependencies", true);
     }
 
     private static PropFile loadExclusionsFile(Scope scope) {
         return loadFile(scope, "exclusions", false);
-    }
-
-    private static PropFile loadChangedDependencies(Scope scope) {
-        String storePath = getBuildDirStorePath("changed-deps", scope);
-        PropFile propFile = new PropFile(Context.named("changed-deps"), PropFile.Loc.AdHoc);
-        if (!PropFiles.load(storePath, propFile, true, false)) {
-            Output.print("^error^Could not load ^b^%s^r^", storePath);
-            System.exit(1);
-        }
-        return propFile;
     }
 
     private static PropFile loadFile(Scope scope, String fileName, boolean create) {
@@ -399,13 +376,6 @@ public class DependencyManager {
     private static void storeResolvedDependenciesFile(PropFile resolvedDependencies, Scope scope) {
         String storePath = getBuildDirStorePath("resolved-deps", scope);
         if (!PropFiles.store(resolvedDependencies, storePath, true)) {
-            System.exit(1);
-        }
-    }
-
-    private static void storeDependenciesChangedFile(PropFile changedDependencies, Scope scope) {
-        String storePath = getBuildDirStorePath("changed-deps", scope);
-        if (!PropFiles.store(changedDependencies, storePath, true)) {
             System.exit(1);
         }
     }

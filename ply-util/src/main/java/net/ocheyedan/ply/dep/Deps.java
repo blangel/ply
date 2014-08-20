@@ -652,6 +652,50 @@ public final class Deps {
         return FileUtil.pathFromParts(dependencyDirectoryPath, dependencyAtom.getArtifactName());
     }
 
+    /**
+     * Adds {@code dependency} to the list of dependencies with changes which require audit during compilation.
+     * As an example, if one updates the version of a dependency there could be breaking changes to all
+     * the existing source code which depends upon the old dependency version. Marking this change here allows
+     * the file-changed/compilation phase to process and recompile accordingly.
+     * @param scope to use when saving the changed-deps file
+     * @param dependency which changed
+     */
+    public static void addChangedDependency(Scope scope, DependencyAtom dependency) {
+        PropFile.Prop localRepoProp = Props.get("localRepo", Context.named("depmngr"), scope, PlyUtil.LOCAL_CONFIG_DIR);
+        RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp.value());
+        PropFile changedDeps = loadChangedDependencies(scope);
+        String location = FileUtil.pathFromParts(Deps.getDependencyDirectoryPathForRepo(dependency, localRepo),
+                dependency.getArtifactName());
+        // if the dependency was already changed, use existing as that's what the source code is tied to
+        if (!changedDeps.contains(dependency.getPropertyName())) {
+            changedDeps.add(dependency.getPropertyName(), location);
+        }
+        storeDependenciesChangedFile(changedDeps, scope);
+    }
+
+    private static PropFile loadChangedDependencies(Scope scope) {
+        String storePath = getBuildDirStorePath("changed-deps", scope);
+        PropFile propFile = new PropFile(Context.named("changed-deps"), PropFile.Loc.AdHoc);
+        if (!PropFiles.load(storePath, propFile, true, false)) {
+            Output.print("^error^Could not load ^b^%s^r^", storePath);
+            System.exit(1);
+        }
+        return propFile;
+    }
+
+    private static void storeDependenciesChangedFile(PropFile changedDependencies, Scope scope) {
+        String storePath = getBuildDirStorePath("changed-deps", scope);
+        if (!PropFiles.store(changedDependencies, storePath, true)) {
+            System.exit(1);
+        }
+    }
+
+    private static String getBuildDirStorePath(String name, Scope scope) {
+        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
+        return buildDirPath + (buildDirPath.endsWith(File.separator) ? "" : File.separator)
+                + name + scope.getFileSuffix() + ".properties";
+    }
+
     private static URL getUrl(String path) {
         try {
             path = ensureProtocol(path);
