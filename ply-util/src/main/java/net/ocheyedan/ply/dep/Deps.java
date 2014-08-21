@@ -218,7 +218,7 @@ public final class Deps {
                     && !state.unversionedResolvedAlreadyWarned.contains(resolvedDep.toString())) {
                 Dep diffVersionDep = null;
                 for (Dep dep : resolved) {
-                    if (!dep.toVersionString().equals(resolvedDep.toVersionString())) {
+                    if ((dep != null) && !dep.toVersionString().equals(resolvedDep.toVersionString())) {
                         diffVersionDep = dep;
                         break;
                     }
