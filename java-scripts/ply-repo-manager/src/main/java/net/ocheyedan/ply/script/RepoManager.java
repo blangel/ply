@@ -198,7 +198,7 @@ public final class RepoManager {
             if ((authorization != null) && (authorization.getApp() != null)
                     && GIT_HUB_API_NAME.equals(authorization.getApp().getName())) {
                 // token must not be null
-                if ((authorization.getToken() == null) || authorization.getToken().isEmpty()) {
+                if (authorization.getToken() == null) {
                     continue;
                 }
                 // must have 'repo' scope
