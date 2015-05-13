@@ -18,6 +18,7 @@ import java.io.OutputStreamWriter;
 import java.net.*;
 import java.nio.charset.Charset;
 import java.util.HashMap;
+import java.util.UUID;
 
 /**
  * User: blangel
@@ -183,7 +184,7 @@ public final class RepoManager {
             return existing;
         }
         String url = "https://api.github.com/authorizations";
-        Authorization authorization = post(url, username, encryptedPwd, "{\"note\":\"ply repo access\", \"scopes\":[\"repo\"]}", Authorization.class);
+        Authorization authorization = post(url, username, encryptedPwd, createGitHubAuthorizationPostData(), Authorization.class);
         return (authorization == null ? null : authorization.getToken());
     }
 
@@ -198,7 +199,7 @@ public final class RepoManager {
             if ((authorization != null) && (authorization.getApp() != null)
                     && GIT_HUB_API_NAME.equals(authorization.getApp().getName())) {
                 // token must not be null
-                if (authorization.getToken() == null) {
+                if ((authorization.getToken() == null) || authorization.getToken().isEmpty()) {
                     continue;
                 }
                 // must have 'repo' scope
@@ -213,6 +214,18 @@ public final class RepoManager {
             }
         }
         return null;
+    }
+
+    private static String createGitHubAuthorizationPostData() {
+        return String.format("{\"note\":\"%s\", \"fingerprint\": \"%s\", \"scopes\":[\"repo\"]}", createGitHubNote(), createGitHubFingerPrint());
+    }
+
+    private static String createGitHubNote() {
+        return String.format("Ply %s @ %d", PlyUtil.getIPAddress(), System.currentTimeMillis());
+    }
+
+    private static String createGitHubFingerPrint() {
+        return UUID.randomUUID().toString();
     }
 
     private static <T> T post(String urlPath, String username, String encryptedPwd, String data, Class<T> clazz) {

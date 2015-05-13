@@ -7,6 +7,8 @@ import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * User: blangel
@@ -197,6 +199,19 @@ public final class PlyUtil {
             SystemExit.exit(1);
             return null; // not reachable
         }
+    }
+
+    /**
+     * @return the IP address of the machine
+     */
+    public static String getIPAddress() {
+        InetAddress inetAddress = null;
+        try {
+            inetAddress = InetAddress.getLocalHost();
+        } catch (UnknownHostException ex) {
+            // ignore
+        }
+        return (inetAddress == null ? "<unknown>" : inetAddress.getHostAddress());
     }
 
     private PlyUtil() { }
