@@ -65,7 +65,7 @@ final class GitHubAuth implements Auth {
     @Override public Map<String, String> getHeaders() {
         if (headers.isEmpty()) {
             String authToken = getAuthToken(configDir, scope);
-            if (authToken == null) {
+            if ((authToken == null) || authToken.isEmpty()) {
                 Output.print("^error^ Could not get git-hub auth token for ^b^%s^r^ in repo ^b^%s^r^", username, repositoryAtom.getPreResolvedUri());
                 Output.print("^error^ Fix by running command: ^b^ply repo auth %s git %s^r^", repositoryAtom.getPreResolvedUri(), username);
                 System.exit(1);

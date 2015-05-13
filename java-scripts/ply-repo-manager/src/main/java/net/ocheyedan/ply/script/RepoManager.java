@@ -183,7 +183,7 @@ public final class RepoManager {
             return existing;
         }
         String url = "https://api.github.com/authorizations";
-        Authorization authorization = post(url, username, encryptedPwd, "{\"scopes\":[\"repo\"]}", Authorization.class);
+        Authorization authorization = post(url, username, encryptedPwd, "{\"note\":\"ply repo access\", \"scopes\":[\"repo\"]}", Authorization.class);
         return (authorization == null ? null : authorization.getToken());
     }
 
@@ -198,7 +198,7 @@ public final class RepoManager {
             if ((authorization != null) && (authorization.getApp() != null)
                     && GIT_HUB_API_NAME.equals(authorization.getApp().getName())) {
                 // token must not be null
-                if (authorization.getToken() == null) {
+                if ((authorization.getToken() == null) || authorization.getToken().isEmpty()) {
                     continue;
                 }
                 // must have 'repo' scope
