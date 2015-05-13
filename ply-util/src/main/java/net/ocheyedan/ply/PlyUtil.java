@@ -1,6 +1,8 @@
 package net.ocheyedan.ply;
 
 import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.PropFile;
+import net.ocheyedan.ply.props.PropFiles;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
@@ -61,6 +63,84 @@ public final class PlyUtil {
 
     public static String getProjectDir(File configDirectory) {
         return FileUtil.getCanonicalPath(FileUtil.fromParts(configDirectory.getPath(), ".."));
+    }
+
+    /**
+     * @param name of the invocation properties file to add
+     * @param keys the values to store
+     */
+    public static void addInvocationProperties(String name, String[] keys, String ... values) {
+        if ((keys == null) || (values == null) || (keys.length < 1) || (keys.length != values.length)) {
+            throw new AssertionError("Must specify keys and the length must match values' length");
+        }
+        String path = Props.get("ply.invocation.dir", Context.named("project")).value();
+        if ((path == null) || path.isEmpty()) {
+            Output.print("^warn^ Property ^b^ply.invocation.dir^r^ not correctly setup in context ^b^project^r^");
+            return;
+        }
+        PropFile propFile = new PropFile(Context.named(""), PropFile.Loc.AdHoc);
+        for (int i = 0; i < keys.length; i++) {
+            propFile.add(keys[i], values[i]);
+        }
+        PropFiles.store(propFile, FileUtil.fromParts(path, name).getAbsolutePath(), true);
+    }
+
+    /**
+     * @param name of the invocation property file
+     * @param key of the property to retrieve
+     * @return the value associated with {@code key} within the invocation property file {@code name}
+     */
+    public static String readInvocationProperty(String name, String key) {
+        PropFile existing = PlyUtil.readInvocationProperties(name);
+        return (existing != null ? existing.get(key).value() : null);
+    }
+
+    /**
+     * @param name of the invocation properties file
+     * @param key to lookup
+     * @param expected non-null expected value
+     * @return true if there is an invocation property value in file {@code name} with {@code key} which is
+     *         equal to {@code expected}
+     */
+    public static boolean matchingInvocationProperty(String name, String key, String expected) {
+        String value = readInvocationProperty(name, key);
+        return expected.equals(value);
+    }
+
+    /**
+     * @param name of the invocation properties file to read
+     * @return the properties file or null if none exists
+     */
+    public static PropFile readInvocationProperties(String name) {
+        String path = Props.get("ply.invocation.dir", Context.named("project")).value();
+        if ((path == null) || path.isEmpty()) {
+            return null;
+        }
+        File file = FileUtil.fromParts(path, name);
+        if (!file.exists()) {
+            return null;
+        }
+        PropFile propFile = new PropFile(Context.named(""), PropFile.Loc.AdHoc);
+        PropFiles.load(file.getAbsolutePath(), propFile, false, false);
+        return propFile;
+    }
+
+    /**
+     * Removes the project.ply.invocation.dir directory
+     */
+    public static void cleanupInvocationProperties() {
+        String path = Props.get("ply.invocation.dir", Context.named("project")).value();
+        if ((path == null) || path.isEmpty()) {
+            return;
+        }
+        File directory = new File(path);
+        if (directory.exists()) {
+            FileUtil.delete(directory);
+        }
+    }
+
+    public static String[] varargs(String ... args) {
+        return args;
     }
 
     /**

@@ -17,6 +17,7 @@ public final class Ply {
 
         try {
             SystemExit.ply = true;
+            Runtime.getRuntime().addShutdownHook(new ShutdownHandler());
             Command command = CommandLineParser.parse(args);
             AdHoc.add(command.args.adHocProps);
             command.run();

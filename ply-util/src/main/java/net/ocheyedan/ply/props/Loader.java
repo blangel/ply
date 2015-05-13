@@ -56,6 +56,15 @@ final class Loader {
         return loaded;
     }
 
+    /**
+     * Invalidates cached values associated with {@code configurationDirectory}
+     * @param configurationDirectory from which to invalidate properties
+     */
+    static void invalidateCaches(File configurationDirectory) {
+        String cacheKey = FileUtil.getCanonicalPath(configurationDirectory);
+        cache.remove(cacheKey);
+    }
+
     private static boolean shouldLoadFromEnv(File configDirectory) {
         return ((configDirectory == PlyUtil.LOCAL_CONFIG_DIR)
                 && (System.getenv("ply_ply.invoker") != null));

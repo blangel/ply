@@ -3,7 +3,6 @@ package net.ocheyedan.ply.dep;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.PwdUtil;
-import net.ocheyedan.ply.props.*;
 import sun.misc.BASE64Encoder;
 
 import java.io.*;

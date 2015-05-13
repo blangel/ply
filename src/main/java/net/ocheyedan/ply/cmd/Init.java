@@ -121,6 +121,8 @@ public final class Init extends Command {
         }
         // create default directory structure; if not exists
         createDefaultDirectories(from);
+        // flush props cache to pick up the newly created properties
+        PropsExt.invalidateCaches(configDir);
         // print out the local properties
         Output.print("^ply^ Created the following project properties:");
         Output.print("^ply^");

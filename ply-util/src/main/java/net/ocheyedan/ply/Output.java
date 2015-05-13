@@ -179,6 +179,22 @@ public final class Output {
         if (!logLevels.contains("debug") && !logLevels.contains("dbug")) {
             dbugLevel.set(false);
         }
+        if (logLevels.contains("+debug") || logLevels.contains("+dbug")) {
+            infoLevel.set(true);
+            warnLevel.set(true);
+        }
+        if (logLevels.contains("+info")) {
+            warnLevel.set(true);
+        }
+        if (PlyUtil.matchingInvocationProperty("ply.log.levels", "warn", "true")) {
+            warnLevel.set(true);
+        }
+        if (PlyUtil.matchingInvocationProperty("ply.log.levels", "info", "true")) {
+            infoLevel.set(true);
+        }
+        if (PlyUtil.matchingInvocationProperty("ply.log.levels", "debug", "true")) {
+            dbugLevel.set(true);
+        }
         if ("false".equalsIgnoreCase(decorated)) {
             Output.decorated.set(false);
         }
@@ -289,9 +305,11 @@ public final class Output {
     }
 
     public static void print(Throwable t) {
-        print("^error^ Message: ^i^^red^%s^r^", (t == null ? "" : t.getMessage()));
+        print("^error^ %s: ^i^^red^%s^r^", (t == null ? "Message" : t.getClass().getSimpleName()), (t == null ? "" : t.getMessage()));
         if (isDebug()) {
             print(StackTraceWriter.convertStackTrace(t, true));
+        } else {
+            print("^error^  run with log.levels to see detailed error information: ^b^-Pply.log.levels=+debug^b^");
         }
     }
 

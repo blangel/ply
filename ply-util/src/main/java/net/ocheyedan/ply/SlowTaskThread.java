@@ -1,6 +1,8 @@
 package net.ocheyedan.ply;
 
 import net.ocheyedan.ply.input.InterruptibleInputReader;
+import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.PropFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -72,10 +74,13 @@ public final class SlowTaskThread {
             private void enableLogging() {
                 switch (this) {
                     case Warn:
+                        PlyUtil.addInvocationProperties("ply.log.levels", PlyUtil.varargs("warn"), "true");
                         Output.enableWarn(); break;
                     case Info:
+                        PlyUtil.addInvocationProperties("ply.log.levels", PlyUtil.varargs("info"), "true");
                         Output.enableInfo(); break;
                     case Debug:
+                        PlyUtil.addInvocationProperties("ply.log.levels", PlyUtil.varargs("debug"), "true");
                         Output.enableDebug(); break;
                     default:
                         throw new AssertionError(String.format("Unknown logging type %s", this.name()));
@@ -162,7 +167,10 @@ public final class SlowTaskThread {
          */
         public T start() throws Exception {
             Thread slowTaskThread = null;
-            if (!builder.logging.get().isLoggingEnabled()
+            boolean alreadyAnswered = PlyUtil.matchingInvocationProperty("slowthread",
+                    getAlreadyAnsweredKey(builder.logging.get(), builder.warning), "true");
+            if (!alreadyAnswered
+                    && !builder.logging.get().isLoggingEnabled()
                     // if not ignoring headless (so both headless and not headless are valid) or if not headless
                     && (!builder.ignoreIfHeadless.get() || !PlyUtil.isHeadless())) {
                 slowTaskThread = new SlowTaskThreadImpl(builder);
@@ -193,11 +201,14 @@ public final class SlowTaskThread {
 
         private final BuilderOngoing.Logging logging;
 
+        private final String alreadyAnswered;
+
         Runner(BuilderOngoing<?> builder) {
             this.message = builder.warning;
             this.wait = builder.builder.ms;
             this.logMessage = builder.logging.get().message;
             this.logging = builder.logging.get();
+            this.alreadyAnswered = getAlreadyAnsweredKey(this.logging, this.message);
         }
 
         @Override public void run() {
@@ -226,8 +237,12 @@ public final class SlowTaskThread {
                         try {
                             String answer = reader.readLine();
                             printedNewLine.set(true); // the user's response echoes a newline
-                            if ((answer != null) && "y".equalsIgnoreCase(answer.trim())) {
-                                logging.enableLogging();
+                            if (answer != null) {
+                                if ("y".equalsIgnoreCase(answer.trim())
+                                        || "yes".equalsIgnoreCase(answer.trim())) {
+                                    logging.enableLogging();
+                                }
+                                PlyUtil.addInvocationProperties("slowthread", PlyUtil.varargs(alreadyAnswered), "true");
                             }
                         } catch (IOException ioe) {
                             throw new AssertionError(ioe);
@@ -314,7 +329,7 @@ public final class SlowTaskThread {
         @Override public void interrupt() {
             super.interrupt();
             this.runner.ensureNewLine();
-        }       
+        }
     }
 
     /**
@@ -328,7 +343,11 @@ public final class SlowTaskThread {
         }
         return new BuilderStart<T>(ms);
     }
-    
+
+    private static String getAlreadyAnsweredKey(BuilderOngoing.Logging logging, String message) {
+        return String.format("%s%s", logging.name(), message);
+    }
+
     private SlowTaskThread() { }
-    
+
 }

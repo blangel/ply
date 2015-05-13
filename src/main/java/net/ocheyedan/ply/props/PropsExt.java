@@ -92,6 +92,16 @@ public final class PropsExt {
         Props.invalidateFilteredCaches(configurationDirectory);
     }
 
+    /**
+     * @param configurationDirectory @see {@link Props#invalidateFilteredCaches(java.io.File)}
+     * @see Props#invalidateFilteredCaches(java.io.File)
+     * @see Loader#invalidateCaches(java.io.File)
+     */
+    public static void invalidateCaches(File configurationDirectory) {
+        Loader.invalidateCaches(configurationDirectory);
+        Props.invalidateFilteredCaches(configurationDirectory);
+    }
+
     private PropsExt() { }
 
 }

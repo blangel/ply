@@ -15,6 +15,7 @@ import net.ocheyedan.ply.props.*;
 import java.io.File;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static net.ocheyedan.ply.props.PropFile.Prop;
@@ -81,8 +82,8 @@ public final class Deps {
         Set<String> unversionedResolvedAlreadyWarned;
 
         private FillGraphState() {
-            this.resolved = new HashMap<DependencyAtom, Dep>();
-            this.unversionedResolved = new HashMap<String, Set<Dep>>();
+            this.resolved = new ConcurrentHashMap<DependencyAtom, Dep>();
+            this.unversionedResolved = new ConcurrentHashMap<String, Set<Dep>>();
             this.unversionedResolvedAlreadyWarned = new HashSet<String>();
         }
     }
@@ -173,7 +174,9 @@ public final class Deps {
                 } else {
                     resolvedDep = resolveDependency(dependencyAtom, classifier, repositoryRegistry, (pomSufficient || dependencyAtom.transientDep),
                                                 failMissingDependency);
-                    state.resolved.put(dependencyAtom, resolvedDep);
+                    if (resolvedDep != null) {
+                        state.resolved.put(dependencyAtom, resolvedDep);
+                    }
                     String key = (resolvedDep == null ? dependencyAtom.getPropertyName() : resolvedDep.toString());
                     Set<Dep> alreadyResolved = state.unversionedResolved.get(key);
                     if (alreadyResolved == null) {

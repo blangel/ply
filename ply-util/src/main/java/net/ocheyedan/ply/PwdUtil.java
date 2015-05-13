@@ -3,6 +3,7 @@ package net.ocheyedan.ply;
 import org.jasypt.contrib.org.apache.commons.codec_1_3.binary.Base64;
 import org.jasypt.util.text.BasicTextEncryptor;
 
+import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,6 +33,7 @@ public final class PwdUtil {
 
     public static final String PWD_REQUEST_TOKEN = "^password^";
     private static final int PWD_REQUEST_TOKEN_LENGTH = PWD_REQUEST_TOKEN.length();
+    private static final Charset CHARSET = Charset.forName("UTF-8");
 
     private static final Request REQUEST = new Request();
 
@@ -67,21 +69,21 @@ public final class PwdUtil {
         BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword("P1y$");
         String encrypted = textEncryptor.encrypt(value);
-        byte[] base64 = Base64.encodeBase64(encrypted.getBytes());
-        return new String(base64);
+        byte[] base64 = Base64.encodeBase64(encrypted.getBytes(CHARSET));
+        return new String(base64, CHARSET);
     }
 
     /**
      * Decrypts {@code value} (assumed to be {@literal Base64} encoded) using the {@literal ply} pass-phrase.
-     * TODO - see above regarding pass-pharse
+     * TODO - see above regarding pass-phrase
      * @param value to decrypt
      * @return the decrypted value
      */
     public static String decrypt(String value) {
-        byte[] decoded = Base64.decodeBase64(value.getBytes());
+        byte[] decoded = Base64.decodeBase64(value.getBytes(CHARSET));
         BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword("P1y$");
-        return textEncryptor.decrypt(new String(decoded));
+        return textEncryptor.decrypt(new String(decoded, CHARSET));
     }
 
     private PwdUtil() { }
