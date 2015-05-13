@@ -358,3 +358,8 @@ METHOD=download=https://raw.github.com/blangel/ply/2c2d71021c24d2ca8d7268c5deaae
 METHOD=download=https://raw.github.com/blangel/ply/2c2d71021c24d2ca8d7268c5deaae1128efc0822/dist/ply/scripts/ply-compiler-1.0.jar to scripts/ply-compiler-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/2c2d71021c24d2ca8d7268c5deaae1128efc0822/dist/ply/version to version
 VERSION=1.0_65
+OUTPUT=Downloading update to correct github repo authorization requests (adding newly required note parameter)
+METHOD=download=https://raw.github.com/blangel/ply/29141eae92972933977e770faf3bd5fb823e7b13/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/29141eae92972933977e770faf3bd5fb823e7b13/dist/ply/scripts/ply-repo-manager-1.0.jar to scripts/ply-repo-manager-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/29141eae92972933977e770faf3bd5fb823e7b13/dist/ply/version to version
+VERSION=1.0_66
