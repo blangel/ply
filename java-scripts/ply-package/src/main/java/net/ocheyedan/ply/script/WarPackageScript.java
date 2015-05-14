@@ -10,6 +10,7 @@ import net.ocheyedan.ply.props.PropFile;
 import net.ocheyedan.ply.props.Props;
 
 import java.io.File;
+import java.io.IOException;
 
 /**
  * User: blangel
@@ -98,7 +99,8 @@ public class WarPackageScript extends JarPackageScript implements PackagingScrip
         }
     }
 
-    @Override protected int postprocess(int exitCode) {
-        return exitCode; // do nothing, war files already include-deps which is all super does if necessary
+    @Override protected int postprocess(int exitCode) throws IOException, InterruptedException {
+        int sourceExitCode = packageSources();
+        return (sourceExitCode | exitCode); // do nothing but package sources, war files already include-deps
     }
 }

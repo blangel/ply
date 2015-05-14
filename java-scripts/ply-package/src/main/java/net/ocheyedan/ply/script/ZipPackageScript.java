@@ -43,7 +43,8 @@ public class ZipPackageScript implements PackagingScript {
             System.exit(0);
         }
         preprocess();
-        String[] cmdArgs = createArgs(getType(), getIncludes(buildPath, resBuildPath));
+        String[] cmdArgs = createArgs(getType(), null, getIncludes(buildPath, resBuildPath));
+        Output.print("^dbug^ Creating package with arguments: %s", Arrays.toString(cmdArgs));
         ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true);
         Process process;
         try {
@@ -85,7 +86,8 @@ public class ZipPackageScript implements PackagingScript {
      * @param exitCode exit code of the package creation
      * @return an exit code (which should be {@code exitCode} unless an exception occurs).
      */
-    protected int postprocess(int exitCode) {
+    protected int postprocess(int exitCode) throws IOException, InterruptedException {
+        exitCode |= packageSources();
         if (getBoolean(Props.get("includeDeps", Context.named("package")).value())) {
             PropFile deps = Deps.getResolvedProperties(false);
             if (deps.isEmpty()) {
@@ -95,7 +97,7 @@ public class ZipPackageScript implements PackagingScript {
             int numberDeps = deps.size();
             Output.print("^info^ Including ^b^%d^r^ dependenc%s in ^b^%s^r^ package.", numberDeps,
                          (numberDeps == 1 ? "y" : "ies"), packaging);
-            String name = getPackageName(packaging);
+            String name = getPackageName(packaging, null);
             String nameWithDeps = getPackageName(packaging, "with-deps");
             File nameWithDepsFile = new File(nameWithDeps);
             ZipOutputStream output = null;
@@ -128,6 +130,32 @@ public class ZipPackageScript implements PackagingScript {
             }
         }
         return exitCode;
+    }
+
+    protected int packageSources() throws IOException, InterruptedException {
+        if (getBoolean(Props.get("includeSrc", Context.named("package")).value())) {
+            Context projectContext = Context.named("project");
+            String srcDirPath = Props.get("src.dir", projectContext).value();
+            String resDirPath = Props.get("res.dir", projectContext).value();
+            String[] cmdArgs = createArgs(getType(), "sources", getIncludes(srcDirPath, resDirPath));
+            Output.print("^dbug^ Creating source package with arguments: %s", Arrays.toString(cmdArgs));
+            ProcessBuilder processBuilder = new ProcessBuilder(cmdArgs).redirectErrorStream(true);
+            Process process;
+            try {
+                process = processBuilder.start();
+            } catch (IOException ioe) {
+                Output.print("^error^ Error creating %s file %s", getType(), Arrays.toString(cmdArgs));
+                throw ioe;
+            }
+            InputStream processStdout = process.getInputStream();
+            BufferedReader lineReader = new BufferedReader(new InputStreamReader(processStdout));
+            String processStdoutLine;
+            while ((processStdoutLine = lineReader.readLine()) != null) {
+                System.out.println(processStdoutLine); // don't use Output, just print directly and let ply itself handle
+            }
+            return process.waitFor();
+        }
+        return 0;
     }
 
     /**
@@ -165,10 +193,11 @@ public class ZipPackageScript implements PackagingScript {
     /**
      * Creates the arguments to give to the {@literal jar} executable
      * @param packaging type of the project (i.e., zip, jar, war).
+     * @param packagingNameSuffix suffix for the package (i.e., sources)
      * @param includes list of directories/files to include within the package (may include '-C' information)
      * @return the arguments to the {@literal jar} executable.
      */
-    protected String[] createArgs(String packaging, String[] includes) {
+    protected String[] createArgs(String packaging, String packagingNameSuffix, String[] includes) {
         String jarScript = Props.get("java", Context.named("ply")).value().replace("bin" + File.separator + "java",
                 "bin" + File.separator + "jar");
         String options = getBaseOptions();
@@ -178,7 +207,7 @@ public class ZipPackageScript implements PackagingScript {
         if (!getBoolean(Props.get("compress", Context.named("package")).value())) {
             options += "0";
         }
-        String name = getPackageName(packaging);
+        String name = getPackageName(packaging, packagingNameSuffix);
 
         String[] args = new String[includes.length + 3];
         args[0] = jarScript;
@@ -186,10 +215,6 @@ public class ZipPackageScript implements PackagingScript {
         args[2] = name;
         System.arraycopy(includes, 0, args, 3, includes.length);
         return args;
-    }
-
-    protected String getPackageName(String packaging) {
-        return getPackageName(packaging, null);
     }
 
     protected String getPackageName(String packaging, String suffix) {

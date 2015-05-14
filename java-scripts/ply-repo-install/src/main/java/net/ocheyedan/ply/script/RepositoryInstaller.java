@@ -102,7 +102,27 @@ public class RepositoryInstaller {
 
     private static void installProject(RepositoryAtom localRepo, Scope scope) {
         // TODO - use scope?! as classifier?
-        Repos.install(localRepo);
+        if (!Repos.install(localRepo)) {
+            Output.print("^warn^ Could not copy artifact into local repository.");
+            return;
+        }
+        if (getBoolean(Props.get("includeSrc", Context.named("package"), scope).value())) {
+            String artifactName = Props.get("artifact.name", Context.named("project"), scope).value();
+            if ((artifactName == null) || (artifactName.lastIndexOf(".") == -1)) {
+                Output.print("^warn^ No source artifact found [ ^yellow^%s^r^ ]", artifactName);
+                return;
+            }
+            artifactName = artifactName.substring(0, artifactName.lastIndexOf(".")) + "-sources" + artifactName.substring(artifactName.lastIndexOf("."));
+            DependencyAtom dependencyAtom = Deps.getProjectDep();
+            dependencyAtom = dependencyAtom.withClassifier("sources");
+            if (!Repos.install(localRepo, artifactName, dependencyAtom)) {
+                Output.print("^warn^ Could not copy source artifact into local repository [ %s ].", artifactName);
+            }
+        }
+    }
+
+    static boolean getBoolean(String value) {
+        return "true".equalsIgnoreCase(value);
     }
 
 }

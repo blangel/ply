@@ -66,9 +66,19 @@ public final class Repos {
      * @return true on success, false if the artifact does not exist or there was an error saving
      */
     public static boolean install(RepositoryAtom localRepo) {
-
-        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
         String artifactName = Props.get("artifact.name", Context.named("project")).value();
+        DependencyAtom dependencyAtom = Deps.getProjectDep();
+        return install(localRepo, artifactName, dependencyAtom);
+    }
+
+    /**
+     * Copies the {@code artifactName} from {@literal project.build.dir} into {@code localRepo}
+     * @param localRepo into which to install the artifact
+     * @param artifactName of the file to copy
+     * @return true on success, false if the artifact does not exist or there was an error saving
+     */
+    public static boolean install(RepositoryAtom localRepo, String artifactName, DependencyAtom dependencyAtom) {
+        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
         File artifact = FileUtil.fromParts(buildDirPath, artifactName);
         if (!artifact.exists()) {
             return false;
@@ -77,7 +87,6 @@ public final class Repos {
         String plyProjectDirPath = Props.get("project.dir", Context.named("ply")).value();
         File dependenciesFile = FileUtil.fromParts(plyProjectDirPath, "config", "dependencies.properties");
 
-        DependencyAtom dependencyAtom = Deps.getProjectDep();
         return installArtifact(artifact, dependenciesFile, dependencyAtom, localRepo);
     }
 

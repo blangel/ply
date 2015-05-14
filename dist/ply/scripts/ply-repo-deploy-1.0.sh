@@ -7,6 +7,8 @@ namespace=$ply_project_namespace
 name=$ply_project_name
 version=$ply_project_version
 scope=$ply_ply_scope
+packaging=$ply_project_packaging
+artifactsourcesname="$name-$version-sources.$packaging"
 gitrepo=$ply_deploy_git
 gitpush=$ply_deploy_git_push
 gitremotename=$ply_deploy_git_remote_name
@@ -37,7 +39,11 @@ if [[ ! -z "$scope" ]]; then
 fi
 cp $projectdir/config/$depfile $gitrepo/$namespace/$name/$version/
 
-# no need to check for success, file may not exist and that's ok
+# no need to check for success, dependencies file may not exist and that's ok
+
+cp $builddir/$artifactsourcesname $gitrepo/$namespace/$name/$version/
+
+# no need to check for success, source file may not exist and that's ok
 
 cd $gitrepo
 git add ./
