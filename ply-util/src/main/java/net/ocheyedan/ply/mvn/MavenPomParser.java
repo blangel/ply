@@ -215,7 +215,13 @@ public class MavenPomParser {
             }
             PropFile repos = new PropFile(Context.named("repositories"), PropFile.Loc.Local);
             for (String repoUrl : result.mavenRepositoryUrls) {
-                RepositoryAtom repoAtom = RepositoryAtom.parse("maven:" + repoUrl);
+                String filteredRepoUrl = repoUrl;
+                if (filteredRepoUrl.contains("${")) {
+                    for (String mavenProperty : result.mavenProperties.keySet()) {
+                        filteredRepoUrl = filter(filteredRepoUrl, mavenProperty, result.mavenProperties);
+                    }
+                }
+                RepositoryAtom repoAtom = RepositoryAtom.parse("maven:" + filteredRepoUrl);
                 repos.add(repoAtom.getPropertyName(), repoAtom.getPropertyValue());
             }
             PropFile modules = new PropFile(Context.named("submodules"), PropFile.Loc.Local);
