@@ -63,7 +63,7 @@ public final class FilterScript {
         }
 
         @Override public boolean accept(File pathname) {
-            return (pattern.matcher(pathname.getPath()).matches() == include);
+            return pattern.matcher(pathname.getPath()).matches();
         }
     }
 
@@ -84,11 +84,11 @@ public final class FilterScript {
                 return false;
             } else {
                 for (FilterPattern filterPattern : filterPatterns) {
-                    if (!filterPattern.accept(pathname)) {
-                        return false;
+                    if (filterPattern.accept(pathname)) {
+                        return filterPattern.include;
                     }
                 }
-                return true;
+                return false;
             }
         }
     }
@@ -115,7 +115,7 @@ public final class FilterScript {
             }
             Pattern filterPattern = AntStyleWildcardUtil.regex(filterExp);
             boolean include = false;
-            if ("include".equalsIgnoreCase(filterProp.value())) {
+            if ("include".equalsIgnoreCase(filterProp.value()) || filterProp.value().isEmpty()) {
                 include = true;
             }
             filterPatterns.add(new FilterPattern(filterPattern, include));
