@@ -389,6 +389,6 @@ METHOD=download=https://raw.github.com/blangel/ply/96465bb3ac4baba461e54c6eb0016
 METHOD=download=https://raw.github.com/blangel/ply/96465bb3ac4baba461e54c6eb0016a55be6ef544/dist/ply/version to version
 VERSION=1.0_71
 OUTPUT=Downloading update to fix recursive maven pom property resolution
-METHOD=download=https://raw.github.com/blangel/ply/13c7258a7ff3be63a98d66fe1d446431324be9b4/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
-METHOD=download=https://raw.github.com/blangel/ply/96465bb3ac4baba461e54c6eb0016a55be6ef544/dist/ply/version to version
-VERSION=1.0_71
+METHOD=download=https://raw.github.com/blangel/ply/76824252c0130350a63f2f454bdfd9a3852232be/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/76824252c0130350a63f2f454bdfd9a3852232be/dist/ply/version to version
+VERSION=1.0_72
