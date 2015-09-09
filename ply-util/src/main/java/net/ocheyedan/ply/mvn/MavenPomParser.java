@@ -187,6 +187,21 @@ public class MavenPomParser {
     }
 
     /**
+     * When filtering maven properties, may need to recursively filter. This provides a single object which
+     * can be returned from a recursive filter function.
+     */
+    private static class FilterPair {
+        private final String key;
+        private final String value;
+
+        public FilterPair(String key, String value) {
+            this.key = key;
+            this.value = value;
+        }
+    }
+
+
+    /**
      * Parses the pom file represented by {@code pomUrlPath} positioned at {@code repositoryAtom}.
      * @param pomUrlPath to parse
      * @param repositoryAtom from which to resolve subsequently found dependencies
@@ -202,15 +217,8 @@ public class MavenPomParser {
                 Map<String, String> scopedResolvedDeps = resolvedDeps.get(scope);
                 PropFile scopedDeps = ("test".equals(scope) ? testDeps : deps); // maven for ply has either test or default scoped deps.
                 for (String dependencyKey : scopedResolvedDeps.keySet()) {
-                    String filteredDependencyKey = dependencyKey;
-                    String filteredDependencyValue = scopedResolvedDeps.get(dependencyKey);
-                    if (filteredDependencyKey.contains("${") || filteredDependencyValue.contains("${")) {
-                        for (String mavenProperty : result.mavenProperties.keySet()) {
-                            filteredDependencyKey = filter(filteredDependencyKey, mavenProperty, result.mavenProperties);
-                            filteredDependencyValue = filter(filteredDependencyValue, mavenProperty, result.mavenProperties);
-                        }
-                    }
-                    scopedDeps.add(filteredDependencyKey, filteredDependencyValue);
+                    FilterPair filtered = filterMavenDependency(new FilterPair(dependencyKey, scopedResolvedDeps.get(dependencyKey)), result.mavenProperties);
+                    scopedDeps.add(filtered.key, filtered.value);
                 }
             }
             PropFile repos = new PropFile(Context.named("repositories"), PropFile.Loc.Local);
@@ -242,6 +250,25 @@ public class MavenPomParser {
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }
+    }
+
+    private FilterPair filterMavenDependency(FilterPair filterPair, Map<String, String> mavenProperties) {
+        String filteredKey = filterPair.key;
+        String filteredValue = filterPair.value;
+        String originalKey = filteredKey;
+        String originalValue = filteredValue;
+        if (originalKey.contains("${") || originalValue.contains("${")) {
+            for (String mavenProperty : mavenProperties.keySet()) {
+                filteredKey = filter(filteredKey, mavenProperty, mavenProperties);
+                filteredValue = filter(filteredValue, mavenProperty, mavenProperties);
+            }
+        }
+        FilterPair filtered = new FilterPair(filteredKey, filteredValue);
+        if ((!filteredKey.equals(originalKey) && filteredKey.contains("${"))
+            || (!filteredValue.equals(originalValue) && filteredValue.contains("${"))) {
+            return filterMavenDependency(filtered, mavenProperties);
+        }
+        return filtered;
     }
 
     public ParseResult parse(String pomUrlPath, RepositoryAtom repositoryAtom)
