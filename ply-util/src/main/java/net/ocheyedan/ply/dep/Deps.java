@@ -116,8 +116,9 @@ public final class Deps {
                                                                String classifier,
                                                                boolean failMissingDependency) {
         DirectedAcyclicGraph<Dep> dependencyDAG = new DirectedAcyclicGraph<Dep>();
+        Set<String> alreadyPrinted = new HashSet<String>((exclusionAtoms == null ? 16 : exclusionAtoms.size()));
         fillDependencyGraph(null, dependencyAtoms, exclusionAtoms, classifier, repositoryRegistry, dependencyDAG, new FillGraphState(),
-                            false, failMissingDependency);
+                            alreadyPrinted, false, failMissingDependency);
         return dependencyDAG;
     }
 
@@ -139,6 +140,7 @@ public final class Deps {
      * @param repositoryRegistry the repositories to consult when resolving {@code dependencyAtoms}.
      * @param graph to fill with the resolved {@link Dep} objects of {@code dependencyAtoms}.
      * @param state the {@link FillGraphState} used to track previously resolved dependencies, etc.
+     * @param alreadyPrinted set of messages already printed
      * @param pomSufficient if true, then only the pom from a maven repository is necessary to have successfully
      *                      resolved the {@code dependencyAtom}.
      * @param failMissingDependency if true indicates that missing dependencies are treated as failures; false, to
@@ -147,7 +149,8 @@ public final class Deps {
     private static void fillDependencyGraph(Vertex<Dep> parentVertex, List<DependencyAtom> dependencyAtoms,
                                             Set<DependencyAtom> exclusionAtoms, String classifier,
                                             RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph,
-                                            FillGraphState state, boolean pomSufficient, boolean failMissingDependency) {
+                                            FillGraphState state, Set<String> alreadyPrinted,
+                                            boolean pomSufficient, boolean failMissingDependency) {
         if (repositoryRegistry.isEmpty()) {
             Output.print("^error^ No repositories found, cannot resolve dependencies.");
             SystemExit.exit(1);
@@ -159,7 +162,11 @@ public final class Deps {
             // strip any classifier information for exclusion check
             DependencyAtom exclusionCheck = dependencyAtom.withoutClassifier();
             if ((parentVertex != null) && exclusionAtoms.contains(exclusionCheck)) {
-                Output.print("^info^ Skipping excluded dependency ^b^%s^r^.", dependencyAtom.toString());
+                String key = String.format("exclusions:%s", dependencyAtom.toString());
+                if (!alreadyPrinted.contains(key)) {
+                    alreadyPrinted.add(key);
+                    Output.print("^info^ Skipping excluded dependency ^b^%s^r^.", dependencyAtom.toString());
+                }
                 continue; // non-direct dependency listed in exclusions, skip
             } else if ((parentVertex == null) && exclusionAtoms.contains(dependencyAtom)) {
                 Output.print("^error^ Direct dependency ^b^%s^r^ listed in exclusions, remove as dependency or as exclusion.",
@@ -232,7 +239,7 @@ public final class Deps {
                 }
             }
             if (!dependencyAtom.transientDep) { // direct transient dependencies are not recurred upon
-                fillDependencyGraph(vertex, vertex.getValue().dependencies, exclusionAtoms, classifier, repositoryRegistry, graph, state, true, failMissingDependency);
+                fillDependencyGraph(vertex, vertex.getValue().dependencies, exclusionAtoms, classifier, repositoryRegistry, graph, state, alreadyPrinted, true, failMissingDependency);
             }
         }
     }

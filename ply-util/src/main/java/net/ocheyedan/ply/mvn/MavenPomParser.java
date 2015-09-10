@@ -2,7 +2,6 @@ package net.ocheyedan.ply.mvn;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
-import net.ocheyedan.ply.dep.Auth;
 import net.ocheyedan.ply.dep.DependencyAtom;
 import net.ocheyedan.ply.dep.RepositoryAtom;
 import net.ocheyedan.ply.input.Resource;
@@ -116,11 +115,28 @@ public class MavenPomParser {
             this.modules = new HashSet<String>(4);
         }
 
-        private void addDep(String groupId, String artifactId, String version, String classifier, String type,
-                            String scope, String optional, Boolean systemPath, boolean overrideExisting, boolean resolutionOnly) {
+        private String getKey(String groupId, String artifactId, String classifier, String type) {
             // @see Note here http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Management
             // for description of key
-            String key = groupId + ":" + artifactId + ":" + (type == null ? "" : type) + ":" + (classifier == null ? "" : classifier);
+            return groupId + ":" + artifactId + ":" + (type == null ? "" : type) + ":" + (classifier == null ? "" : classifier);
+        }
+
+        private boolean containsDep(String groupId, String artifactId, String classifier, String type) {
+            String key = getKey(groupId, artifactId, classifier, type);
+            return mavenIncompleteDeps.containsKey(key);
+        }
+
+        private void replaceVersion(String groupId, String artifactId, String classifier, String type, String version) {
+            String key = getKey(groupId, artifactId, classifier, type);
+            Incomplete incomplete = mavenIncompleteDeps.get(key);
+            if (incomplete != null) {
+                incomplete.version = version;
+            }
+        }
+
+        private void addDep(String groupId, String artifactId, String version, String classifier, String type,
+                            String scope, String optional, Boolean systemPath, boolean overrideExisting, boolean resolutionOnly) {
+            String key = getKey(groupId, artifactId, classifier, type);
             if (mavenIncompleteDeps.containsKey(key)) {
                 Incomplete incomplete = mavenIncompleteDeps.get(key);
                 incomplete.version = (overrideExisting
@@ -161,12 +177,29 @@ public class MavenPomParser {
             return false;
         }
 
-        private Map<String, Map<String, String>> resolveDeps() {
+        private Map<String, Map<String, String>> resolveDeps(MavenPomParser parser, RepositoryAtom repositoryAtom)
+                throws ParserConfigurationException, IOException, SAXException {
+            resolveImports(parser, repositoryAtom);
             Map<String, Map<String, String>> deps = new HashMap<String, Map<String, String>>(mavenIncompleteDeps.size());
             for (Incomplete incomplete : mavenIncompleteDeps.values()) {
                 incomplete.complete(deps, this);
             }
             return deps;
+        }
+
+        private void resolveImports(MavenPomParser parser, RepositoryAtom repositoryAtom)
+                throws ParserConfigurationException, IOException, SAXException {
+            for (Incomplete incomplete : mavenIncompleteDeps.values()) {
+                if ("import".equals(incomplete.scope)) {
+                    String filteredVersion = filterVersion(incomplete.version, this);
+                    Output.print("^dbug^ Dependency has import scope - importing dependencyManagement deps for %s:%s:%s [ pre-filtered version %s ]",
+                            incomplete.groupId, incomplete.artifactId, filteredVersion, incomplete.version);
+                    PomUri pomUri = parser.createPomUriWithoutRelativePath(repositoryAtom, true, incomplete.groupId, incomplete.artifactId, filteredVersion);
+                    ParseResult importParse = new ParseResult();
+                    parser.parse(pomUri, repositoryAtom, importParse);
+                    parser.parseMavenImport(incomplete, importParse, pomUri.uri, repositoryAtom, this);
+                }
+            }
         }
     }
 
@@ -212,7 +245,7 @@ public class MavenPomParser {
             ParseResult result = parse(pomUrlPath, repositoryAtom);
             PropFile deps = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
             PropFile testDeps = new PropFile(Context.named("dependencies"), Scope.named("test"), PropFile.Loc.Local);
-            Map<String, Map<String, String>> resolvedDeps = result.resolveDeps();
+            Map<String, Map<String, String>> resolvedDeps = result.resolveDeps(this, repositoryAtom);
             for (String scope : resolvedDeps.keySet()) {
                 Map<String, String> scopedResolvedDeps = resolvedDeps.get(scope);
                 PropFile scopedDeps = ("test".equals(scope) ? testDeps : deps); // maven for ply has either test or default scoped deps.
@@ -367,6 +400,27 @@ public class MavenPomParser {
         }
     }
 
+    private void parseMavenImport(ParseResult.Incomplete incomplete, ParseResult importParse,
+                                  String pomUrlPath, RepositoryAtom repositoryAtom, ParseResult parseResult)
+            throws ParserConfigurationException, IOException, SAXException {
+        Map<String, String> headers = repositoryAtom.getAuthHeaders();
+        Resource pomResource = Resources.parse(pomUrlPath, headers);
+        try {
+            InputStream stream = pomResource.open();
+            Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stream);
+            NodeList pomChildren = document.getDocumentElement().getChildNodes();
+            for (int i = 0; i < pomChildren.getLength(); i++) {
+                Node child = pomChildren.item(i);
+                String nodeName = child.getNodeName();
+                if ("dependencyManagement".equals(nodeName)) {
+                    parseDependencyManagementForImport(incomplete, importParse, child, parseResult, repositoryAtom);
+                }
+            }
+        } finally {
+            pomResource.close();
+        }
+    }
+
     private String getMetadataBaseUrl(String pomUrlPath) {
         int index = pomUrlPath.lastIndexOf("/");
         if (index == -1) {
@@ -391,6 +445,18 @@ public class MavenPomParser {
             Node dependenciesNode = dependencyManagementChildren.item(i);
             if ("dependencies".equals(dependenciesNode.getNodeName())) {
                 parseDependencies(dependenciesNode, parseResult, repositoryAtom, true);
+                break;
+            }
+        }
+    }
+
+    private void parseDependencyManagementForImport(ParseResult.Incomplete incomplete, ParseResult importParse, Node dependencyManagementNode,
+                                                    ParseResult parseResult, RepositoryAtom repositoryAtom) {
+        NodeList dependencyManagementChildren = dependencyManagementNode.getChildNodes();
+        for (int i = 0; i < dependencyManagementChildren.getLength(); i++) {
+            Node dependenciesNode = dependencyManagementChildren.item(i);
+            if ("dependencies".equals(dependenciesNode.getNodeName())) {
+                parseDependenciesForImport(incomplete, importParse, dependenciesNode, parseResult, repositoryAtom);
                 break;
             }
         }
@@ -431,6 +497,38 @@ public class MavenPomParser {
             // iterating child->parent, per maven, child overrides parent, only place in if not already
             // exists (hence !override).
             parseResult.addDep(groupId, artifactId, version, classifier, type, scope, optional, systemPath, false, resolutionOnly);
+        }
+    }
+
+    private void parseDependenciesForImport(ParseResult.Incomplete incomplete, ParseResult importParse, Node dependenciesNode,
+                                            ParseResult parseResult, RepositoryAtom repositoryAtom) {
+        NodeList dependencies = dependenciesNode.getChildNodes();
+        for (int i = 0; i < dependencies.getLength(); i++) {
+            if (!"dependency".equals(dependencies.item(i).getNodeName())) {
+                continue;
+            }
+            NodeList dependencyNode = dependencies.item(i).getChildNodes();
+            String groupId = "", artifactId = "", version = "", classifier = "", type = "";
+            for (int j = 0; j < dependencyNode.getLength(); j++) {
+                Node child = dependencyNode.item(j);
+                if ("groupId".equals(child.getNodeName())) {
+                    groupId = child.getTextContent().trim();
+                } else if ("artifactId".equals(child.getNodeName())) {
+                    artifactId = child.getTextContent().trim();
+                } else if ("version".equals(child.getNodeName())) {
+                    version = child.getTextContent().trim();
+                } else if ("classifier".equals(child.getNodeName())) {
+                    classifier = child.getTextContent().trim();
+                } else if ("type".equals(child.getNodeName())) {
+                    type = child.getTextContent().trim();
+                }
+            }
+            if (parseResult.containsDep(groupId, artifactId, classifier, type)) {
+                version = Version.resolve(version, getMetadataBaseUrl(repositoryAtom, groupId, artifactId), repositoryAtom.getAuthHeaders());
+                String filteredVersion = filterVersion(version, importParse);
+                Output.print("^dbug^ Importing version %s for %s:%s (from import scope dependency %s:%s)", filteredVersion, groupId, artifactId, incomplete.groupId, incomplete.artifactId);
+                parseResult.replaceVersion(groupId, artifactId, classifier, type, filteredVersion);
+            }
         }
     }
 
@@ -583,6 +681,19 @@ public class MavenPomParser {
             }
         }
 
+        PomUri pomUri = createPomUriWithoutRelativePath(repositoryAtom, true, groupId, artifactId, version);
+        parentVersion.set(Version.resolve(parentVersion.get(), getMetadataBaseUrl(pomUri.uri), repositoryAtom.getAuthHeaders()));
+
+        if (relativePath.isEmpty()) {
+            String currentDir = ((self.relativeUrl == null) || self.relativeUrl.isEmpty()) ? "../" : self.relativeUrl;
+            relativePath = FileUtil.pathFromParts(currentDir, artifactId, "pom.xml");
+        }
+
+        return new PomUri(relativePath, pomUri.uri, true);
+    }
+
+    private PomUri createPomUriWithoutRelativePath(RepositoryAtom repositoryAtom, boolean parsingAsParent,
+                                                   String groupId, String artifactId, String version) {
         String startPath = repositoryAtom.getPropertyName();
         // hygiene the end separator
         if (!startPath.endsWith("/") && !startPath.endsWith("\\")) {
@@ -596,14 +707,7 @@ public class MavenPomParser {
             endPath = endPath.substring(1, endPath.length());
         }
         String pomUrlPath = startPath + endPath;
-        parentVersion.set(Version.resolve(parentVersion.get(), getMetadataBaseUrl(pomUrlPath), repositoryAtom.getAuthHeaders()));
-
-        if (relativePath.isEmpty()) {
-            String currentDir = ((self.relativeUrl == null) || self.relativeUrl.isEmpty()) ? "../" : self.relativeUrl;
-            relativePath = FileUtil.pathFromParts(currentDir, artifactId, "pom.xml");
-        }
-
-        return new PomUri(relativePath, startPath + endPath, true);
+        return new PomUri(null, pomUrlPath, parsingAsParent);
     }
 
 }
