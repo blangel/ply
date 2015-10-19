@@ -66,10 +66,10 @@ public final class Submodules {
             String key = submoduleProp.name;
             String submoduleName = (parentName.isEmpty() ? key : FileUtil.pathFromParts(parentName, key));
             File submoduleConfigDir = FileUtil.fromParts(configDirectory.getPath(), "..", "..", key, ".ply", "config");
-            String submoduleResolvedDepName = getSubmoduleResolvedDepName(submoduleConfigDir, scope);
-            Submodule submodule = new Submodule(submoduleName, submoduleResolvedDepName);
-            submodules.put(submoduleResolvedDepName, submodule);
             if (submoduleConfigDir.exists()) {
+                String submoduleResolvedDepName = getSubmoduleResolvedDepName(submoduleConfigDir, scope);
+                Submodule submodule = new Submodule(submoduleName, submoduleResolvedDepName);
+                submodules.put(submoduleResolvedDepName, submodule);
                 getSubmodules(submoduleConfigDir, scope, key, submodules);
             }
         }
