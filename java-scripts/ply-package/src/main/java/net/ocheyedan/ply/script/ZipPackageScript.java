@@ -177,9 +177,10 @@ public class ZipPackageScript implements PackagingScript {
             }
         } else if (compileDirFile.exists()) {
             return new String[] { "-C", compileDir, "." };
-        } else {
+        } else if (resourceDirFile.exists()) {
             return new String[] { "-C", resourceDir, "." };
         }
+        return new String[0];
     }
 
     /**
