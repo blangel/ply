@@ -404,3 +404,7 @@ OUTPUT=Downloading update to automatically skip not-present submodules
 METHOD=download=https://raw.github.com/blangel/ply/89472805e7127c48ca16ff9d9c661cea187aac24/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/89472805e7127c48ca16ff9d9c661cea187aac24/dist/ply/version to version
 VERSION=1.0_75
+OUTPUT=Downloading update to support relative local directory repositories
+METHOD=download=https://raw.github.com/blangel/ply/77912745bcbe8be0524ff8b59a9294f04a2143c3/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/77912745bcbe8be0524ff8b59a9294f04a2143c3/dist/ply/version to version
+VERSION=1.0_76
