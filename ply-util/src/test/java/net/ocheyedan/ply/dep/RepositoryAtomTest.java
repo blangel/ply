@@ -55,7 +55,12 @@ public class RepositoryAtomTest {
         assertNotNull(atom);
         assertEquals(RepositoryAtom.Type.ply, atom.type);
         assertEquals("file://" + System.getProperty("user.home"), atom.getPropertyName());
-        
+
+        // local directory reference
+        atom = RepositoryAtom.parse("./");
+        assertNotNull(atom);
+        assertEquals(RepositoryAtom.Type.ply, atom.type);
+        assertTrue(atom.getPropertyName().startsWith("file://"));
     }
 
     @Test

@@ -151,7 +151,10 @@ public class RepositoryAtom {
             localRef = localRef.getCanonicalFile();
             if (localRef.isDirectory()) {
                 if (!atom.startsWith("/")) {
-                    return new RepositoryAtom(preResolved, localRef.toURI(), type); // TODO - should always do this, why below for unix?
+                    String resolved = localRef.getCanonicalPath();
+                    if (resolved.startsWith("file://")) {
+                        return new RepositoryAtom(preResolved, localRef.toURI(), type);
+                    }
                 }
                 // don't use toURI as it's not appending 'file://' but simply 'file:'
                 atom = "file://" + localRef.getCanonicalPath();
