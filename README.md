@@ -66,6 +66,10 @@ Within the distribution is a file [ply_completion.bash](ply/raw/master/dist/ply/
 
        $ sudo cp ply_completion.bash /etc/bash_completion.d/
 
+Alternatively, add this to your bash profile (where you defined `JAVA_HOME` / `PLY_HOME`)
+
+       $ . $PLY_HOME/ply_completion.bash
+
 Updating Ply
 ------------
 

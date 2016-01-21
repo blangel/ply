@@ -70,7 +70,7 @@ _ply_completion() {
         projectaliases=$(less ${projectdir}/config/aliases.properties | sed 's/^#.*//' | grep -v '^$' | sed 's/^\([^=]*\)=.*/\1/')
     fi
     aliases="${defaultaliases} ${projectaliases}"
-    configtasks="get get-all set append prepend rm"
+    configtasks="get get-all describe set append prepend rm"
     tasks="init --version --usage --help update ${configtasks} ${aliases}"
     defaultcontexts=$(find $PLY_HOME/config/ -type f -name "*.properties" | \
     sed 's/\(\/.*\/\)\(.*\)\.properties/-P\2/' | sed 's/\./#/')
@@ -204,6 +204,8 @@ _ply_completion() {
         handle_get_set "$nonscopedPrev" "$projectdir" "$prjContexts" "$dflContexts" "$has_compopt"
         ;;
 	append | prepend)
+	    ;;
+	describe)
 	    ;;
 	dep)
 	    if [[ $cur == : ]]; then

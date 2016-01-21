@@ -47,6 +47,8 @@ public final class CommandLineParser {
             return new Prepend(parseArgs(Iter.sized(args)));
         } else if ("update".equals(args[0]) || args[0].endsWith(":update")) { 
             return new Update(parseArgs(Iter.sized(args)));
+        } else if ("describe".equals(args[0]) || args[0].endsWith(":describe")) {
+            return new Describe(parseArgs(Iter.sized(args)));
         } else {
             return new Build(parseArgs(Iter.sized(args)));
         }

@@ -60,6 +60,20 @@ public final class Props {
     }
 
     /**
+     * @param configurationDirectory the configuration directory from which to load {@link PropFile.Loc#Local}
+     *                               properties
+     * @return a mapping from {@link Scope} to a mapping of {@link Context} to {@link PropFileChain} for the given {@code scope} and the given
+     *         {@code configurationDirectory}. The result will never be null.
+     */
+    public static Map<Scope, Map<Context, PropFileChain>> get(File configurationDirectory) {
+        Map<Scope, Map<Context, PropFileChain>> loaded = Loader.load(configurationDirectory);
+        if (loaded == null) {
+            return Collections.emptyMap();
+        }
+        return loaded;
+    }
+
+    /**
      * @param context of the properties to retrieve
      * @return the {@link PropFileChain} for the given {@code context} for the current scope and the local configuration
      *         directory. The result will never be null, it will be empty if not present.
