@@ -102,13 +102,15 @@ public class DependencyManager {
             if (size > 0) {
                 Output.print("Project ^b^%s^r^ has ^b^%d^r^ %sdependenc%s: ", Props.get("name", projectContext).value(), size,
                         scope.getPrettyPrint(), (size == 1 ? "y" : "ies"));
-                for (PropFile.Prop dep : dependencies.props()) {
+                List<PropFile.Prop> sorted = collect(dependencies.props(), size);
+                Collections.sort(sorted);
+                for (PropFile.Prop dep : sorted) {
                     String value = dep.value();
                     boolean transientDep = DependencyAtom.isTransient(value);
                     if (transientDep) {
                         value = DependencyAtom.stripTransient(value);
                     }
-                    Output.print("\t%s:%s%s", dep.name, value, (transientDep ? TRANSIENT_PRINT : ""));
+                    Output.print("  %s:%s%s", dep.name, value, (transientDep ? TRANSIENT_PRINT : ""));
                 }
             } else {
                 Output.print("Project ^b^%s^r^ has no %sdependencies.", Props.get("name", projectContext).value(), scope.getPrettyPrint());
@@ -156,6 +158,14 @@ public class DependencyManager {
         } else {
             usage();
         }
+    }
+
+    private static List<PropFile.Prop> collect(Iterable<Prop> deps, int expectedSize) {
+        List<Prop> props = new ArrayList<Prop>(expectedSize);
+        for (Prop dep : deps) {
+            props.add(dep);
+        }
+        return props;
     }
 
     private static int getExclusionsSize(PropFile exclusions) {
