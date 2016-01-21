@@ -408,3 +408,9 @@ OUTPUT=Downloading update to support relative local directory repositories
 METHOD=download=https://raw.github.com/blangel/ply/77912745bcbe8be0524ff8b59a9294f04a2143c3/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/77912745bcbe8be0524ff8b59a9294f04a2143c3/dist/ply/version to version
 VERSION=1.0_76
+OUTPUT=Downloading update to add 'describe' command to list local contexts and scopes
+METHOD=download=https://raw.github.com/blangel/ply/cbeebacdcbc995a9baf59cd15b16bc0c9f51c158/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/cbeebacdcbc995a9baf59cd15b16bc0c9f51c158/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/cbeebacdcbc995a9baf59cd15b16bc0c9f51c158/dist/ply/ply_completion.bash to ply_completion.bash
+METHOD=download=https://raw.github.com/blangel/ply/cbeebacdcbc995a9baf59cd15b16bc0c9f51c158/dist/ply/version to version
+VERSION=1.0_77
