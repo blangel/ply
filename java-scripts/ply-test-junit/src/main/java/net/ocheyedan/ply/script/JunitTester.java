@@ -127,6 +127,7 @@ public class JunitTester {
                                                  .newInstance(classes, matchers, unsplitMatchers);
             Thread runner = new Thread(instance);
             runner.setContextClassLoader(loader);
+            runner.setName("Junit4Runner");
             runner.start();
             runner.join();
         } catch (ClassNotFoundException cfne) {
@@ -146,7 +147,15 @@ public class JunitTester {
             PrivilegedOutput.print(ie);
             System.exit(1);
         }
-
+        // in case any test case created a non-daemon thread, need to force stop
+        Set<Thread> threads = Thread.getAllStackTraces().keySet();
+        for (Thread thread : threads) {
+            if ((thread == Thread.currentThread()) || ("main".equals(thread.getName())) || thread.isDaemon()) {
+                continue;
+            }
+            PrivilegedOutput.print("^warn^ Found a non-daemon thread [ ^b^%s^r^ ] created within a unit-test which has not be halted; consider fixing this. Forcing halt for now.", thread.getName());
+            System.exit(0);
+        }
     }
 
     private static List<URL> getClasspathEntries(File artifact, PropFile dependencies) {

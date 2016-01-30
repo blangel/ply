@@ -9,7 +9,6 @@ import org.junit.Test;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
 import org.junit.runner.Result;
-import org.junit.runner.Runner;
 import org.junit.runner.manipulation.Filter;
 import org.junit.runner.notification.Failure;
 
@@ -73,7 +72,7 @@ public class Junit4Invoker implements Runnable {
         if (filter != null) {
             request = request.filterWith(filter);
         }
-        Result result = jUnitCore.run(request); // TODO - if a test creates a non-daemon thread this runs forever, perhaps halt it
+        Result result = jUnitCore.run(request);
 
         int syntheticCount;
         if ((syntheticCount = countSynthetic(result)) == result.getRunCount()) {
