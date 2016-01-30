@@ -418,3 +418,7 @@ OUTPUT=Downloading update sort dependencies in listing
 METHOD=download=https://raw.github.com/blangel/ply/7cc2f9006d53821c9296fccafcc637cfc9a01484/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/7cc2f9006d53821c9296fccafcc637cfc9a01484/dist/ply/version to version
 VERSION=1.0_78
+OUTPUT=Downloading update to avoid JVM hang when running unit-tests which create non-daemon threads which never halt
+METHOD=download=https://raw.github.com/blangel/ply/32756f31649f0b457b02786a66783a3fbb505020/dist/ply/scripts/ply-test-junit-1.0.jar to scripts/ply-test-junit-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/32756f31649f0b457b02786a66783a3fbb505020/dist/ply/version to version
+VERSION=1.0_79
