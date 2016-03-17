@@ -159,9 +159,9 @@ public final class Deps {
             if ((parentVertex != null) && dependencyAtom.transientDep) {
                 continue; // non-direct (transitive) transient dependencies should be skipped
             }
-            // strip any classifier information for exclusion check
+            // strip any classifier information for exclusion check (but check both)
             DependencyAtom exclusionCheck = dependencyAtom.withoutClassifier();
-            if ((parentVertex != null) && exclusionAtoms.contains(exclusionCheck)) {
+            if ((parentVertex != null) && (exclusionAtoms.contains(exclusionCheck) || exclusionAtoms.contains(dependencyAtom))) {
                 String key = String.format("exclusions:%s", dependencyAtom.toString());
                 if (!alreadyPrinted.contains(key)) {
                     alreadyPrinted.add(key);

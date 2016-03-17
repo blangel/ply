@@ -135,9 +135,9 @@ public class DependencyManager {
             }
         } else if ((args.length > 1) && "resolve-classifiers".equals(args[0])) {
             String[] classifiers = args[1].split(",");
+            PropFile dependencies = getDependencies(scope);
+            PropFile exclusions = getExclusions(scope);
             for (String classifier : classifiers) {
-                PropFile dependencies = getDependencies(scope);
-                PropFile exclusions = getExclusions(scope);
                 resolveDependencies(dependencies, exclusions, classifier, false);
             }
         } else if (args.length == 0) {
