@@ -7,7 +7,9 @@ import org.junit.runner.Description;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,16 +25,29 @@ public class Junit4RunListener extends RunListener {
 
     private final AllFilterCollectPad padding;
 
+    private final List<String> potentialStatements;
+
+    private final List<String> failureStatements;
+
     private final String successChar = PlyUtil.isUnicodeSupported() ? "\u2713" : "";
     private final String failureChar = PlyUtil.isUnicodeSupported() ? "\u2620" : "";
     private final String ignoredChar = PlyUtil.isUnicodeSupported() ? "\u26A0" : "";
 
     public Junit4RunListener() {
-        this.padding = null;
+        this(null);
     }
 
     public Junit4RunListener(AllFilterCollectPad padding) {
         this.padding = padding;
+        this.potentialStatements = new ArrayList<String>();
+        this.failureStatements = new ArrayList<String>();
+    }
+
+    public void printFailures() {
+        for (String failureStatement : failureStatements) {
+            // going directly to stdout as 'failureStatement' already contains privileged prefix
+            System.out.println(failureStatement);
+        }
     }
 
     @Override public void testRunStarted(Description description) throws Exception {
@@ -50,7 +65,9 @@ public class Junit4RunListener extends RunListener {
         }
         handleNewDescription(description);
         // need to go directly to stdout to avoid Output parsing prior to Exec handling
-        System.out.println(String.format("%s^no_line^\t^b^%s^r^ ", PrivilegedPrintStream.PRIVILEGED_PREFIX, description.getMethodName()));
+        String statement = String.format("%s^no_line^\t^b^%s^r^ ", PrivilegedPrintStream.PRIVILEGED_PREFIX, description.getMethodName());
+        potentialStatements.add(statement);
+        System.out.println(statement);
     }
 
     @Override public void testFinished(Description description) throws Exception {
@@ -61,10 +78,14 @@ public class Junit4RunListener extends RunListener {
         if (failures.containsKey(description)) {
             Failure failure = failures.get(description);
             String message = createEasilyIdentifiableDiffMessage(failure, failure.getMessage());
-            System.out.println(String.format("%s^no_prefix^%s^red^^i^ %s FAILURE %s ^r^ %s", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description), failureChar, failureChar, message));
+            String statement = String.format("%s^no_prefix^%s^red^^i^ %s FAILURE %s ^r^ %s", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description), failureChar, failureChar, message);
+            failureStatements.addAll(potentialStatements);
+            failureStatements.add(statement);
+            System.out.println(statement);
         } else {
             System.out.println(String.format("%s^no_prefix^%s^green^^i^ %s SUCCESS %s ^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description), successChar, successChar));
         }
+        potentialStatements.clear();
     }
 
     @Override public void testFailure(Failure failure) throws Exception {
@@ -93,6 +114,7 @@ public class Junit4RunListener extends RunListener {
     private void handleNewDescription(Description description) {
         if (!methodNameOffsets.containsKey(description.getClassName())) {
             methodNameOffsets.put(description.getClassName(), 0);
+            potentialStatements.add(String.format("%s^b^%s^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, description.getClassName()));
             PrivilegedOutput.print("^b^%s^r^", description.getClassName());
         }
     }

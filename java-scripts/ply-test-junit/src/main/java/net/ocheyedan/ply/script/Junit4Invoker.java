@@ -63,7 +63,8 @@ public class Junit4Invoker implements Runnable {
         }
 
         JUnitCore jUnitCore = new JUnitCore();
-        jUnitCore.addListener(new Junit4RunListener(padding));
+        Junit4RunListener junit4RunListener = new Junit4RunListener(padding);
+        jUnitCore.addListener(junit4RunListener);
         jUnitCore.addListener(new MavenReporter());
 
         List<Class> sorted = new ArrayList<Class>(classes);
@@ -85,6 +86,12 @@ public class Junit4Invoker implements Runnable {
         }
         int runCount = result.getRunCount() - syntheticCount;
         int failCount = result.getFailureCount() - syntheticCount;
+
+        // if large amount of tests, reprint failures to avoid copious scrolling
+        if ((runCount > 50) && (failCount > 0)) {
+            PrivilegedOutput.print("\nMore than 50 tests, ^b^reprinting^r^ test failures for ease of review.\n");
+            junit4RunListener.printFailures();
+        }
 
         PrivilegedOutput
                 .print("\nRan ^b^%d^r^ test%s in ^b^%.3f seconds^r^ with %s%d%s^r^ failure%s and %s%d^r^ ignored.\n",
