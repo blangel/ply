@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.*;
 import net.ocheyedan.ply.dep.*;
 import net.ocheyedan.ply.graph.DirectedAcyclicGraph;
+import net.ocheyedan.ply.graph.Graph;
 import net.ocheyedan.ply.graph.Vertex;
 import net.ocheyedan.ply.props.*;
 import net.ocheyedan.ply.props.PropFile;
@@ -67,12 +68,13 @@ import static net.ocheyedan.ply.props.PropFile.Prop;
  * for dependencies and transitive dependencies so that compilation and packaging may succeed.
  *
  * The dependency script's usage is:
- * <pre>dep [--usage] [add|rm|exclude|list|tree]</pre>
+ * <pre>dep [--usage] [add|rm|exclude|exclude-min|list|tree]</pre>
  * where {@literal --usage} prints the usage information.
  * The {@literal add} command takes an atom and adds it as a dependency for the supplied scope, resolving it eagerly
- * from the known repos and failing if it cannot be resolved.
+ * from the known repositories and failing if it cannot be resolved.
  * The {@literal rm} command takes an atom and removes it from the dependencies scope, if it exists.
  * The {@literal exclude} command takes an atom and excludes it from the dependency graph for the local project.
+ * The {@literal exclude-min} command for any conflicting dependency atoms, attempts to exclude the minimum versions
  * The {@literal list} command lists all direct dependencies for the scope (transitive dependencies are not listed).
  * The {@literal tree} command lists all dependencies for the scope in a tree format (including transitive).
  *
@@ -96,6 +98,8 @@ public class DependencyManager {
             removeDependency(args[1], scope);
         } else if ((args.length > 1) && "exclude".equals(args[0])) {
             excludeDependency(args[1], scope);
+        } else if ((args.length == 1) && "exclude-min".equals(args[0])) {
+            excludeMinimum(scope);
         } else if ((args.length == 1) && "list".equals(args[0])) {
             PropFile dependencies = getDependencies(scope);
             int size = dependencies.size();
@@ -270,15 +274,67 @@ public class DependencyManager {
             atom = new DependencyAtom(split[0], split[1], null);
         }
         PropFile exclusions = loadExclusionsFile(scope);
+        exclude(atom, exclusions);
+        storeExclusionsFile(exclusions, scope);
+        Output.print("Excluded dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
+            String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
+    }
+
+    private static void excludeMinimum(Scope scope) {
+        PropFile exclusions = getExclusions(scope);
+        int excluded = 0, totalExclusions = 0;
+        while ((excluded = excludeMinimumForCurrentExclusions(scope, exclusions)) != 0) {
+            exclusions = loadExclusionsFile(scope);
+            totalExclusions += excluded;
+        }
+        Output.print("Excluded %d dependencies%s", totalExclusions, !Scope.Default.equals(scope) ?
+                String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
+    }
+
+    private static int excludeMinimumForCurrentExclusions(Scope scope, PropFile exclusions) {
+        PropFile dependencies = getDependencies(scope);
+        final Set<DependencyAtom> foundExclusions = new HashSet<DependencyAtom>();
+        resolveDependenciesImmediately(dependencies, exclusions, null, false, new ConflictingVersionVisitor() {
+            @Override public void visit(Dep diffVersionDep, Dep resolvedDep, Vertex<Dep> parentVertex, DependencyAtom dependencyAtom, Graph<Dep> graph) {
+                Vertex<Dep> diffVersionParent = graph.getVertex(diffVersionDep).getAnyParent();
+                String diffVersionPath = Deps.getPathAsString(diffVersionParent, diffVersionDep.dependencyAtom);
+                String path = Deps.getPathAsString(parentVertex, dependencyAtom);
+                DependencyAtom lower = Deps.getMinimumVersion(diffVersionDep.dependencyAtom, resolvedDep.dependencyAtom);
+                if (lower == null) {
+                    Output.print("^warn^ Could not determine lower of the two versions for ^b^%s^r^ [ ^yellow^%s^r^ ] and [ ^yellow^%s^r^ ].", resolvedDep.toString(), diffVersionDep.dependencyAtom.getPropertyValue(), resolvedDep.dependencyAtom.getPropertyValue());
+                    Output.print("^warn^   ^b^%s^r^ => %s", diffVersionDep.dependencyAtom.getPropertyValue(), (diffVersionPath == null ? "<direct dependency>" : diffVersionPath));
+                    Output.print("^warn^   ^b^%s^r^ => %s", resolvedDep.dependencyAtom.getPropertyValue(), (path == null ? "<direct dependency>" : path));
+                    Output.print("^warn^ You can manually resolve this by excluding one of these versions from your project's dependency graph: ^b^ply dep exclude^r^ [ ^b^%s^r^ | ^b^%s^r^ ]", diffVersionDep.toVersionString(), resolvedDep.toVersionString());
+                    return;
+                }
+                if (((lower == resolvedDep.dependencyAtom) && (path == null))
+                        || ((lower == diffVersionDep.dependencyAtom) && (diffVersionPath == null))) {
+                    Output.print("^warn^ Directly depending upon a lower version than found elsewhere in the dependency graph for ^b^%s^r^ [ ^yellow^%s^r^ ] and [ ^yellow^%s^r^ ].", resolvedDep.toString(), diffVersionDep.dependencyAtom.getPropertyValue(), resolvedDep.dependencyAtom.getPropertyValue());
+                    Output.print("^warn^   ^b^%s^r^ => %s", diffVersionDep.dependencyAtom.getPropertyValue(), (diffVersionPath == null ? "<direct dependency>" : diffVersionPath));
+                    Output.print("^warn^   ^b^%s^r^ => %s", resolvedDep.dependencyAtom.getPropertyValue(), (path == null ? "<direct dependency>" : path));
+                    Output.print("^warn^ Either remove the direct dependency or manually exclude the higher version.");
+                    return;
+                }
+                Output.print("^info^ Excluding ^b^%s^r^ version ^b^%s^r^ (as it is less than version ^b^%s^r^)", lower.getPropertyName(), lower.getPropertyValue(),
+                        (lower == diffVersionDep.dependencyAtom ? resolvedDep.dependencyAtom.getPropertyValue() : diffVersionDep.dependencyAtom.getPropertyValue()));
+                foundExclusions.add(lower);
+            }
+        });
+        PropFile exclusionsPropFile = loadExclusionsFile(scope);
+        for (DependencyAtom foundExclusion : foundExclusions) {
+            exclude(foundExclusion, exclusionsPropFile);
+        }
+        storeExclusionsFile(exclusionsPropFile, scope);
+        return foundExclusions.size();
+    }
+
+    private static void exclude(DependencyAtom atom, PropFile exclusions) {
         if (exclusions.contains(atom.getPropertyName())) {
             String versions = String.format("%s %s", exclusions.get(atom.getPropertyName()).value(), atom.getPropertyValue());
             exclusions.set(atom.getPropertyName(), versions);
         } else {
             exclusions.add(atom.getPropertyName(), atom.getPropertyValue());
         }
-        storeExclusionsFile(exclusions, scope);
-        Output.print("Excluded dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
-            String.format(" (in scope %s)", scope.getPrettyPrint()) : "");
     }
 
     private static RepositoryRegistry createRepositoryList(DependencyAtom dependencyAtom, List<DependencyAtom> dependencyAtoms) {
@@ -290,18 +346,28 @@ public class DependencyManager {
         }
     }
 
-    private static PropFile resolveDependencies(final PropFile dependencies, final PropFile exclusions, final String classifier,
-                                                  final boolean failMissingDependency) {
+    private static PropFile resolveDependencies(final PropFile dependencies, final PropFile exclusions, final String classifier, final boolean failMissingDependency) {
         return invokeWithSlowResolutionThread(new Callable<PropFile>() {
             @Override public PropFile call() throws Exception {
-                DependencyAtom self = Deps.getProjectDep();
-                List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies, classifier);
-                Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parseExclusions(exclusions, classifier));
-                RepositoryRegistry repositoryRegistry = createRepositoryList(self, dependencyAtoms);
-                DirectedAcyclicGraph<Dep> dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, classifier, failMissingDependency);
-                return Deps.convertToResolvedPropertiesFile(dependencyGraph);
+                return resolveDependenciesImmediately(dependencies, exclusions, classifier, failMissingDependency, null);
             }
         }, "^b^Hang tight,^r^ your project needs a lot of dependencies. ^b^Ply^r^'s downloading them...");
+    }
+
+    private static PropFile resolveDependenciesImmediately(PropFile dependencies, PropFile exclusions,
+                                                           String classifier, boolean failMissingDependency,
+                                                           ConflictingVersionVisitor conflictingVersionVisitor) {
+        DependencyAtom self = Deps.getProjectDep();
+        List<DependencyAtom> dependencyAtoms = Deps.parse(dependencies, classifier);
+        Set<DependencyAtom> exclusionAtoms = new HashSet<DependencyAtom>(Deps.parseExclusions(exclusions, classifier));
+        RepositoryRegistry repositoryRegistry = createRepositoryList(self, dependencyAtoms);
+        DirectedAcyclicGraph<Dep> dependencyGraph;
+        if (conflictingVersionVisitor != null) {
+            dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, classifier, failMissingDependency, conflictingVersionVisitor);
+        } else {
+            dependencyGraph = Deps.getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, classifier, failMissingDependency);
+        }
+        return Deps.convertToResolvedPropertiesFile(dependencyGraph);
     }
 
     private static <T> T invokeWithSlowResolutionThread(Callable<T> callable, String message) {
@@ -452,6 +518,7 @@ public class DependencyManager {
         Output.print("    ^b^add <dep-atom>^r^ : adds dep-atom to the list of dependencies (within scope) (or replacing the version if it already exists).");
         Output.print("    ^b^rm <dep-atom>^r^ : removes dep-atom from the list of dependencies (within scope).");
         Output.print("    ^b^exclude <dep-atom>^r^ : excludes dep-atom from the list of dependencies (within scope).");
+        Output.print("    ^b^exclude-min^r^ : for any conflicting versions, excludes the minimum version (within scope).");
         Output.print("    ^b^list^r^ : list all direct dependencies (within scope excluding transitive dependencies).");
         Output.print("    ^b^tree^r^ : print all dependencies in a tree view (within scope including transitive dependencies).");
         Output.print("    ^b^resolve-classifiers <classifiers>^r^ : resolves dependencies with each of the (comma delimited) classifiers.");

@@ -11,8 +11,11 @@ import org.junit.Test;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNull;
+import static junit.framework.Assert.assertSame;
 
 /**
  * User: blangel
@@ -20,6 +23,65 @@ import static junit.framework.Assert.assertEquals;
  * Time: 8:20 AM
  */
 public class DepsTest {
+
+    @Test
+    public void getMinimumVersion() {
+
+        DependencyAtom left = DependencyAtom.parse("foo:foo:1.0", new AtomicReference<String>());
+        DependencyAtom right = DependencyAtom.parse("foo:foo:1.0", new AtomicReference<String>());
+        DependencyAtom result = Deps.getMinimumVersion(left, right);
+        assertNull(result);
+
+        left = DependencyAtom.parse("foo:foo:1.0.0", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:1.0", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(right, result);
+
+        left = DependencyAtom.parse("foo:foo:1.0.0", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:1.0.1", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(left, result);
+
+        left = DependencyAtom.parse("foo:foo:2.0.0", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:1.0.1", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(right, result);
+
+        left = DependencyAtom.parse("foo:foo:2.9", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:2.10", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(left, result);
+
+        left = DependencyAtom.parse("foo:foo:2.9-rc", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:2.10", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(left, result);
+
+        left = DependencyAtom.parse("foo:foo:2.10-rc", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:2.10", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(left, result);
+
+        left = DependencyAtom.parse("foo:foo:2.10", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:2.10-SNAPSHOT", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(right, result);
+
+        left = DependencyAtom.parse("foo:foo:2.10.v20150330", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:2.10.v20150331", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(left, result);
+
+        left = DependencyAtom.parse("foo:foo:2.10.v20150330", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:2.10.V20150401", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(left, result);
+
+        left = DependencyAtom.parse("foo:foo:2.10.V20150509", new AtomicReference<String>());
+        right = DependencyAtom.parse("foo:foo:2.10.V20150401", new AtomicReference<String>());
+        result = Deps.getMinimumVersion(left, right);
+        assertSame(right, result);
+    }
 
     @Test
     public void getDependencyGraph() throws URISyntaxException {

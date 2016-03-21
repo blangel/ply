@@ -43,7 +43,7 @@ handle_get_set() {
 _ply_completion() {
     local has_compopt=`type -t compopt`
     local cur prev tasks defaultaliases projectaliases aliases configtasks projectdir defaultcontexts projectcontexts
-    local deptasks="add rm exclude list tree"
+    local deptasks="add rm exclude exclude-min list tree"
     local repotasks="add rm auth auth-local"
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"

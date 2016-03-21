@@ -79,13 +79,81 @@ public final class Deps {
         /**
          * Set of {@literal namespace:name} strings for which a conflicting version warning has already been printed.
          */
-        Set<String> unversionedResolvedAlreadyWarned;
+        Set<String> unversionedResolvedAlreadyVisited;
 
         private FillGraphState() {
             this.resolved = new ConcurrentHashMap<DependencyAtom, Dep>();
             this.unversionedResolved = new ConcurrentHashMap<String, Set<Dep>>();
-            this.unversionedResolvedAlreadyWarned = new HashSet<String>();
+            this.unversionedResolvedAlreadyVisited = new HashSet<String>();
         }
+    }
+
+    /**
+     * @param left to compare version against {@code right}
+     * @param right to compare version against {@code left}
+     * @return {@code left} if its version is determined lower than {@code right}, {@code right} if its
+     *         version is determined lower than {@code left}, null if neither version could definitively be determined lower
+     */
+    public static DependencyAtom getMinimumVersion(DependencyAtom left, DependencyAtom right) {
+        String leftVersion = left.getPropertyValue();
+        String rightVersion = right.getPropertyValue();
+        if ((leftVersion == null) || (rightVersion == null) || leftVersion.equals(rightVersion)) {
+            return null;
+        }
+        String[] leftVersions = leftVersion.split("\\.");
+        String[] rightVersions = rightVersion.split("\\.");
+        for (int i = 0; i < leftVersions.length; i++) {
+            String leftCandidate = leftVersions[i];
+            String rightCandidate = null;
+            if (rightVersions.length > i) {
+                rightCandidate = rightVersions[i];
+            }
+            if (rightCandidate == null) {
+                return right;
+            }
+            if (leftCandidate.startsWith("v") || leftCandidate.startsWith("V")) {
+                leftCandidate = leftCandidate.substring(1);
+            }
+            if (rightCandidate.startsWith("v") || rightCandidate.startsWith("V")) {
+                rightCandidate = rightCandidate.substring(1);
+            }
+            boolean leftRc = false, rightRc = false;
+            if (leftCandidate.endsWith("-rc")) {
+                leftCandidate = leftCandidate.substring(0, leftCandidate.length() - 3);
+                leftRc = true;
+            }
+            if (rightCandidate.endsWith("-rc")) {
+                rightCandidate = rightCandidate.substring(0, rightCandidate.length() - 3);
+                rightRc = true;
+            }
+            boolean leftSnapshot = false, rightSnapshot = false;
+            if (leftCandidate.endsWith("-SNAPSHOT")) {
+                leftCandidate = leftCandidate.substring(0, leftCandidate.length() - 9);
+                leftSnapshot = true;
+            }
+            if (rightCandidate.endsWith("-SNAPSHOT")) {
+                rightCandidate = rightCandidate.substring(0, rightCandidate.length() - 9);
+                rightSnapshot = true;
+            }
+            try {
+                Long leftPortion = Long.valueOf(leftCandidate);
+                Long rightPortion = Long.valueOf(rightCandidate);
+                if (leftPortion > rightPortion) {
+                    return right;
+                } else if (rightPortion > leftPortion) {
+                    return left;
+                }
+                if ((leftRc && !rightRc) || (leftSnapshot && !rightSnapshot)) {
+                    return left;
+                }
+                if ((rightRc && !leftRc) || (rightSnapshot && !leftSnapshot)) {
+                    return right;
+                }
+            } catch (NumberFormatException nfe) {
+                return null;
+            }
+        }
+        return (rightVersions.length > leftVersion.length() ? left : null);
     }
 
     /**
@@ -115,10 +183,34 @@ public final class Deps {
                                                                RepositoryRegistry repositoryRegistry,
                                                                String classifier,
                                                                boolean failMissingDependency) {
+        return getDependencyGraph(dependencyAtoms, exclusionAtoms, repositoryRegistry, classifier, failMissingDependency,
+                new ConflictingVersionVisitor() {
+                    @Override public void visit(Dep diffVersionDep, Dep resolvedDep, Vertex<Dep> parentVertex, DependencyAtom dependencyAtom,
+                                      Graph<Dep> graph) {
+                        warnAboutMultipleVersions(diffVersionDep, resolvedDep, parentVertex, dependencyAtom, graph);
+                    }
+                });
+    }
+
+    /**
+     * @param dependencyAtoms       the direct dependencies from which to create a dependency graph
+     * @param exclusionAtoms        the {@link DependencyAtom} to exclude when resolving transitive dependencies.
+     * @param repositoryRegistry    the repositories to consult when resolving {@code dependencyAtoms}.
+     * @param classifier            to use when resolving all transitive dependencies
+     * @param failMissingDependency true to fail on missing dependencies; false to ignore and continue resolution
+     * @param conflictingVersionVisitor visitor whenever there is a version conflict
+     * @return a DAG {@link Graph<Dep>} implementation representing the resolved {@code dependencyAtoms} and its tree of
+     * transitive dependencies.
+     */
+    public static DirectedAcyclicGraph<Dep> getDependencyGraph(List<DependencyAtom> dependencyAtoms,
+                                                               Set<DependencyAtom> exclusionAtoms,
+                                                               RepositoryRegistry repositoryRegistry,
+                                                               String classifier, boolean failMissingDependency,
+                                                               ConflictingVersionVisitor conflictingVersionVisitor) {
         DirectedAcyclicGraph<Dep> dependencyDAG = new DirectedAcyclicGraph<Dep>();
         Set<String> alreadyPrinted = new HashSet<String>((exclusionAtoms == null ? 16 : exclusionAtoms.size()));
         fillDependencyGraph(null, dependencyAtoms, exclusionAtoms, classifier, repositoryRegistry, dependencyDAG, new FillGraphState(),
-                            alreadyPrinted, false, failMissingDependency);
+                alreadyPrinted, false, failMissingDependency, conflictingVersionVisitor);
         return dependencyDAG;
     }
 
@@ -145,12 +237,14 @@ public final class Deps {
      *                      resolved the {@code dependencyAtom}.
      * @param failMissingDependency if true indicates that missing dependencies are treated as failures; false, to
      *                              ignore and continue resolution
+     * @param conflictingVersionVisitor visitor whenever there is a version conflict
      */
     private static void fillDependencyGraph(Vertex<Dep> parentVertex, List<DependencyAtom> dependencyAtoms,
                                             Set<DependencyAtom> exclusionAtoms, String classifier,
                                             RepositoryRegistry repositoryRegistry, DirectedAcyclicGraph<Dep> graph,
                                             FillGraphState state, Set<String> alreadyPrinted,
-                                            boolean pomSufficient, boolean failMissingDependency) {
+                                            boolean pomSufficient, boolean failMissingDependency,
+                                            ConflictingVersionVisitor conflictingVersionVisitor) {
         if (repositoryRegistry.isEmpty()) {
             Output.print("^error^ No repositories found, cannot resolve dependencies.");
             SystemExit.exit(1);
@@ -225,7 +319,7 @@ public final class Deps {
             Set<Dep> resolved = state.unversionedResolved.get(resolvedDep.toString());
             if ((resolved != null)
                     && (resolved.size() > 1)
-                    && !state.unversionedResolvedAlreadyWarned.contains(resolvedDep.toString())) {
+                    && !state.unversionedResolvedAlreadyVisited.contains(resolvedDep.toString())) {
                 Dep diffVersionDep = null;
                 for (Dep dep : resolved) {
                     if ((dep != null) && !dep.toVersionString().equals(resolvedDep.toVersionString())) {
@@ -234,12 +328,13 @@ public final class Deps {
                     }
                 }
                 if (diffVersionDep != null) {
-                    warnAboutMultipleVersions(diffVersionDep, resolvedDep, parentVertex, dependencyAtom, graph);
-                    state.unversionedResolvedAlreadyWarned.add(resolvedDep.toString());
+                    conflictingVersionVisitor.visit(diffVersionDep, resolvedDep, parentVertex, dependencyAtom, graph);
+                    state.unversionedResolvedAlreadyVisited.add(resolvedDep.toString());
                 }
             }
             if (!dependencyAtom.transientDep) { // direct transient dependencies are not recurred upon
-                fillDependencyGraph(vertex, vertex.getValue().dependencies, exclusionAtoms, classifier, repositoryRegistry, graph, state, alreadyPrinted, true, failMissingDependency);
+                fillDependencyGraph(vertex, vertex.getValue().dependencies, exclusionAtoms, classifier, repositoryRegistry, graph, state,
+                        alreadyPrinted, true, failMissingDependency, conflictingVersionVisitor);
             }
         }
     }
@@ -289,7 +384,12 @@ public final class Deps {
         return buffer.toString();
     }
 
-    private static String getPathAsString(Vertex<Dep> vertex, DependencyAtom dependencyAtom) {
+    /**
+     * @param vertex to which to lookup the path from a direct dependency to {@code dependencyAtom}
+     * @param dependencyAtom which to print its path
+     * @return a path to the {@code dependencyAtom}
+     */
+    public static String getPathAsString(Vertex<Dep> vertex, DependencyAtom dependencyAtom) {
         if (vertex == null) {
             return null;
         }
