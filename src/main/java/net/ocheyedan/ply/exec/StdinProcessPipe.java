@@ -1,9 +1,6 @@
 package net.ocheyedan.ply.exec;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -27,8 +24,11 @@ final class StdinProcessPipe extends Thread {
             this.processStdin = processStdin;
         }
 
+        // TODO - should only slurp input if requested by our child process
+        // TODO - otherwise, if ply is being invoked from within the context of a script (loop) reading input
+        // TODO - ply will consume the input from the parent process
         @Override public void run() {
-            byte[] buffer = new byte[32]; // optimize for use TODO - fine now but if piping output this should be upped
+            byte[] buffer = new byte[4096];
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     int avail = System.in.available();

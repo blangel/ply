@@ -168,7 +168,7 @@ public class FileChangeDetector {
                 throw new AssertionError(ioe);
             }
         }
-        return ""; // error!
+        throw new AssertionError();
     }
 
 }
