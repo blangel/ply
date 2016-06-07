@@ -1,11 +1,23 @@
 package net.ocheyedan.ply;
 
-import org.jasypt.contrib.org.apache.commons.codec_1_3.binary.Base64;
-import org.jasypt.util.text.BasicTextEncryptor;
-
 import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
+import sun.misc.BASE64Encoder;
+import sun.misc.BASE64Decoder;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.PBEParameterSpec;
+import java.security.SecureRandom;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.SecretKey;
+import java.util.Random;
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+import java.lang.RuntimeException;
+
 
 /**
  * User: blangel
@@ -37,6 +49,9 @@ public final class PwdUtil {
 
     private static final Request REQUEST = new Request();
 
+    private static final Random RANDOM = new SecureRandom();
+    private static final char[] PASSWORD = "P1y$".toCharArray();
+
     /**
      * Parses {@code line} and if it starts with {@link #PWD_REQUEST_TOKEN} then strips the prefix and returns
      * a {@link Request} object with the stripped line and value of true for {@link Request#pwd}, otherwise,
@@ -66,11 +81,25 @@ public final class PwdUtil {
      * @return the encrypted value
      */
     public static String encrypt(String value) {
-        BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword("P1y$");
-        String encrypted = textEncryptor.encrypt(value);
-        byte[] base64 = Base64.encodeBase64(encrypted.getBytes(CHARSET));
-        return new String(base64, CHARSET);
+        byte[] salt = new byte[8];
+        RANDOM.nextBytes(salt);
+        try {
+            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+            SecretKey key = keyFactory.generateSecret(new PBEKeySpec(PASSWORD));
+            Cipher pbeCipher = Cipher.getInstance("PBEWithMD5AndDES");
+            pbeCipher.init(Cipher.ENCRYPT_MODE, key, new PBEParameterSpec(salt, 20));
+            byte[] enc = pbeCipher.doFinal(value.getBytes(CHARSET));
+
+            ByteArrayOutputStream saltPlusEnc = new ByteArrayOutputStream();
+            saltPlusEnc.write(salt);
+            saltPlusEnc.write(enc);
+
+            BASE64Encoder encoder = new sun.misc.BASE64Encoder();
+            return encoder.encode(saltPlusEnc.toByteArray());
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Encryption failed: " + e.getMessage());
+        }
     }
 
     /**
@@ -80,10 +109,22 @@ public final class PwdUtil {
      * @return the decrypted value
      */
     public static String decrypt(String value) {
-        byte[] decoded = Base64.decodeBase64(value.getBytes(CHARSET));
-        BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword("P1y$");
-        return textEncryptor.decrypt(new String(decoded, CHARSET));
+        try {
+            BASE64Decoder decoder = new sun.misc.BASE64Decoder();
+
+            byte[] saltPlusEnc = decoder.decodeBuffer(value);
+            byte[] salt = Arrays.copyOfRange(saltPlusEnc, 0, 8);
+            byte[] enc = Arrays.copyOfRange(saltPlusEnc, 8, saltPlusEnc.length);
+
+            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+            SecretKey key = keyFactory.generateSecret(new PBEKeySpec(PASSWORD));
+            Cipher pbeCipher = Cipher.getInstance("PBEWithMD5AndDES");
+            pbeCipher.init(Cipher.DECRYPT_MODE, key, new PBEParameterSpec(salt, 20));
+            return new String(pbeCipher.doFinal(enc), "UTF-8");
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Decryption failed: " + e.getMessage());
+        }
     }
 
     private PwdUtil() { }
