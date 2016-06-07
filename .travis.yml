@@ -1,0 +1,18 @@
+language: java
+jdk:
+  - oraclejdk8
+  - oraclejdk7
+  - openjdk6
+  - openjdk7
+install:
+  - mkdir -p $PWD/opt
+  - pushd $PWD/opt
+  - curl https://s3.amazonaws.com/ply-buildtool/ply.tar | tar xz
+  - popd
+env:
+  - PLY_HOME=$PWD/opt/ply PATH=$PLY_HOME/bin:$PATH
+script:
+  - pushd ply-util
+  - ply install
+  - popd
+  - ply test
