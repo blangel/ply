@@ -1,6 +1,8 @@
 Overview
 --------
 
+[![Build Status](https://travis-ci.org/blangel/ply.svg?branch=master)](https://travis-ci.org/blangel/ply)
+
 Ply is a build tool.  It is sensible, fast and a joy to use. 
 
 Features
