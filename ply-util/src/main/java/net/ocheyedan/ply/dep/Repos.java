@@ -5,7 +5,9 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.props.*;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.util.*;
 
 /**
@@ -105,6 +107,10 @@ public final class Repos {
         String localRepoArtifactPath = Deps.getDependencyArtifactPathForRepo(dependencyAtom, localRepo);
         File localRepoArtifact = new File(localRepoArtifactPath);
         FileUtil.copy(artifact, localRepoArtifact);
+        // create a sha1 hash of artifact
+        File localRepoArtifactChecksum = new File(String.format("%s.chksum", localRepoArtifactPath));
+        String checksum = FileUtil.getSha1Hash(localRepoArtifact);
+        FileUtil.copy(new ByteArrayInputStream(getBytes(checksum)), localRepoArtifactChecksum);
 
         File localRepoDependenciesFile = FileUtil.fromParts(localRepoDirPath, "dependencies.properties");
         if ((dependenciesFile != null) && dependenciesFile.exists()) {
@@ -113,6 +119,14 @@ public final class Repos {
             // need to override (perhaps there were dependencies but now none.
             PropFile dependencies = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
             return PropFiles.store(dependencies, localRepoDependenciesFile.getPath(), true);
+        }
+    }
+
+    private static byte[] getBytes(String value) {
+        try {
+            return value.getBytes("UTF8");
+        } catch (UnsupportedEncodingException uee) {
+            throw new AssertionError(uee);
         }
     }
 

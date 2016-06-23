@@ -123,6 +123,7 @@ public final class FileUtil {
             }
             return true;
         } catch (IOException ioe) {
+            Output.print("^error^ Could not copy stream to %s", to.getAbsolutePath());
             Output.print(ioe);
         } finally {
             try {

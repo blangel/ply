@@ -7,10 +7,7 @@ import org.junit.runner.Description;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * User: blangel
@@ -39,8 +36,8 @@ public class Junit4RunListener extends RunListener {
 
     public Junit4RunListener(AllFilterCollectPad padding) {
         this.padding = padding;
-        this.potentialStatements = new ArrayList<String>();
-        this.failureStatements = new ArrayList<String>();
+        this.potentialStatements = new LinkedList<String>();
+        this.failureStatements = new LinkedList<String>();
     }
 
     public void printFailures() {
@@ -79,6 +76,10 @@ public class Junit4RunListener extends RunListener {
             Failure failure = failures.get(description);
             String message = createEasilyIdentifiableDiffMessage(failure, failure.getMessage());
             String statement = String.format("%s^no_prefix^%s^red^^i^ %s FAILURE %s ^r^ %s", PrivilegedPrintStream.PRIVILEGED_PREFIX, getPad(description), failureChar, failureChar, message);
+            String descriptionStatement = getDescriptionPrintStatement(description);
+            if (!failureStatements.contains(descriptionStatement)) {
+                failureStatements.add(descriptionStatement);
+            }
             failureStatements.addAll(potentialStatements);
             failureStatements.add(statement);
             System.out.println(statement);
@@ -114,9 +115,12 @@ public class Junit4RunListener extends RunListener {
     private void handleNewDescription(Description description) {
         if (!methodNameOffsets.containsKey(description.getClassName())) {
             methodNameOffsets.put(description.getClassName(), 0);
-            potentialStatements.add(String.format("%s^b^%s^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, description.getClassName()));
             PrivilegedOutput.print("^b^%s^r^", description.getClassName());
         }
+    }
+
+    private String getDescriptionPrintStatement(Description description) {
+        return String.format("%s^b^%s^r^", PrivilegedPrintStream.PRIVILEGED_PREFIX, description.getClassName());
     }
 
     private String getPad(Description description) {
