@@ -5,6 +5,9 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.Map;
 
@@ -320,6 +323,34 @@ public final class FileUtil {
             return path.substring(5);
         }
         return path;
+    }
+
+    public static String getSha1Hash(File file) {
+        InputStream fileInputStream = null;
+        try {
+            MessageDigest hash = MessageDigest.getInstance("SHA1");
+            fileInputStream = new BufferedInputStream(new FileInputStream(file));
+            DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, hash);
+            byte[] buffer = new byte[8192];
+            while (digestInputStream.read(buffer, 0, buffer.length) != -1) { }
+            byte[] sha1 = hash.digest();
+            return BitUtil.toHexString(sha1);
+        } catch (NoSuchAlgorithmException nsae) {
+            throw new AssertionError(nsae);
+        } catch (FileNotFoundException fnfe) {
+            throw new AssertionError(fnfe);
+        } catch (IOException ioe) {
+            Output.print(ioe);
+        } finally {
+            try {
+                if (fileInputStream != null) {
+                    fileInputStream.close();
+                }
+            } catch (IOException ioe) {
+                throw new AssertionError(ioe);
+            }
+        }
+        throw new AssertionError();
     }
 
     private FileUtil() { }

@@ -1,14 +1,10 @@
 package net.ocheyedan.ply.script;
 
-import net.ocheyedan.ply.BitUtil;
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.props.*;
 
 import java.io.*;
-import java.security.DigestInputStream;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -96,7 +92,7 @@ public class FileChangeDetector {
                         String timeFileLastChanged = String.valueOf(file.lastModified());
                         String sha1Hash =
                                 (computeSha1Hash
-                                        ? (sha1HashRef.get() == null ? computeSha1Hash(file) : sha1HashRef.get())
+                                        ? (sha1HashRef.get() == null ? FileUtil.getSha1Hash(file) : sha1HashRef.get())
                                         : "not-computed");
                         into.add(path, timeFileLastChanged + "," + sha1Hash);
                         changedList.add(path, "");
@@ -128,7 +124,7 @@ public class FileChangeDetector {
             }
             if (computeSha1Hash) {
                 String oldHashAsHex = split[1];
-                String asHex = computeSha1Hash(file);
+                String asHex = FileUtil.getSha1Hash(file);
                 computedSha1.set(asHex);
                 return !asHex.equals(oldHashAsHex);
             } else {
@@ -141,34 +137,6 @@ public class FileChangeDetector {
             Output.print("^warn^ corrupted changed-meta%s.properties file, recomputing.", scope.getFileSuffix());
             return true;
         }
-    }
-
-    private static String computeSha1Hash(File file) {
-        InputStream fileInputStream = null;
-        try {
-            MessageDigest hash = MessageDigest.getInstance("SHA1");
-            fileInputStream = new BufferedInputStream(new FileInputStream(file));
-            DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, hash);
-            byte[] buffer = new byte[8192];
-            while (digestInputStream.read(buffer, 0, 8192) != -1) { }
-            byte[] sha1 = hash.digest();
-            return BitUtil.toHexString(sha1);
-        } catch (NoSuchAlgorithmException nsae) {
-            throw new AssertionError(nsae);
-        } catch (FileNotFoundException fnfe) {
-            throw new AssertionError(fnfe);
-        } catch (IOException ioe) {
-            Output.print(ioe);
-        } finally {
-            try {
-                if (fileInputStream != null) {
-                    fileInputStream.close();
-                }
-            } catch (IOException ioe) {
-                throw new AssertionError(ioe);
-            }
-        }
-        throw new AssertionError();
     }
 
 }

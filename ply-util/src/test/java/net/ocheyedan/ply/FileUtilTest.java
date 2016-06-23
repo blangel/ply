@@ -206,4 +206,12 @@ public class FileUtilTest {
         assertTrue(path.endsWith(".tmp"));
     }
 
+    @Test
+    public void getSha1Hash() throws IOException {
+        File file = File.createTempFile("foo", "bar");
+        String hash = FileUtil.getSha1Hash(file);
+        assertEquals("DA39A3EE5E6B4B0D3255BFEF95601890AFD80709", hash);
+    }
+
+
 }
