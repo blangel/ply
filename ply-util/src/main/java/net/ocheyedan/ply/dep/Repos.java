@@ -64,69 +64,73 @@ public final class Repos {
     /**
      * Copies the project artifact ({@literal project.artifact.name} from {@literal project.build.dir}) into
      * {@code localRepo}
+     * @param scope for which to pull the necessary properties
      * @param localRepo into which to install the artifact
      * @return true on success, false if the artifact does not exist or there was an error saving
      */
-    public static boolean install(RepositoryAtom localRepo) {
-        String artifactName = Props.get("artifact.name", Context.named("project")).value();
+    public static boolean install(Scope scope, RepositoryAtom localRepo) {
+        String artifactName = Props.get("artifact.name", Context.named("project"), scope).value();
         DependencyAtom dependencyAtom = Deps.getProjectDep();
-        return install(localRepo, artifactName, dependencyAtom);
+        return install(scope, localRepo, artifactName, dependencyAtom);
     }
 
     /**
      * Copies the {@code artifactName} from {@literal project.build.dir} into {@code localRepo}
+     * @param scope for which to pull the necessary properties
      * @param localRepo into which to install the artifact
      * @param artifactName of the file to copy
      * @return true on success, false if the artifact does not exist or there was an error saving
      */
-    public static boolean install(RepositoryAtom localRepo, String artifactName, DependencyAtom dependencyAtom) {
-        String buildDirPath = Props.get("build.dir", Context.named("project")).value();
+    public static boolean install(Scope scope, RepositoryAtom localRepo, String artifactName, DependencyAtom dependencyAtom) {
+        String buildDirPath = Props.get("build.dir", Context.named("project"), scope).value();
         File artifact = FileUtil.fromParts(buildDirPath, artifactName);
         if (!artifact.exists()) {
             return false;
         }
 
-        String plyProjectDirPath = Props.get("project.dir", Context.named("ply")).value();
-        File dependenciesFile = FileUtil.fromParts(plyProjectDirPath, "config", "dependencies.properties");
+        String plyProjectDirPath = Props.get("project.dir", Context.named("ply"), scope).value();
+        File dependenciesFile = FileUtil.fromParts(plyProjectDirPath, "config", String.format("dependencies%s.properties", scope.getFileSuffix()));
 
-        return installArtifact(artifact, dependenciesFile, dependencyAtom, localRepo);
+        return installArtifact(scope, artifact, dependenciesFile, dependencyAtom, localRepo);
     }
 
     /**
      * Copies the project artifact ({@literal project.artifact.name} from {@literal project.build.dir}) into
      * {@code localRepo}
+     * @param scope for which to pull the necessary properties
      * @param artifact from which to copy into {@code localRepo}
      * @param dependenciesFile the dependencies file (or empty) associated with {@code artifact}
      * @param dependencyAtom representing meta-information about {@code artifact}
      * @param localRepo into which to install the {@code artifact}
      * @return true on success, false if the artifact does not exist or there was an error saving
      */
-    public static boolean installArtifact(File artifact, File dependenciesFile, DependencyAtom dependencyAtom,
+    public static boolean installArtifact(Scope scope, File artifact, File dependenciesFile, DependencyAtom dependencyAtom,
                                           RepositoryAtom localRepo) {
         String localRepoDirPath = Deps.getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
         String localRepoArtifactPath = Deps.getDependencyArtifactPathForRepo(dependencyAtom, localRepo);
         File localRepoArtifact = new File(localRepoArtifactPath);
-        FileUtil.copy(artifact, localRepoArtifact);
-        // create a sha1 hash of artifact
-        File localRepoArtifactChecksum = new File(String.format("%s.chksum", localRepoArtifactPath));
-        String checksum = FileUtil.getSha1Hash(localRepoArtifact);
-        FileUtil.copy(new ByteArrayInputStream(getBytes(checksum)), localRepoArtifactChecksum);
+        if (!FileUtil.copy(artifact, localRepoArtifact)) {
+            return false;
+        }
+        String artifactsScopeName = Props.get("artifacts.scope", Context.named("project"), scope).value();
+        Scope artifactsScope = Scope.named(artifactsScopeName);
+        PropFile checksum = new PropFile(Context.named("checksum"), artifactsScope, PropFile.Loc.Local);
+        File localRepoChecksumFile = FileUtil.fromParts(localRepoDirPath, String.format("checksum%s.properties", artifactsScope.getFileSuffix()));
+        String artifactChecksum = FileUtil.getSha1Hash(localRepoArtifact);
+        checksum.add("artifact", artifactChecksum);
+        // TODO - make a sha1 of all dependency checksum
+        checksum.add("timestamp", String.format("%d", System.currentTimeMillis()));
+        if (!PropFiles.store(checksum, localRepoChecksumFile.getPath(), true)) {
+            return false;
+        }
 
-        File localRepoDependenciesFile = FileUtil.fromParts(localRepoDirPath, "dependencies.properties");
+        File localRepoDependenciesFile = FileUtil.fromParts(localRepoDirPath, String.format("dependencies%s.properties", artifactsScope.getFileSuffix()));
         if ((dependenciesFile != null) && dependenciesFile.exists()) {
             return FileUtil.copy(dependenciesFile, localRepoDependenciesFile);
         } else {
             // need to override (perhaps there were dependencies but now none.
-            PropFile dependencies = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
+            PropFile dependencies = new PropFile(Context.named("dependencies"), artifactsScope, PropFile.Loc.Local);
             return PropFiles.store(dependencies, localRepoDependenciesFile.getPath(), true);
-        }
-    }
-
-    private static byte[] getBytes(String value) {
-        try {
-            return value.getBytes("UTF8");
-        } catch (UnsupportedEncodingException uee) {
-            throw new AssertionError(uee);
         }
     }
 

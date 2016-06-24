@@ -485,22 +485,31 @@ public final class Deps {
         List<RepositoryAtom> nonLocalRepos = repositoryRegistry.remoteRepositories;
         for (RepositoryAtom remoteRepo : nonLocalRepos) {
             String remotePathDir = getDependencyDirectoryPathForRepo(dependencyAtom, remoteRepo);
-            String unauthRemotePath = FileUtil.pathFromParts(remotePathDir, dependencyAtom.getArtifactName());
-            Auth auth = remoteRepo.getAuth();
-            String remotePath;
-            Map<String, String> headers = Collections.emptyMap();
-            if (auth != null) {
-                remotePath = auth.getArtifactPath(remotePathDir, dependencyAtom);
-                headers = auth.getHeaders();
-            } else {
-                remotePath = unauthRemotePath;
-            }
-            URL remoteUrl = getUrl(remotePath);
-            if (FileUtil.download(remoteUrl, headers, localDepFile, dependencyAtom.toString(), remoteRepo.toString(), true)) {
+            if (downloadDependencyFromRemoteRepo(remoteRepo, remotePathDir, dependencyAtom, localDepFile)) {
                 return resolveDependency(dependencyAtom, classifier, remoteRepo, remotePathDir, localPaths.localDirPath);
             }
         }
         return null;
+    }
+
+    private static boolean downloadDependencyFromRemoteRepo(RepositoryAtom remoteRepo, String remotePathDir,
+                                                            DependencyAtom dependencyAtom, File localDepFile) {
+        String unauthRemotePath = FileUtil.pathFromParts(remotePathDir, dependencyAtom.getArtifactName());
+        Auth auth = remoteRepo.getAuth();
+        String remotePath;
+        Map<String, String> headers = Collections.emptyMap();
+        if (auth != null) {
+            remotePath = auth.getArtifactPath(remotePathDir, dependencyAtom);
+            headers = auth.getHeaders();
+        } else {
+            remotePath = unauthRemotePath;
+        }
+        URL remoteUrl = getUrl(remotePath);
+        if (!FileUtil.download(remoteUrl, headers, localDepFile, dependencyAtom.toString(), remoteRepo.toString(), true)) {
+            return false;
+        }
+        // TODO - verify checksum
+        return true;
     }
 
     /**

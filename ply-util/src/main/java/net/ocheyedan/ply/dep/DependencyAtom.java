@@ -93,7 +93,7 @@ public class DependencyAtom {
     }
 
     /**
-     * Appends {@code classifier} to the artifact name aver the version specification and before the packaging.
+     * Appends {@code classifier} to the artifact name after the version specification and before the packaging.
      * For instance a dependency of {@literal net.ocheyedan:ply:1.0} (with default jar packaging) normally
      * has an artifact name of {@literal ply-1.0.jar} but with a classifier (say {@literal sources}) would have an
      * artifact name of {@literal ply-1.0-sources.jar}.

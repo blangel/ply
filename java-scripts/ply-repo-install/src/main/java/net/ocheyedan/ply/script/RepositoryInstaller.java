@@ -43,7 +43,7 @@ public class RepositoryInstaller {
     public static void main(String[] args) {
         try {
             Scope scope = Scope.named(Props.get("scope", Context.named("ply")).value());
-            String localRepoProp = Props.get("localRepo", Context.named("depmngr")).value();
+            String localRepoProp = Props.get("localRepo", Context.named("depmngr"), scope).value();
             RepositoryAtom localRepo = RepositoryAtom.parse(localRepoProp);
             if (localRepo == null) {
                 Output.print("^error^ Local repository ^b^%s^r^ doesn't exist.", localRepoProp);
@@ -93,7 +93,7 @@ public class RepositoryInstaller {
         Output.print("^info^ Copying ^b^%s^r^ into ^b^%s^r^.", file, localRepo.getPropertyName());
         Output.print("^info^ using namespace=^b^%s^r^ | name=^b^%s^r^ | version=^b^%s^r^ | packaging=^b^%s^r^ | classifier=^b^%s^r^ | dependencies-file=^b^%s^r^",
                      namespace, name, version, packaging, classifier, dependenciesFilePath);
-        if (Repos.installArtifact(artifact, dependenciesFile, dependencyAtom, localRepo)) {
+        if (Repos.installArtifact(scope, artifact, dependenciesFile, dependencyAtom, localRepo)) {
             Output.print("Successfully copied ^b^%s^r^ into ^b^%s^r^.", file, localRepo.getPropertyName());
         } else {
             Output.print("^error^ failed to copy ^b^%s^r^ into ^b^%s^r^.", file, localRepo.getPropertyName());
@@ -101,8 +101,7 @@ public class RepositoryInstaller {
     }
 
     private static void installProject(RepositoryAtom localRepo, Scope scope) {
-        // TODO - use scope?! as classifier?
-        if (!Repos.install(localRepo)) {
+        if (!Repos.install(scope, localRepo)) {
             Output.print("^warn^ Could not copy artifact into local repository.");
             return;
         }
@@ -115,7 +114,7 @@ public class RepositoryInstaller {
             artifactName = artifactName.substring(0, artifactName.lastIndexOf(".")) + "-sources" + artifactName.substring(artifactName.lastIndexOf("."));
             DependencyAtom dependencyAtom = Deps.getProjectDep();
             dependencyAtom = dependencyAtom.withClassifier("sources");
-            if (!Repos.install(localRepo, artifactName, dependencyAtom)) {
+            if (!Repos.install(scope, localRepo, artifactName, dependencyAtom)) {
                 Output.print("^warn^ Could not copy source artifact into local repository [ %s ].", artifactName);
             }
         }
