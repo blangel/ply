@@ -447,3 +447,11 @@ METHOD=download=https://raw.github.com/blangel/ply/48d444aaac3c758e197b17694fa1f
 METHOD=download=https://raw.github.com/blangel/ply/48d444aaac3c758e197b17694fa1f8fd5f9923b8/dist/ply/scripts/ply-test-junit-1.0.jar to scripts/ply-test-junit-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/48d444aaac3c758e197b17694fa1f8fd5f9923b8/dist/ply/version to version
 VERSION=1.0_84
+OUTPUT=Downloading update to ply-util for scoped artifacts within repo installation.
+OUTPUT=Downloading update to have timestamp included in checksum
+METHOD=download=https://raw.github.com/blangel/ply/e1e2b962e1d1247e820dbb9fe529f161374b2870/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/e1e2b962e1d1247e820dbb9fe529f161374b2870/dist/ply/scripts/ply-repo-install-1.0.jar to scripts/ply-repo-install-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/e1e2b962e1d1247e820dbb9fe529f161374b2870/dist/ply/config/project.properties to config/project.properties
+METHOD=download=https://raw.github.com/blangel/ply/e1e2b962e1d1247e820dbb9fe529f161374b2870/dist/ply/config/project.test.properties to config/project.test.properties
+METHOD=download=https://raw.github.com/blangel/ply/e1e2b962e1d1247e820dbb9fe529f161374b2870/dist/ply/version to version
+VERSION=1.0_85
