@@ -1,8 +1,6 @@
 #!/bin/sh
 
 localrepo=${ply_depmngr_localRepo/\~/$HOME}
-builddir=$ply_project_build_dir
-projectdir=$ply_ply_project_dir
 artifactname=$ply_project_artifact_name
 namespace=$ply_project_namespace
 name=$ply_project_name
@@ -28,10 +26,10 @@ fi
 
 mkdir -p $gitrepo/$namespace/$name/$version
 
-cp $builddir/$artifactname $gitrepo/$namespace/$name/$version/
+cp $localrepo/$namespace/$name/$version/$artifactname $gitrepo/$namespace/$name/$version/
 
 if [ $? != 0 ]; then
-    echo "Could not copy artifact [ $builddir/$artifactname ] into local git repository [ $gitrepo/$namespace/$name/$version ]."
+    echo "Could not copy artifact [ $localrepo/$namespace/$name/$version/$artifactname ] into local git repository [ $gitrepo/$namespace/$name/$version ]."
     exit 1
 fi
 
@@ -40,7 +38,7 @@ depfile="dependencies.properties"
 if [[ ! -z "$artifactslabel" ]]; then
     depfile="dependencies.$artifactslabel.properties"
 fi
-cp $projectdir/config/$depfile $gitrepo/$namespace/$name/$version/
+cp $localrepo/$namespace/$name/$version/$depfile $gitrepo/$namespace/$name/$version/
 
 # no need to check for success, dependencies file may not exist and that's ok
 
@@ -61,7 +59,7 @@ if [[ -e  "$artifactslabelfilepath" ]]; then
     cp "$artifactslabelfilepath" $gitrepo/$namespace/$name/$version/
 fi
 
-cp $builddir/$artifactsourcesname $gitrepo/$namespace/$name/$version/
+cp $localrepo/$namespace/$name/$version/$artifactsourcesname $gitrepo/$namespace/$name/$version/
 
 # no need to check for success, source file may not exist and that's ok
 
