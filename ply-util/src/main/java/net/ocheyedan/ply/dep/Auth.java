@@ -42,11 +42,19 @@ public interface Auth {
     String getArtifactPath(String remotePathDir, DependencyAtom dependencyAtom);
 
     /**
+     * Note for some implementations this will delegate to {@linkplain #getPath(String, String)}
      * @param remotePathDir path into the remote repository where the dependencies file is located
      * @param name represents the dependencies file for which to get the path (typically {@literal dependencies.properties})
      * @return the path to the dependencies file found within {@code remotePathDir} on the remote repository
      */
     String getDependenciesPath(String remotePathDir, String name);
+
+    /**
+     * @param remotePathDir path into the remote repository where the {@code fileName} file is located
+     * @param fileName within the repository
+     * @return the path to the {@code fileName} within {@code remotePathDir} on the remote repository
+     */
+    String getPath(String remotePathDir, String fileName);
 
     /**
      * @return {@literal http} headers necessary when interacting with the remote repository

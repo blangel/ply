@@ -43,9 +43,11 @@ public class JarPackageScript extends ZipPackageScript {
     @Override protected void preprocess() {
         createManifestFile();
         String buildDir = getBuildDir();
-        File dependenciesFile = createDependenciesFile(buildDir);
+        String artifactsScopeName = Props.get("artifacts.label", Context.named("project")).value();
+        Scope artifactsScope = Scope.named(artifactsScopeName);
+        File dependenciesFile = createDependenciesFile(artifactsScope, buildDir);
         if (dependenciesFile == null) {
-            Output.print("^error^ Error creating the %sMETA-INF/ply/dependencies.properties file.", buildDir);
+            Output.print("^error^ Error creating the %sMETA-INF/ply/dependencies%s.properties file.", buildDir, artifactsScope.getFileSuffix());
             System.exit(1);
         }
     }
@@ -181,17 +183,18 @@ public class JarPackageScript extends ZipPackageScript {
      * to {@literal project[.scope].build.dir}/META-INF/ply/dependencies.properties stripping away the property values (as
      * the values are the resolved local-repo paths to the dependencies).  If there is no {@literal resolved-deps.properties}
      * file then a blank file will be copied to {@literal project[.scope].build.dir}/META-INF/ply/dependencies.properties.
+     * @param artifactsScope the artifacts.scope (see project.properties's artifacts.scope)
      * @param buildDirPath the build directory path (assumed to end in {@link File#separator}).
      * @return the handle to the created dependencies.properties file or null if an error occurred while creating the file.
      */
-    private static File createDependenciesFile(String buildDirPath) {
-        // read in resolved-deps.properties file
+    private static File createDependenciesFile(Scope artifactsScope, String buildDirPath) {
+        // read in resolved-deps.properties file (scope has already been accounted for when creating)
         PropFile dependencies = new PropFile(Context.named("dependencies"), PropFile.Loc.System);
         PropFile resolvedDeps = Deps.getResolvedProperties(false);
         for (PropFile.Prop resolvedDep : resolvedDeps.props()) {
             dependencies.add(resolvedDep.name, "");
         }
-        File metaInfPlyDepFile = FileUtil.fromParts(buildDirPath, "META-INF", "ply", "dependencies.properties");
+        File metaInfPlyDepFile = FileUtil.fromParts(buildDirPath, "META-INF", "ply", String.format("dependencies%s.properties", artifactsScope.getFileSuffix()));
         PropFiles.store(dependencies, metaInfPlyDepFile.getPath(), true);
         return metaInfPlyDepFile;
     }

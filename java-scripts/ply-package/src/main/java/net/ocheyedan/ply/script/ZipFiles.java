@@ -3,6 +3,7 @@ package net.ocheyedan.ply.script;
 import net.ocheyedan.ply.Output;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -31,13 +32,15 @@ public final class ZipFiles {
         if ((zip == null) || (intoZip == null)) {
             return;
         }
+        Set<String> duplicateWarnings = new HashSet<String>();
         ZipEntry entry;
         int len; byte[] buf = new byte[1024];
         while ((entry = zip.getNextEntry()) != null) {
             String entryName = entry.getName();
             if (!existing.add(entryName)) {
-                if (!entry.isDirectory() && !"META-INF/MANIFEST.MF".equals(entryName)
-                        && !"META-INF/ply/dependencies.properties".equals(entryName)) {
+                if (duplicateWarnings.add(entryName)
+                        && !entry.isDirectory() && !"META-INF/MANIFEST.MF".equals(entryName)
+                        && ((entryName != null) && !entryName.startsWith("META-INF/ply/dependencies."))) {
                     Output.print("^warn^ Duplicate entry ^b^%s^r^ skipped.", entryName);
                 }
                 continue;

@@ -7,6 +7,7 @@ import net.ocheyedan.ply.props.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 
@@ -112,8 +113,18 @@ public final class Repos {
         if (!FileUtil.copy(artifact, localRepoArtifact)) {
             return false;
         }
-        String artifactsScopeName = Props.get("artifacts.scope", Context.named("project"), scope).value();
+        String artifactsScopeName = Props.get("artifacts.label", Context.named("project"), scope).value();
         Scope artifactsScope = Scope.named(artifactsScopeName);
+        if (!Scope.Default.equals(artifactsScope)) {
+            String artifactsScopeFile = String.format("%s.artifacts.label", dependencyAtom.getArtifactName());
+            File localRepoArtifactsScopePath = FileUtil.fromParts(localRepoDirPath, artifactsScopeFile);
+            PropFile artifactsScopePropFile = new PropFile(Context.named(artifactsScopeFile), scope, PropFile.Loc.Local);
+            artifactsScopePropFile.add("artifacts.label", artifactsScopeName);
+            if (!PropFiles.store(artifactsScopePropFile, localRepoArtifactsScopePath.getPath(), true)) {
+                return false;
+            }
+        }
+
         PropFile checksum = new PropFile(Context.named("checksum"), artifactsScope, PropFile.Loc.Local);
         File localRepoChecksumFile = FileUtil.fromParts(localRepoDirPath, String.format("checksum%s.properties", artifactsScope.getFileSuffix()));
         String artifactChecksum = FileUtil.getSha1Hash(localRepoArtifact);
@@ -131,6 +142,14 @@ public final class Repos {
             // need to override (perhaps there were dependencies but now none.
             PropFile dependencies = new PropFile(Context.named("dependencies"), artifactsScope, PropFile.Loc.Local);
             return PropFiles.store(dependencies, localRepoDependenciesFile.getPath(), true);
+        }
+    }
+
+    private static InputStream toInputStream(String value) {
+        try {
+            return new ByteArrayInputStream(value.getBytes("UTF8"));
+        } catch (UnsupportedEncodingException uee) {
+            throw new AssertionError(uee);
         }
     }
 

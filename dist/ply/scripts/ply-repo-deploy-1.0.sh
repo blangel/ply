@@ -8,6 +8,7 @@ name=$ply_project_name
 version=$ply_project_version
 scope=$ply_ply_scope
 packaging=$ply_project_packaging
+artifactslabel=$ply_project_artifacts_label
 artifactsourcesname="$name-$version-sources.$packaging"
 gitrepo=$ply_deploy_git
 gitpush=$ply_deploy_git_push
@@ -33,11 +34,26 @@ if [ $? != 0 ]; then
     exit 1
 fi
 
+# copy dependencies file
 depfile="dependencies.properties"
-if [[ ! -z "$scope" ]]; then
-    depfile="dependencies.$scope.properties"
+if [[ ! -z "$artifactslabel" ]]; then
+    depfile="dependencies.$artifactslabel.properties"
 fi
 cp $projectdir/config/$depfile $gitrepo/$namespace/$name/$version/
+
+# no need to check for success, dependencies file may not exist and that's ok
+
+# copy checksum file
+checksumfile="checksum.properties"
+if [[ ! -z "$artifactslabel" ]]; then
+    checksumfile="checksum.$artifactslabel.properties"
+fi
+cp $projectdir/config/$checksumfile $gitrepo/$namespace/$name/$version/
+
+# no need to check for success, dependencies file may not exist and that's ok
+
+# copy artifacts-label file (if present)
+cp $builddir/$artifactsourcesname.$artifactslabel $gitrepo/$namespace/$name/$version/
 
 # no need to check for success, dependencies file may not exist and that's ok
 

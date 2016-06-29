@@ -53,7 +53,11 @@ final class BasicAuth implements Auth {
     }
 
     @Override public String getDependenciesPath(String remotePathDir, String name) {
-        return FileUtil.pathFromParts(remotePathDir, name);
+        return getPath(remotePathDir, name);
+    }
+
+    @Override public String getPath(String remotePathDir, String fileName) {
+        return FileUtil.pathFromParts(remotePathDir, fileName);
     }
 
     @Override public Map<String, String> getHeaders() {

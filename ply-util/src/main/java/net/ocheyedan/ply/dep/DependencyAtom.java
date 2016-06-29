@@ -132,6 +132,21 @@ public class DependencyAtom {
     }
 
     /**
+     * @return the classifier or null if there is none
+     */
+    public String getClassifier() {
+        if (artifactName == null) {
+            return null;
+        }
+        String packaging = getSyntheticPackaging();
+        String nonClassifierArtifact = composeArtifact(name, version, null, packaging);
+        if (artifactName.equals(nonClassifierArtifact)) {
+            return null;
+        }
+        return artifactName.replace(nonClassifierArtifact.replace("." + packaging, ""), "").replace("." + packaging, "").substring(1);
+    }
+
+    /**
      * @return the packaging of the dependency (either {@link #DEFAULT_PACKAGING} or the extension of {@link #artifactName}
      *         if {@link #artifactName} is not null).
      */

@@ -525,13 +525,14 @@ public final class Deps {
      */
     private static Dep resolveDependency(DependencyAtom dependencyAtom, String classifier, RepositoryAtom repositoryAtom,
                                          String repoDirPath, String saveToRepoDirPath) {
-        PropFile dependenciesFile = getDependenciesFile(dependencyAtom, repositoryAtom, repoDirPath);
+        AtomicReference<String> dependenciesFileName = new AtomicReference<String>("dependencies.properties");
+        PropFile dependenciesFile = getDependenciesFile(dependencyAtom, repositoryAtom, repoDirPath, dependenciesFileName);
         if (dependenciesFile == null) {
             Output.print("^dbug^ No dependencies file found for %s in repo %s.", dependencyAtom.toString(), repositoryAtom.toString());
             dependenciesFile = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
         }
         // TODO - only store if necessary (also add force-update command like Maven's -U)
-        storeDependenciesFile(dependenciesFile, saveToRepoDirPath);
+        storeDependenciesFile(dependenciesFile, saveToRepoDirPath, dependenciesFileName.get());
         List<DependencyAtom> dependencyAtoms = parse(dependenciesFile, classifier);
         return new Dep(dependencyAtom, dependencyAtoms, saveToRepoDirPath);
     }
@@ -833,18 +834,11 @@ public final class Deps {
     }
 
     private static PropFile getDependenciesFile(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
-                                                  String repoDepDir) {
+                                                String repoDepDir, AtomicReference<String> dependenciesFileName) {
         if (repositoryAtom.getResolvedType() == RepositoryAtom.Type.ply) {
-            Auth auth = repositoryAtom.getAuth();
-            String path;
-            Map<String, String> headers = Collections.emptyMap();
-            if (auth != null) {
-                path = auth.getDependenciesPath(repoDepDir, "dependencies.properties");
-                headers = auth.getHeaders();
-            } else {
-                path = FileUtil.pathFromParts(repoDepDir, "dependencies.properties");
-            }
-            return getDependenciesFromPlyRepo(path, headers);
+            Scope artifactsScope = getArtifactsLabelAsScope(dependencyAtom, repositoryAtom, repoDepDir);
+            dependenciesFileName.set(String.format("dependencies%s.properties", artifactsScope.getFileSuffix()));
+            return getRepoFile(repositoryAtom, repoDepDir, dependenciesFileName.get(), true);
         } else {
             // maven pom files are never saved with classifiers
             // @see 'classifier' under 'dependencies' in 'Pom Relationships' - http://maven.apache.org/pom.html
@@ -854,7 +848,30 @@ public final class Deps {
         }
     }
 
-    private static PropFile getDependenciesFromPlyRepo(String urlPath, Map<String, String> headers) {
+    private static Scope getArtifactsLabelAsScope(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom, String repoDepDir) {
+        String artifactsLabelName = String.format("%s.artifacts.label", dependencyAtom.getArtifactName());
+        PropFile file = getRepoFile(repositoryAtom, repoDepDir, artifactsLabelName, false);
+        if (file == null) {
+            return Scope.Default;
+        }
+        String artifactsLabel = file.get("artifacts.label").value();
+        return Scope.named(artifactsLabel);
+    }
+
+    private static PropFile getRepoFile(RepositoryAtom repositoryAtom, String repoDepDir, String fileName, boolean useDependency) {
+        Auth auth = repositoryAtom.getAuth();
+        String path;
+        Map<String, String> headers = Collections.emptyMap();
+        if (auth != null) {
+            path = (useDependency ? auth.getDependenciesPath(repoDepDir, fileName) : auth.getPath(repoDepDir, fileName));
+            headers = auth.getHeaders();
+        } else {
+            path = FileUtil.pathFromParts(repoDepDir, fileName);
+        }
+        return getFileFromPlyRepo(path, headers);
+    }
+
+    private static PropFile getFileFromPlyRepo(String urlPath, Map<String, String> headers) {
         URL url = getUrl(urlPath);
         if (url == null) {
             return null;
@@ -877,8 +894,9 @@ public final class Deps {
         return (mavenPom == null ? new PropFile(Context.named("dependencies"), PropFile.Loc.Local) : mavenPom.dependencies);
     }
 
-    private static void storeDependenciesFile(PropFile transitiveDependencies, String localRepoDepDirPath) {
-        PropFiles.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, "dependencies.properties").replaceAll("\\\\", "/"), true);
+    private static void storeDependenciesFile(PropFile transitiveDependencies, String localRepoDepDirPath,
+                                              String dependenciesFileName) {
+        PropFiles.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, dependenciesFileName).replaceAll("\\\\", "/"), true);
     }
 
     private static String ensureProtocol(String localPath) {

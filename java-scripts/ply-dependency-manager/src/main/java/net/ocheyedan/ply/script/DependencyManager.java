@@ -248,12 +248,13 @@ public class DependencyManager {
             }
             atom = new DependencyAtom(split[0], split[1], null);
         }
-        if (Props.get(atom.getPropertyName(), Context.named("dependencies")).value().isEmpty()) {
+        PropFile dependencies = loadDependenciesFile(scope);
+        Prop existing;
+        if (Props.get(atom.getPropertyName(), Context.named("dependencies"), scope).value().isEmpty()
+                || ((existing = dependencies.remove(atom.getPropertyName())) == null)) {
             Output.print("^warn^ Could not find %sdependency; given %s:%s", scope.getPrettyPrint(), atom.getPropertyName(),
                     atom.getPropertyValue());
         } else {
-            PropFile dependencies = loadDependenciesFile(scope);
-            Prop existing = dependencies.remove(atom.getPropertyName());
             storeDependenciesFile(dependencies, scope);
             Deps.addChangedDependency(scope, Deps.parse(existing));
             Output.print("Removed dependency %s%s", atom.toString(), !Scope.Default.equals(scope) ?
@@ -383,12 +384,10 @@ public class DependencyManager {
     }
 
     private static PropFile getDependencies(Scope scope) {
-        // note, for non-default scoped invocations this is redundant as we add a dependency to the
-        // default scope itself (which via transitive deps will depend upon all the inherited deps anyway).
-        // TODO - is this wrong? essentially saying transitive deps are first level deps for test scope
-        PropFileChain nonScopedDependencies = Props.get(Context.named("dependencies"));
+        PropFileChain scopedDependencyChain = Props.get(Context.named("dependencies"), scope);
         PropFile scopedDependencies = new PropFile(Context.named("dependencies"), scope, PropFile.Loc.Local);
-        if (!scope.name.isEmpty() && "test".equals(scope.name)) {
+        boolean dependUponSelf = Boolean.parseBoolean(Props.get("depend.upon.self", Context.named("project"), scope).value());
+        if (dependUponSelf) {
             // add the project itself as this is not the default scope
             DependencyAtom self = DependencyAtom.parse(Props.get("nonscoped.artifact.name", Context.named("project")).value(), null);
             if (self == null) {
@@ -396,7 +395,7 @@ public class DependencyManager {
             }
             scopedDependencies.add(self.namespace + ":" + self.name, self.version + ":" + self.getArtifactName());
         }
-        for (Prop dependency : nonScopedDependencies.props()) {
+        for (Prop dependency : scopedDependencyChain.props()) {
             scopedDependencies.add(dependency.name, dependency.value());
         }
         return scopedDependencies;

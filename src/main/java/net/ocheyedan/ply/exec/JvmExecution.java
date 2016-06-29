@@ -121,12 +121,15 @@ final class JvmExecution extends Execution {
             if (manifest != null) {
                 mainClass.set(manifest.getMainAttributes().getValue("Main-Class"));
             }
-            JarEntry dependenciesJarEntry = jarFile.getJarEntry("META-INF/ply/dependencies.properties");
+            String artifactsLabelName = Props.get("artifacts.label", Context.named("project"), scope).value();
+            Scope artifactsLabel = Scope.named(artifactsLabelName);
+            JarEntry dependenciesJarEntry = jarFile.getJarEntry(String.format("META-INF/ply/dependencies%s.properties",
+                    artifactsLabel.getFileSuffix()));
             if (dependenciesJarEntry == null) {
                 return null;
             }
             InputStream dependenciesStream = jarFile.getInputStream(dependenciesJarEntry);
-            PropFile dependencies = new PropFile(Context.named("dependencies"), PropFile.Loc.Local);
+            PropFile dependencies = new PropFile(Context.named("dependencies"), PropFile.Loc.Local); // scope not necessary, just a placeholder
             PropFileReader.Default.load(new BufferedReader(new InputStreamReader(dependenciesStream)), dependencies);
             // if there are no dependencies, the 'dependencies.properties' may still exist, just empty; so ignore
             if (dependencies.isEmpty()) {

@@ -220,4 +220,23 @@ public class DependencyAtomTest {
         assertEquals("ply-1.0.zip", transformed.artifactName);
     }
 
+    @Test
+    public void getClassifier() {
+        DependencyAtom dependencyAtom = new DependencyAtom("net.ocheyedan", "ply", "1.0");
+        assertNull(dependencyAtom.getClassifier());
+        DependencyAtom transformed = dependencyAtom.withoutClassifier();
+        assertNull(transformed.getClassifier());
+        transformed = dependencyAtom.withClassifier("foo");
+        assertEquals("foo", transformed.getClassifier());
+
+        transformed = dependencyAtom.withClassifier("sources");
+        assertEquals("sources", transformed.getClassifier());
+
+        transformed = transformed.with("zip");
+        assertEquals("sources", transformed.getClassifier());
+
+        dependencyAtom = dependencyAtom.with("zip");
+        assertNull(dependencyAtom.getClassifier());
+    }
+
 }
