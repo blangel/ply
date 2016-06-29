@@ -1,5 +1,6 @@
 #!/bin/sh
 
+localrepo=${ply_depmngr_localRepo/\~/$HOME}
 builddir=$ply_project_build_dir
 projectdir=$ply_ply_project_dir
 artifactname=$ply_project_artifact_name
@@ -48,14 +49,17 @@ checksumfile="checksum.properties"
 if [[ ! -z "$artifactslabel" ]]; then
     checksumfile="checksum.$artifactslabel.properties"
 fi
-cp $projectdir/config/$checksumfile $gitrepo/$namespace/$name/$version/
 
-# no need to check for success, dependencies file may not exist and that's ok
+checksumfilepath="$localrepo/$namespace/$name/$version/$checksumfile"
+if [[ -e  "$checksumfilepath" ]]; then
+    cp "$checksumfilepath" $gitrepo/$namespace/$name/$version/
+fi
 
-# copy artifacts-label file (if present)
-cp $builddir/$artifactsourcesname.$artifactslabel $gitrepo/$namespace/$name/$version/
-
-# no need to check for success, dependencies file may not exist and that's ok
+# copy artifacts-label file
+artifactslabelfilepath="$localrepo/$namespace/$name/$version/$artifactname.$artifactslabel"
+if [[ -e  "$artifactslabelfilepath" ]]; then
+    cp "$artifactslabelfilepath" $gitrepo/$namespace/$name/$version/
+fi
 
 cp $builddir/$artifactsourcesname $gitrepo/$namespace/$name/$version/
 
