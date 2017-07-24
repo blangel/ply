@@ -1,5 +1,7 @@
 package net.ocheyedan.ply.props;
 
+import net.ocheyedan.ply.Output;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.regex.Matcher;
@@ -26,6 +28,9 @@ public interface PropFileWriter {
         final Pattern commentRegex = Pattern.compile("([^\r\n&&[^\r]&&[^\n]]+)");
         
         @Override public void store(BufferedWriter writer, PropFile propFile) throws IOException {
+            store(writer, propFile, false);
+        }
+        @Override public void store(BufferedWriter writer, PropFile propFile, boolean useFiltered) throws IOException {
             for (PropFile.Prop prop : propFile.props()) {
                 if (!prop.comments().isEmpty()) {
                     Matcher matcher = commentRegex.matcher(prop.comments());
@@ -34,13 +39,14 @@ public interface PropFileWriter {
                         writer.write(String.format("#%s%n", comment));
                     }
                 }
-                String line = escape(prop);
+                String line = escape(prop, useFiltered);
                 writer.write(String.format("%s%n", line));
             }
         }
-        private String escape(PropFile.Prop prop) {
+
+        private String escape(PropFile.Prop prop, boolean useFiltered) {
             String key = escape(prop.name);
-            String value = escape(prop.unfilteredValue);
+            String value = escape(useFiltered ? prop.value() : prop.unfilteredValue);
             return String.format("%s=%s", key, value);
         }
         @SuppressWarnings("fallthrough")
@@ -65,5 +71,15 @@ public interface PropFileWriter {
      * @throws IOException @see {@link BufferedWriter#write(int)}
      */
     void store(BufferedWriter writer, PropFile propFile) throws IOException;
+
+    /**
+     * Caller is responsible for calling {@link java.io.BufferedWriter#close()}.
+     *
+     * @param writer   into which to write the properties of {@code propFile}
+     * @param propFile containing the values which to write to {@code writer}
+     * @param useFiltered if true will use the filtered value of the property value
+     * @throws IOException @see {@link BufferedWriter#write(int)}
+     */
+    void store(BufferedWriter writer, PropFile propFile, boolean useFiltered) throws IOException;
     
 }

@@ -139,7 +139,14 @@ public final class Repos {
 
         File localRepoDependenciesFile = FileUtil.fromParts(localRepoDirPath, String.format("dependencies%s.properties", artifactsScope.getFileSuffix()));
         if ((dependenciesFile != null) && dependenciesFile.exists()) {
-            return FileUtil.copy(dependenciesFile, localRepoDependenciesFile);
+            // first need to filter the file, so load and then write out
+            PropFile propFile = PropFiles.load(dependenciesFile.getAbsolutePath(), false, true);
+            PropFile filtered = new PropFile(Context.named("dependencies"), scope, PropFile.Loc.AdHoc);
+            for (PropFile.Prop prop : propFile.props()) {
+                PropFile.Prop filteredProp = Filter.filter(prop, String.valueOf(System.identityHashCode(Repos.class)), Props.get(scope));
+                filtered.add(filteredProp.name, filteredProp.value());
+            }
+            return PropFiles.store(filtered, PropFileWriter.Default, localRepoDependenciesFile.getAbsolutePath(), true, true);
         } else {
             // need to override (perhaps there were dependencies but now none.
             PropFile dependencies = new PropFile(Context.named("dependencies"), artifactsScope, PropFile.Loc.Local);

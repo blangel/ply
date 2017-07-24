@@ -171,6 +171,21 @@ public final class PropFiles {
      * @return true on success; false otherwise
      */
     public static boolean store(PropFile propFile, PropFileWriter propFileWriter, String to, boolean create) {
+        return store(propFile, propFileWriter, to, create, false);
+    }
+
+    /**
+     * Stores {@code propFile} into {@code to} with the given {@code comment}.  If {@code create} is true
+     * then {@code to} will be created if it does not exist (including necessary directories).
+     *
+     * @param propFile       to store
+     * @param propFileWriter to use to store the {@code propFile} to {@code to}.
+     * @param to             which to store {@code propFile}
+     * @param create         the {@code to} file if it doesn't exist (including it's sub-directories).
+     * @param useFiltered true to use the filtered property value when saving
+     * @return true on success; false otherwise
+     */
+    public static boolean store (PropFile propFile, PropFileWriter propFileWriter, String to,boolean create, boolean useFiltered){
         if ((propFile == null) || (propFileWriter == null) || (to == null)) {
             return false;
         }
@@ -185,7 +200,7 @@ public final class PropFiles {
                 return false;
             }
             writer = new BufferedWriter(new FileWriter(propertiesFile));
-            propFileWriter.store(writer, propFile);
+            propFileWriter.store(writer, propFile, useFiltered);
             return true;
         } catch (FileNotFoundException fnfe) {
             Output.print("Cannot store properties file, %s, it does not exist.", to);
