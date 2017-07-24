@@ -370,6 +370,10 @@ public class MavenPomParser {
                     parseModules(child, parseResult);
                 }
             }
+            // add (non-standard) ${project.parent.version} for filtering
+            if ((parentVersion.get() != null) && !parseResult.mavenProperties.containsKey("project.parent.version")) {
+                parseResult.mavenProperties.put("project.parent.version", parentVersion.get());
+            }
             if (!parseResult.mavenProperties.containsKey("project.groupId")) {
                 parseResult.mavenProperties.put("project.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));
                 parseResult.mavenProperties.put("pom.groupId", (localGroupId != null ? localGroupId : parentGroupId.get()));

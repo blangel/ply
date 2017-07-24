@@ -286,39 +286,14 @@ public final class Init extends Command {
      */
     private static void createDefaultDirectories(File baseDir) {
         File configDir = FileUtil.fromParts(baseDir.getPath(), ".ply", "config");
-        String projectPropsPath = FileUtil.pathFromParts(configDir.getPath(), "project.properties");
-        String projectTestPropsPath = FileUtil.pathFromParts(configDir.getPath(), "project.test.properties");
-        PropFile projectProps = new PropFile(Context.named("project"), Scope.Default, PropFile.Loc.Local);
-        PropFiles.load(projectPropsPath, projectProps, false, false);
-        PropFile projectTestProps = new PropFile(Context.named("project"), Scope.named("test"), PropFile.Loc.Local);
-        PropFiles.load(projectTestPropsPath, projectTestProps, false, false);
+        File projectPropsFile = FileUtil.fromParts(configDir.getPath(), "project.properties");
+        File projectTestPropsFile = FileUtil.fromParts(configDir.getPath(), "project.test.properties");
+        PropFileChain projectProps = Props.get(Context.named("project"), Scope.Default, projectPropsFile, true);
+        PropFileChain projectTestProps = Props.get(Context.named("project"), Scope.named("test"), projectTestPropsFile, true);
         String srcDirPath = projectProps.get("src.dir").value();
         String resDirPath = projectProps.get("res.dir").value();
         String srcTestDirPath = projectTestProps.get("src.dir").value();
         String resTestDirPath = projectTestProps.get("res.dir").value();
-        // if the directory paths are empty, need to load from the system defaults
-        if (srcDirPath.isEmpty() || resDirPath.isEmpty()) {
-            projectPropsPath = FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "project.properties");
-            projectProps = new PropFile(Context.named("project"), Scope.Default, PropFile.Loc.System);
-            PropFiles.load(projectPropsPath, projectProps, false, false);
-            if (srcDirPath.isEmpty()) {
-                srcDirPath = projectProps.get("src.dir").value();
-            }
-            if (resDirPath.isEmpty()) {
-                resDirPath = projectProps.get("res.dir").value();
-            }
-        }
-        if (srcTestDirPath.isEmpty() || resTestDirPath.isEmpty()) {
-            projectTestPropsPath = FileUtil.pathFromParts(PlyUtil.SYSTEM_CONFIG_DIR.getPath(), "project.test.properties");
-            projectTestProps = new PropFile(Context.named("project"), Scope.named("test"), PropFile.Loc.System);
-            PropFiles.load(projectTestPropsPath, projectTestProps, false, false);
-            if (srcTestDirPath.isEmpty()) {
-                srcTestDirPath = projectTestProps.get("src.dir").value();
-            }
-            if (resTestDirPath.isEmpty()) {
-                resTestDirPath = projectTestProps.get("res.dir").value();
-            }
-        }
 
         File srcDir = FileUtil.fromParts(baseDir.getPath(), srcDirPath);
         File resDir = FileUtil.fromParts(baseDir.getPath(), resDirPath);

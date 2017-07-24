@@ -17,14 +17,15 @@ import java.util.Arrays;
  * Date: 10/1/11
  * Time: 12:52 PM
  *
- * If run without parameters; copies the project artifact and its dependencies property file to the local repository.
+ * If run without parameters; copies the project artifact, its dependencies property file and the checksum file
+ * to the local repository.
  * This script has no properties inherit to it but leverages the following properties:
  * {@literal project.build.dir}/{@literal project.artifact.name} - location and name of the artifact to copy.
  * {@literal depmngr.localRepo}/{@literal project.namespace}/{@literal project.name}/{@literal project.version} - location
  * into which to copy the project artifact and its dependencies property file.
  * {@literal ply.project.dir}/config/dependencies.properties - the dependencies file to copy
  *
- * If the artifact doesn't exist at the above location, this script silently exists.
+ * If the artifact doesn't exist at the above location, this script silently exits.
  *
  * If run with parameters; behaves similar to {@literal mvn install-file}.  Must have at least four parameters, in order,
  * {@literal namespace} - namespace of the artifact to install into the local repository.

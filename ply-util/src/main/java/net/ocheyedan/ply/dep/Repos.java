@@ -129,7 +129,9 @@ public final class Repos {
         File localRepoChecksumFile = FileUtil.fromParts(localRepoDirPath, String.format("checksum%s.properties", artifactsScope.getFileSuffix()));
         String artifactChecksum = FileUtil.getSha1Hash(localRepoArtifact);
         checksum.add("artifact", artifactChecksum);
-        // TODO - make a sha1 of all dependency checksum
+        if (!addDependenciesChecksumValues(scope, checksum, dependenciesFile)) {
+            return false;
+        }
         checksum.add("timestamp", String.format("%d", System.currentTimeMillis()));
         if (!PropFiles.store(checksum, localRepoChecksumFile.getPath(), true)) {
             return false;
@@ -145,12 +147,47 @@ public final class Repos {
         }
     }
 
-    private static InputStream toInputStream(String value) {
-        try {
-            return new ByteArrayInputStream(value.getBytes("UTF8"));
-        } catch (UnsupportedEncodingException uee) {
-            throw new AssertionError(uee);
+    private static boolean addDependenciesChecksumValues(Scope scope, PropFile checksum, File dependenciesFile) {
+        PropFile resolvedDependencies = Deps.getResolvedProperties(true);
+        if (resolvedDependencies == null) {
+            if ((dependenciesFile != null) && dependenciesFile.exists()) {
+                Output.print("^error^ Could not find the resolved-deps.properties file; dependencies must be resolved to compute checksum.");
+                return false;
+            } else {
+                return true; // project has no dependencies
+            }
         }
+        for (PropFile.Prop prop : resolvedDependencies.props()) {
+            String sha1;
+            PropFile checksumPropFile = new PropFile(Context.named("checksum"), PropFile.Loc.Local);
+            String checksumFilePath = createChecksumFile(scope, prop.value());
+            if (checksumFilePath == null) {
+                return false;
+            }
+            PropFiles.load(checksumFilePath, checksumPropFile, true);
+            if (checksumPropFile.contains("artifact")) {
+                sha1 = checksumPropFile.get("artifact").value();
+            } else {
+                sha1 = FileUtil.getSha1Hash(new File(prop.value()));
+                checksumPropFile.add("artifact", sha1);
+                PropFiles.store(checksumPropFile, checksumFilePath, true);
+            }
+            checksum.add(prop.name, sha1);
+        }
+        return true;
+    }
+
+    private static String createChecksumFile(Scope scope, String path) {
+        if (path == null) {
+            return null;
+        }
+        int index = path.lastIndexOf(File.separatorChar);
+        if (index == -1) {
+            return null;
+        }
+        String artifactsLabelName = Props.get("artifacts.label", Context.named("project"), scope).value();
+        Scope artifactsLabel = Scope.named(artifactsLabelName);
+        return FileUtil.pathFromParts(path.substring(0, index), String.format("checksum%s.properties", artifactsLabel.getFileSuffix()));
     }
 
     /**

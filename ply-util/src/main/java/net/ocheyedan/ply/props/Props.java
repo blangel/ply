@@ -48,7 +48,19 @@ public final class Props {
      *         {@code configurationDirectory}. The result will never be null. 
      */
     public static Map<Context, PropFileChain> get(Scope scope, File configurationDirectory) {
-        Map<Scope, Map<Context, PropFileChain>> loaded = Loader.load(configurationDirectory);
+        return get(scope, configurationDirectory, false);
+    }
+
+    /**
+     * @param scope                  of the properties to retrieve
+     * @param configurationDirectory the configuration directory from which to load {@link PropFile.Loc#Local}
+     *                               properties
+     * @param ignoreCache            true to ignore all caches and reload from disk
+     * @return a mapping of {@link Context} to {@link PropFileChain} for the given {@code scope} and the given
+     *         {@code configurationDirectory}. The result will never be null.
+     */
+    public static Map<Context, PropFileChain> get (Scope scope, File configurationDirectory, boolean ignoreCache) {
+        Map<Scope, Map<Context, PropFileChain>> loaded = Loader.load(configurationDirectory, ignoreCache);
         if ((loaded == null) || !loaded.containsKey(scope)) {
             if ((loaded != null) && !Scope.Default.equals(scope) && loaded.containsKey(Scope.Default)) {
                 return loaded.get(Scope.Default);
@@ -106,7 +118,20 @@ public final class Props {
      *         {@code configurationDirectory}. The result will never be null, it will be empty if not present.
      */
     public static PropFileChain get(Context context, Scope scope, File configurationDirectory) {
-        Map<Context, PropFileChain> loaded = get(scope, configurationDirectory);
+        return get(context, scope, configurationDirectory, false);
+    }
+
+    /**
+     * @param context                of the properties to retrieve
+     * @param scope                  of the properties to retrieve
+     * @param configurationDirectory the configuration directory from which to load {@link PropFile.Loc#Local}
+     *                               properties
+     * @param ignoreCache            true to ignore cache and load from disk anew (ignoring env variables)
+     * @return the {@link PropFileChain} for the given {@code context}, the given {@code scope} and the given
+     *         {@code configurationDirectory}. The result will never be null, it will be empty if not present.
+     */
+    public static PropFileChain get(Context context, Scope scope, File configurationDirectory, boolean ignoreCache) {
+        Map<Context, PropFileChain> loaded = get(scope, configurationDirectory, ignoreCache);
         if (loaded.containsKey(context)) {
             return loaded.get(context);
         } else {
@@ -150,7 +175,21 @@ public final class Props {
      *         {@code configurationDirectory}. The result will never be null, it will be {@link Prop#Empty} if not present.
      */
     public static Prop get(String named, Context context, Scope scope, File configurationDirectory) {
-        PropFileChain chain = get(context, scope, configurationDirectory);
+        return get(named, context, scope, configurationDirectory, false);
+    }
+
+    /**
+     * @param named                  of the property to retrieve
+     * @param context                of the property to retrieve
+     * @param scope                  of the property to retrieve
+     * @param configurationDirectory the configuration directory from which to load {@link PropFile.Loc#Local}
+     *                               properties
+     * @param ignoreCache            true to ignore cache and load from disk anew (ignoring env variables)
+     * @return the {@link Prop} named {@code named} for the given {@code context}, the given {@code scope} and the given
+     *         {@code configurationDirectory}. The result will never be null, it will be {@link Prop#Empty} if not present.
+     */
+    public static Prop get(String named, Context context, Scope scope, File configurationDirectory, boolean ignoreCache) {
+        PropFileChain chain = get(context, scope, configurationDirectory, ignoreCache);
         return chain.get(named);
     }
 

@@ -68,18 +68,18 @@ public final class Deps {
         /**
          * A mapping from {@link DependencyAtom} to {@link Dep} of already resolved dependencies within the graph
          */
-        Map<DependencyAtom, Dep> resolved;
+        final Map<DependencyAtom, Dep> resolved;
 
         /**
          * A mapping from {@link String} to {@link Dep} of already resolved dependencies where the key represents
          * the un-versioned dependency (to warn about conflicting versions within the graph).
          */
-        Map<String, Set<Dep>> unversionedResolved;
+        final Map<String, Set<Dep>> unversionedResolved;
 
         /**
          * Set of {@literal namespace:name} strings for which a conflicting version warning has already been printed.
          */
-        Set<String> unversionedResolvedAlreadyVisited;
+        final Set<String> unversionedResolvedAlreadyVisited;
 
         private FillGraphState() {
             this.resolved = new ConcurrentHashMap<DependencyAtom, Dep>();

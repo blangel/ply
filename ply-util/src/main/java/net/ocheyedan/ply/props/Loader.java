@@ -42,17 +42,31 @@ final class Loader {
      *         augmented by any available ad-hoc and system properties.
      */
     static Map<Scope, Map<Context, PropFileChain>> load(File configurationDirectory) {
+        return load(configurationDirectory, false);
+    }
+
+    /**
+     * Loads the properties from {@code configurationDirectory} and chains them with the system and ad-hoc properties.
+     *
+     * @param configurationDirectory from which to load local properties
+     * @param ignoreCache            true to ignore all cached values and reload from disk (not env variables)
+     * @return a mapping of scope to a mapping of context to {@link PropFileChain} loaded from {@code configurationDirectory}
+     * augmented by any available ad-hoc and system properties.
+     */
+    static Map<Scope, Map<Context, PropFileChain>> load (File configurationDirectory, boolean ignoreCache) {
         String cacheKey = FileUtil.getCanonicalPath(configurationDirectory);
-        if (cache.containsKey(cacheKey)) {
+        if (!ignoreCache && cache.containsKey(cacheKey)) {
             return cache.get(cacheKey);
         }
         Map<Scope, Map<Context, PropFileChain>> loaded;
-        if (shouldLoadFromEnv(configurationDirectory)) {
+        if (!ignoreCache && shouldLoadFromEnv(configurationDirectory)) {
             loaded = loadFromEnv();
         } else {
             loaded = loadChain(configurationDirectory);
         }
-        cache.put(cacheKey, loaded);
+        if (!ignoreCache) {
+            cache.put(cacheKey, loaded);
+        }
         return loaded;
     }
 

@@ -215,6 +215,7 @@ public final class SlowTaskThread {
             final boolean invokedByPly = "ply".equals(System.getenv("ply_ply.invoker"));
             try {
                 Thread.sleep(wait);
+                // TODO - recheck already-answered state
                 if (!Thread.currentThread().isInterrupted()) {
                     Output.print(message);
                     final AtomicBoolean printedNewLine = new AtomicBoolean(false); // @see {@link #setupOutput()}
