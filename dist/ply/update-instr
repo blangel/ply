@@ -473,3 +473,9 @@ OUTPUT=Downloading update to always use local repo artifacts when deploying to r
 METHOD=download=https://raw.github.com/blangel/ply/1ae8ed93a7899109e8b90e7f371483f1fe22b42f/dist/ply/scripts/ply-repo-deploy-1.0.sh to scripts/ply-repo-deploy-1.0.sh
 METHOD=download=https://raw.github.com/blangel/ply/1ae8ed93a7899109e8b90e7f371483f1fe22b42f/dist/ply/version to version
 VERSION=1.0_88
+OUTPUT=Downloading update to intellij script when setting up 'test'. Updating to POM filter parsing.
+METHOD=download=https://raw.github.com/blangel/ply/0c5c8865ae0216a4c5845caa032e3f513c6fa394/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/0c5c8865ae0216a4c5845caa032e3f513c6fa394/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/0c5c8865ae0216a4c5845caa032e3f513c6fa394/dist/ply/scripts/ply-intellij-1.0.jar to scripts/ply-intellij-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/0c5c8865ae0216a4c5845caa032e3f513c6fa394/dist/ply/version to version
+VERSION=1.0_89
