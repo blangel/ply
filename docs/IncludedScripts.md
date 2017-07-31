@@ -7,6 +7,8 @@ __ply-clean-1.0.jar__ - deletes directory `project.build.dir` and all its subdir
 
 __ply-dependency-manager-1.0.jar__ - resolves dependency-atoms from the `dependencies` context property file.
 
+__ply-dependency-copy-1.0.jar__ - copies resolved dependencies (obtained via files within `resolved-deps`) into `depcopy.dir`
+
 __ply-file-changed-1.0.jar__ - determines which files within `project.src.dir` have changed since last invocation (using timestamp and SHA1 hash).
 
 __ply-compiler-1.0.jar__ - compiles files within `project.src.dir` which have changed (determines change by using the `ply-file-changed-1.0.jar` output) and places the compiled output in `compiler.build.path`
@@ -20,6 +22,8 @@ __ply-package-1.0.jar__ - packages compiled code (within `compiler.build.path`) 
 __ply-repo-install-1.0.jar__ - copies the packaged code/resources into the `depmng.localRepo`
 
 __ply-repo-manager-1.0.jar__ - resolves repository-atoms from the `repositories` context property file.
+
+__ply-repo-deploy-1.0.sh__ - copies the local packaged code/resources file (e.g. `jar`) from the `depmng.localRepo` to a ply repository (i.e. a `git` repo, pushing it to the `origin` remote)
 
 __ply-test-junit-1.0.jar__ - runs all junit tests found within the package `project.artifact.name` in directory `project.build.dir`
 
