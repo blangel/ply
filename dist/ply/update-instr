@@ -481,4 +481,5 @@ METHOD=download=https://raw.github.com/blangel/ply/0c5c8865ae0216a4c5845caa032e3
 VERSION=1.0_89
 OUTPUT=Downloading update to ensure filtered values are used when locally installing dependencies.properties files
 METHOD=download=https://raw.github.com/blangel/ply/cd885e189688ebebaa88ac929de3e9a7dcf6af2a/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/cd885e189688ebebaa88ac929de3e9a7dcf6af2a/dist/ply/version to version
 VERSION=1.0_90
