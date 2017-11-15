@@ -906,7 +906,7 @@ public final class Deps {
     }
 
     private static String ensureProtocol(String localPath) {
-        if (!localPath.contains(":")) {
+        if (FileUtil.isLocalPath(localPath) && !localPath.contains("file:")) {
             if (!localPath.startsWith("/")) {
                 localPath = "/" + localPath;
             }

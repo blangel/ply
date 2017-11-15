@@ -290,6 +290,53 @@ public final class FileUtil {
     }
 
     /**
+     * @param path to analyze and determine if it points to a local filesystem URI
+     * @return true if {@code path} points to a local filesystem URI
+     */
+    public static boolean isLocalPath(String path) {
+        if (path == null) {
+            return false;
+        }
+        if (path.startsWith("file:")) {
+            return true;
+        }
+        if (PlyUtil.isWindowsOs()) {
+            return !path.contains(":") || isCommonWindowsDrive(path);
+        }
+        return !path.contains(":");
+    }
+
+    private static boolean isCommonWindowsDrive(String path) {
+        path = path.toLowerCase();
+        return (path.startsWith("/c:") || path.startsWith("c:") ||
+                path.startsWith("/d:") || path.startsWith("d:") ||
+                path.startsWith("/e:") || path.startsWith("e:") ||
+                path.startsWith("/a:") || path.startsWith("a:") ||
+                path.startsWith("/b:") || path.startsWith("b:") ||
+                path.startsWith("/f:") || path.startsWith("f:") ||
+                path.startsWith("/g:") || path.startsWith("g:") ||
+                path.startsWith("/h:") || path.startsWith("h:") ||
+                path.startsWith("/i:") || path.startsWith("i:") ||
+                path.startsWith("/j:") || path.startsWith("j:") ||
+                path.startsWith("/k:") || path.startsWith("k:") ||
+                path.startsWith("/l:") || path.startsWith("l:") ||
+                path.startsWith("/m:") || path.startsWith("m:") ||
+                path.startsWith("/n:") || path.startsWith("n:") ||
+                path.startsWith("/o:") || path.startsWith("o:") ||
+                path.startsWith("/p:") || path.startsWith("p:") ||
+                path.startsWith("/q:") || path.startsWith("q:") ||
+                path.startsWith("/r:") || path.startsWith("r:") ||
+                path.startsWith("/s:") || path.startsWith("s:") ||
+                path.startsWith("/t:") || path.startsWith("t:") ||
+                path.startsWith("/u:") || path.startsWith("u:") ||
+                path.startsWith("/v:") || path.startsWith("v:") ||
+                path.startsWith("/w:") || path.startsWith("w:") ||
+                path.startsWith("/x:") || path.startsWith("x:") ||
+                path.startsWith("/y:") || path.startsWith("y:") ||
+                path.startsWith("/z:") || path.startsWith("z:"));
+    }
+
+    /**
      * @param filePath to encode
      * @return encode file path to be used in creating a URI
      */
