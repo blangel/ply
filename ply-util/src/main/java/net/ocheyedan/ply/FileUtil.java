@@ -3,6 +3,7 @@ package net.ocheyedan.ply;
 import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
@@ -286,6 +287,14 @@ public final class FileUtil {
             return path.replace(String.format("%s%s", prefix, USER_HOME), "~");
         }
         return path;
+    }
+
+    /**
+     * @param filePath to encode
+     * @return encode file path to be used in creating a URI
+     */
+    public static String encodeForURI(String filePath) {
+        return (filePath == null ? null : filePath.replaceAll(" ", "%20"));
     }
 
     /**

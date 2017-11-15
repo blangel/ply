@@ -61,6 +61,15 @@ public class RepositoryAtomTest {
         assertNotNull(atom);
         assertEquals(RepositoryAtom.Type.ply, atom.type);
         assertTrue(atom.getPropertyName().startsWith("file://"));
+
+        // directory with space
+        tmp = File.createTempFile("test space", "parse");
+        path = tmp.getParent(); // parent directory
+        atom = RepositoryAtom.parse(path);
+        assertNotNull(atom);
+        assertEquals(RepositoryAtom.Type.ply, atom.type);
+        assertTrue(atom.getPropertyName().startsWith("file://"));
+        assertTrue(!atom.getPropertyName().contains(" "));
     }
 
     @Test

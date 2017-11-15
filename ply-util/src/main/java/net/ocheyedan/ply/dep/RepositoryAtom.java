@@ -163,6 +163,7 @@ public class RepositoryAtom {
             // ignore, try URI directly
         }
         try {
+            atom = atom.startsWith("file:") ? FileUtil.encodeForURI(atom) : atom;
             repositoryUri = URI.create(atom);
         } catch (IllegalArgumentException iae) {
             Output.print(iae);
