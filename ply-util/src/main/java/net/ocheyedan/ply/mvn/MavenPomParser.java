@@ -723,7 +723,7 @@ public class MavenPomParser {
         if (!startPath.endsWith("/") && !startPath.endsWith("\\")) {
             startPath = startPath + File.separator;
         }
-        String endPath = groupId.replaceAll("\\.", File.separator)
+        String endPath = groupId.replaceAll(Pattern.quote("."), Matcher.quoteReplacement(File.separator))
                 + File.separator + artifactId + File.separator +
                 version + File.separator + (artifactId + "-" + version) + ".pom";
         // hygiene the start separator

@@ -57,7 +57,7 @@ public class FormattedDiagnosticListener implements DiagnosticListener<JavaFileO
                 kind = "message";
         }
         String classNamePath = diagnostic.getSource().toUri().toString();
-        String className = classNamePath.replace(srcPath, "").replace(".java", "").replaceAll(File.separator, ".");
+        String className = classNamePath.replace(srcPath, "").replace(".java", "").replaceAll(Pattern.quote(File.separator), ".");
         String classShortName = (className.lastIndexOf(".") != -1) ? className.substring(className.lastIndexOf(".") + 1) : className;
         classShortName = classShortName.replace("$", ".");
         className = className.replace("$", ".");

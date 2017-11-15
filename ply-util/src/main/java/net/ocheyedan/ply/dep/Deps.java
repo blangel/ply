@@ -17,6 +17,8 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static net.ocheyedan.ply.props.PropFile.Prop;
 
@@ -757,7 +759,7 @@ public final class Deps {
     public static String getDependencyDirectoryPathForRepo(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom) {
         String startPath = Repos.getDirectoryPathForRepo(repositoryAtom);
         RepositoryAtom.Type type = repositoryAtom.getResolvedType();
-        String namespace = (type == RepositoryAtom.Type.ply ? dependencyAtom.namespace : dependencyAtom.namespace.replaceAll("\\.", File.separator));
+        String namespace = (type == RepositoryAtom.Type.ply ? dependencyAtom.namespace : dependencyAtom.namespace.replaceAll(Pattern.quote("."), Matcher.quoteReplacement(File.separator)));
         String endPath = FileUtil.pathFromParts(namespace, dependencyAtom.name, dependencyAtom.version);
         return FileUtil.pathFromParts(startPath, endPath);
     }
