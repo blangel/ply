@@ -3,6 +3,7 @@ package net.ocheyedan.ply;
 import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.UnknownHostException;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -200,6 +201,11 @@ public final class FileUtil {
                 Output.print(fnfe);
             }
             return false;
+        } catch (UnknownHostException uhe) {
+            Output.print("^error^ Could not download %s; remote URL %s not accessible", name, intoName, remoteUrl.getHost());
+            Output.print(uhe);
+            Output.print("");
+            return false;
         } catch (IOException ioe) {
             Output.print(ioe); // TODO - parse exception and more gracefully handle http-errors.
             return false;
@@ -257,7 +263,11 @@ public final class FileUtil {
         if (!path.startsWith("~") || USER_HOME == null) {
             return path;
         }
-        return pathFromParts(USER_HOME, path.substring(1));
+        String resolved = pathFromParts(USER_HOME, path.substring(1));
+        if (PlyUtil.isWindowsOs()) {
+            resolved = String.format("file://%s%s", (resolved.startsWith("/") ? "" : "/"), resolved);
+        }
+        return resolved;
     }
 
     /**
@@ -269,6 +279,10 @@ public final class FileUtil {
     public static String reverseUnixTilde(String path) {
         if (path.startsWith(USER_HOME)) {
             return path.replace(USER_HOME, "~");
+        }
+        String prefix = path.startsWith("/") ? "file://" : "file:///";
+        if (path.startsWith(String.format("%s%s", prefix, USER_HOME))) {
+            return path.replace(String.format("%s%s", prefix, USER_HOME), "~");
         }
         return path;
     }

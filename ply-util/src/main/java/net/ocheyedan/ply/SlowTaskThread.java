@@ -215,42 +215,46 @@ public final class SlowTaskThread {
             final boolean invokedByPly = "ply".equals(System.getenv("ply_ply.invoker"));
             try {
                 Thread.sleep(wait);
-                // TODO - recheck already-answered state
-                if (!Thread.currentThread().isInterrupted()) {
-                    Output.print(message);
-                    final AtomicBoolean printedNewLine = new AtomicBoolean(false); // @see {@link #setupOutput()}
-                    if (PlyUtil.isHeadless()) {
-                        Output.print(logMessage);
-                    } else {
-                        if (invokedByPly) {
-                            // need to go directly to stdout to avoid Output parsing prior to Exec handling
-                            System.out.println(String.format("^no_line^%s Enable now? [Y/n] ", logMessage));
-                        } else {
-                            Output.printNoLine("%s Enable now? [Y/n] ", logMessage);
-                        }
-                        // cursor's hanging on the last line of output, if more output comes need to prefix with newline
-                        setupOutput(printedNewLine, invokedByPly);
-                    }
-                    // io-read doesn't interrupt, so need to continuously poll availability of bytes on the stdin
-                    // socket via InterruptibleInputReader.
-                    if (!PlyUtil.isHeadless()) {
-                        InterruptibleInputReader reader = new InterruptibleInputReader(System.in);
-                        try {
-                            String answer = reader.readLine();
-                            printedNewLine.set(true); // the user's response echoes a newline
-                            if (answer != null) {
-                                if ("y".equalsIgnoreCase(answer.trim())
-                                        || "yes".equalsIgnoreCase(answer.trim())) {
-                                    logging.enableLogging();
-                                }
-                                PlyUtil.addInvocationProperties("slowthread", PlyUtil.varargs(alreadyAnswered), "true");
-                            }
-                        } catch (IOException ioe) {
-                            throw new AssertionError(ioe);
-                        }
-                    }
-                } else {
+                if (Thread.currentThread().isInterrupted()) {
                     // task has already completed, terminate
+                    return;
+                }
+                // recheck already-answered state
+                boolean alreadyAnsweredResult = PlyUtil.matchingInvocationProperty("slowthread", getAlreadyAnsweredKey(logging, message), "true");
+                if (alreadyAnsweredResult) {
+                    return;
+                }
+                Output.print(message);
+                final AtomicBoolean printedNewLine = new AtomicBoolean(false); // @see {@link #setupOutput()}
+                if (PlyUtil.isHeadless()) {
+                    Output.print(logMessage);
+                } else {
+                    if (invokedByPly) {
+                        // need to go directly to stdout to avoid Output parsing prior to Exec handling
+                        System.out.println(String.format("^no_line^%s Enable now? [Y/n] ", logMessage));
+                    } else {
+                        Output.printNoLine("%s Enable now? [Y/n] ", logMessage);
+                    }
+                    // cursor's hanging on the last line of output, if more output comes need to prefix with newline
+                    setupOutput(printedNewLine, invokedByPly);
+                }
+                // io-read doesn't interrupt, so need to continuously poll availability of bytes on the stdin
+                // socket via InterruptibleInputReader.
+                if (!PlyUtil.isHeadless()) {
+                    InterruptibleInputReader reader = new InterruptibleInputReader(System.in);
+                    try {
+                        String answer = reader.readLine();
+                        printedNewLine.set(true); // the user's response echoes a newline
+                        if (answer != null) {
+                            if ("y".equalsIgnoreCase(answer.trim())
+                                    || "yes".equalsIgnoreCase(answer.trim())) {
+                                logging.enableLogging();
+                            }
+                            PlyUtil.addInvocationProperties("slowthread", PlyUtil.varargs(alreadyAnswered), "true");
+                        }
+                    } catch (IOException ioe) {
+                        throw new AssertionError(ioe);
+                    }
                 }
             } catch (InterruptedException ie) {
                 // abort (cancellation is set by thread)

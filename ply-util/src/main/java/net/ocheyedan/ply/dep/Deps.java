@@ -890,7 +890,13 @@ public final class Deps {
 
     private static PropFile getDependenciesFromMavenRepo(String pomUrlPath, RepositoryAtom repositoryAtom) {
         MavenPomParser mavenPomParser = new MavenPomParser();
-        MavenPom mavenPom = mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
+        MavenPom mavenPom = null;
+        try {
+            mavenPom = mavenPomParser.parsePom(pomUrlPath, repositoryAtom);
+        } catch (RuntimeException re) {
+            Output.print("^error^ Error parsing POM [ %s ]", pomUrlPath);
+            throw re;
+        }
         return (mavenPom == null ? new PropFile(Context.named("dependencies"), PropFile.Loc.Local) : mavenPom.dependencies);
     }
 

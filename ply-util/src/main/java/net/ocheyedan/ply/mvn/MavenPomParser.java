@@ -13,12 +13,12 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
+import javax.print.Doc;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -399,6 +399,26 @@ public class MavenPomParser {
                 version = filterVersion(version, parseResult);
                 parseResult.mavenProperties.put("project.version", version);
             }
+        } catch (SAXParseException saxpe) {
+            Output.print("^error^ Could not parse %s", pomUrlPath);
+            InputStream stream = pomResource.open();
+            if (stream != null) {
+                Output.print("^dbug^   From content:");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+                boolean likelyRedirect = false;
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if ((line != null) && line.contains("<html>")) {
+                        likelyRedirect = true;
+                    }
+                    Output.print("^dbug^   %s", line);
+                }
+                if (likelyRedirect) {
+                    Output.print("^error^ Received unexpected response from host; ^red^perhaps internet is not connected.^r^");
+                    throw new RuntimeException(saxpe);
+                }
+            }
+            throw saxpe;
         } finally {
             pomResource.close();
         }

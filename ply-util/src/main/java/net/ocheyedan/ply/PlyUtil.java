@@ -141,6 +141,14 @@ public final class PlyUtil {
         }
     }
 
+    /**
+     * @return true if {@linkplain System#getProperty(String)} for {@literal os.name} contains {@literal windows}
+     */
+    public static boolean isWindowsOs() {
+        String os = System.getProperty("os.name");
+        return ((os != null) && os.toLowerCase().contains("windows"));
+    }
+
     public static String[] varargs(String ... args) {
         return args;
     }
