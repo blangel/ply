@@ -265,6 +265,7 @@ public final class FileUtil {
         }
         String resolved = pathFromParts(USER_HOME, path.substring(1));
         if (PlyUtil.isWindowsOs()) {
+            resolved = resolved.replaceAll("\\\\", "/");
             resolved = String.format("file://%s%s", (resolved.startsWith("/") ? "" : "/"), resolved);
         }
         return resolved;
