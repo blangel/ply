@@ -198,6 +198,7 @@ public final class FileUtil {
             }
             stream = urlConnection.getInputStream();
         } catch (FileNotFoundException fnfe) {
+            Output.print("^dbug^ Failed to download URL [ %s ] - FileNotFoundException - %s", remoteUrl.toString(), fnfe.getMessage());
             if (!ignoreFNF) {
                 Output.print(fnfe);
             }
