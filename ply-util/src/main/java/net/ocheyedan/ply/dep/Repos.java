@@ -51,8 +51,8 @@ public final class Repos {
         try {
             String repoPath = repositoryAtom.getPropertyName();
             repoPath = FileUtil.stripFileUriPrefix(repoPath);
-            if (!FileUtil.isLocalPath(repoPath)) { // non-file uri; keep as is
-                return repoPath;
+            if (!FileUtil.isLocalPath(repoPath)) { // non-file uri; keep as is but remove any trailing '/' if present
+                return (repoPath == null ? null : repoPath.endsWith("/") ? repoPath.substring(0, repoPath.length() - 1): repoPath);
             }
             return FileUtil.getCanonicalPath(new File(repoPath));
         } catch (RuntimeException re) {

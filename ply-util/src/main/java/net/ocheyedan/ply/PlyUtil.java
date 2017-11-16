@@ -49,6 +49,10 @@ public final class PlyUtil {
      */
     public static final File LOCAL_CONFIG_DIR = resolveLocalConfigDir(LOCAL_PROJECT_DIR);
 
+    private static final String OS = System.getProperty("os.name");
+
+    private static final String OS_LOWER_CASE = (OS == null ? "" : OS.toLowerCase());
+
     /**
      * @return true if all prompts should be disallowed.
      */
@@ -145,8 +149,7 @@ public final class PlyUtil {
      * @return true if {@linkplain System#getProperty(String)} for {@literal os.name} contains {@literal windows}
      */
     public static boolean isWindowsOs() {
-        String os = System.getProperty("os.name");
-        return ((os != null) && os.toLowerCase().contains("windows"));
+        return OS_LOWER_CASE.contains("windows");
     }
 
     public static String[] varargs(String ... args) {
