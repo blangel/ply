@@ -201,7 +201,7 @@ public class DependencyManager {
                     dependency, error.get());
             throw new SystemExit(1);
         }
-        PropFile dependencies = loadDependenciesFile(scope);
+        PropFile dependencies = getDependencies(scope);
         if (dependencies.contains(atom.getPropertyName())) {
             PropFile.Prop existingDep = dependencies.get(atom.getPropertyName());
             DependencyAtom existing = Deps.parse(existingDep);

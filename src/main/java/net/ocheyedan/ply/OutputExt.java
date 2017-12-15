@@ -22,7 +22,7 @@ public class OutputExt {
     }
 
     public static void init(String coloredOutput, String decorated, String logLevels) {
-        Output.init(coloredOutput, decorated, logLevels);
+        Output.init(coloredOutput, decorated, logLevels, true);
     }
 
 }

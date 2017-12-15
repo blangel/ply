@@ -11,7 +11,11 @@ public class ShutdownHandler extends Thread {
         super(new Runnable() {
             @Override public void run() {
                 // ensure project.ply.invocation.dir is removed after invocation
-                PlyUtil.cleanupInvocationProperties();
+                try {
+                    PlyUtil.cleanupInvocationProperties();
+                } catch (SystemExit se) {
+                    // ignore; shutting down anyway
+                }
             }
         });
     }

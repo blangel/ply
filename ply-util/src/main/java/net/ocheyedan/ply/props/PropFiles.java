@@ -2,6 +2,7 @@ package net.ocheyedan.ply.props;
 
 import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
+import net.ocheyedan.ply.SystemExit;
 
 import java.io.*;
 
@@ -117,8 +118,13 @@ public final class PropFiles {
                 propertiesFile.createNewFile();
             }
             reader = new BufferedReader(new FileReader(propertiesFile));
-            propFileReader.load(reader, into);
-            return true;
+            try {
+                propFileReader.load(reader, into);
+                return true;
+            } catch (PropFileReader.Invalid pfri) {
+                Output.print("^error^ %s Property in question '%s' from %s", pfri.getMessage(), pfri.invalidEntry, pfri.fileName);
+                SystemExit.exit(1);
+            }
         } catch (FileNotFoundException fnfe) {
             if (printOnFNF) {
                 Output.print("Cannot load properties file, %s, it does not exist.", path);

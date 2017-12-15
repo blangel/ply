@@ -15,8 +15,15 @@ public interface PropFileReader {
     
     @SuppressWarnings("serial")
     static final class Invalid extends RuntimeException {
-        Invalid(String message) {
+
+        final String invalidEntry;
+
+        final String fileName;
+
+        Invalid(String invalidEntry, String fileName, String message) {
             super(message);
+            this.invalidEntry = invalidEntry;
+            this.fileName = fileName;
         }
     }
 
@@ -66,7 +73,7 @@ public interface PropFileReader {
                     ParseResult parsedLine = parse(line);
                     if (parsing != null) {
                         if (!parsedLine.key.isEmpty()) {
-                            throw new Invalid("Properties may only have one key.");
+                            throw new Invalid(parsedLine.key, into.context().name, "Properties may only have one key.");
                         }
                         parsing = new ParseResult(false, parsing.key, String.format("%s%s", parsing.value, parsedLine.value));
                     } else {
@@ -74,9 +81,9 @@ public interface PropFileReader {
                     }
                     if (parsedLine.complete) {
                         if (parsing.key.isEmpty()) {
-                            throw new Invalid("Keys must be non-empty.");
+                            throw new Invalid(line, into.context().name, "Keys must be non-empty.");
                         } else if (into.contains(parsing.key)) {
-                            throw new Invalid("Keys must be unique.");
+                            throw new Invalid(parsing.key, into.context().name, "Keys must be unique.");
                         }
                         into.add(parsing.key.trim(), parsing.value.trim(), commentsBuffer.toString());
                         parsing = null;

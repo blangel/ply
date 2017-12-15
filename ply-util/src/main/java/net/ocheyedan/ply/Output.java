@@ -162,11 +162,16 @@ public final class Output {
 
     static void init() {
         Context plyContext = Context.named("ply");
-        init(Props.get("color", plyContext).value(), Props.get("decorated", plyContext).value(),
-             Props.get("log.levels", plyContext).value());
+        try {
+            init(Props.get("color", plyContext).value(), Props.get("decorated", plyContext).value(),
+                    Props.get("log.levels", plyContext).value(), true);
+        } catch (SystemExit se) {
+            // happens when there's an issue in the prop file itself; init via default values
+            init("true", "true", "+debug", false);
+        }
     }
 
-    static void init(String coloredOutput, String decorated, String logLevels) {
+    static void init(String coloredOutput, String decorated, String logLevels, boolean checkInvocationProperty) {
         if (inited.getAndSet(true)) {
             return;
         }
@@ -186,13 +191,13 @@ public final class Output {
         if (logLevels.contains("+info")) {
             warnLevel.set(true);
         }
-        if (PlyUtil.matchingInvocationProperty("ply.log.levels", "warn", "true")) {
+        if (checkInvocationProperty && PlyUtil.matchingInvocationProperty("ply.log.levels", "warn", "true")) {
             warnLevel.set(true);
         }
-        if (PlyUtil.matchingInvocationProperty("ply.log.levels", "info", "true")) {
+        if (checkInvocationProperty && PlyUtil.matchingInvocationProperty("ply.log.levels", "info", "true")) {
             infoLevel.set(true);
         }
-        if (PlyUtil.matchingInvocationProperty("ply.log.levels", "debug", "true")) {
+        if (checkInvocationProperty && PlyUtil.matchingInvocationProperty("ply.log.levels", "debug", "true")) {
             dbugLevel.set(true);
         }
         if ("false".equalsIgnoreCase(decorated)) {
