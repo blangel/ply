@@ -518,3 +518,7 @@ METHOD=download=https://raw.github.com/blangel/ply/879bbfd8653d38619ac4987a1f505
 METHOD=download=https://raw.github.com/blangel/ply/879bbfd8653d38619ac4987a1f505d712235b95c/dist/ply/scripts/ply-dependency-manager-1.0.jar to scripts/ply-dependency-manager-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/879bbfd8653d38619ac4987a1f505d712235b95c/dist/ply/version to version
 VERSION=1.0_98
+OUTPUT=Downloading update to correctly resolve inclusion POM dependencies with one version specified
+METHOD=download=https://raw.github.com/blangel/ply/7563617276dffe528f7b74465116f5626de24f2d/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/7563617276dffe528f7b74465116f5626de24f2d/dist/ply/version to version
+VERSION=1.0_99
