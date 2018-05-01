@@ -139,13 +139,27 @@ public final class Version {
         boolean inclusiveStart = version.startsWith("["), inclusiveEnd = version.endsWith("]");
         String lower, upper;
         int index = 0;
-        while (version.charAt(++index) != ',') { }
+        // some POM's have been found to contain a range of the same version
+        // @see http://repo1.maven.org/maven2/io/grpc/grpc-netty-shaded/1.10.1/grpc-netty-shaded-1.10.1.pom
+        while (index < version.length()) {
+            if (version.charAt(index) == ',') {
+                break;
+            }
+            index++;
+        }
+        if (index == version.length()) {
+            index -= 1;
+        }
         lower = version.substring(1, index);
         char cur; int lowerEnd = index + 1;
-        while ((cur = version.charAt(++index)) != ')' && (cur != ']')) { }
-        upper = version.substring(lowerEnd, index);
-        if (version.length() != (index + 1)) {
-            throw new UnsupportedRangeSet();
+        if (index == (version.length() - 1)) {
+            upper = lower;
+        } else {
+            while ((cur = version.charAt(++index)) != ')' && (cur != ']')) { }
+            upper = version.substring(lowerEnd, index);
+            if (version.length() != (index + 1)) {
+                throw new UnsupportedRangeSet();
+            }
         }
         lower = lower.trim();
         upper = upper.trim();

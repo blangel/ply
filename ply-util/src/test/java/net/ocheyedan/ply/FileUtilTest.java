@@ -174,7 +174,7 @@ public class FileUtilTest {
     public void download() throws IOException {
         Map<String, String> empty = Collections.emptyMap();
         assertFalse(FileUtil.download(null, empty, null, null, null, true));
-        URL url = URI.create("http://dne.com/dne/dne/dne.html").toURL();
+        URL url = URI.create("http://dnednednednednedne.com/dne/dne/dne.html").toURL();
         assertFalse(FileUtil.download(url, empty, null, null, null, true));
         File tmp = File.createTempFile("ply-test", ".tmp");
         url = URI.create("https://raw.github.com/blangel/ply/master/README.md").toURL();
@@ -197,7 +197,7 @@ public class FileUtilTest {
         assertNotNull(path);
         assertEquals(expectedPath, path);
 
-        url = URI.create("http://dne.com/dne/dne/dne.html").toURL();
+        url = URI.create("http://dnednednednednedne.com/dne/dne/dne.html").toURL();
         assertNull(FileUtil.getLocalPath(url, empty, "dne", "tmp location"));
         url = URI.create("https://raw.github.com/blangel/ply/master/README.md").toURL();
         path = FileUtil.getLocalPath(url, empty, "readme", "tmp location");

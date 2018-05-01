@@ -63,7 +63,12 @@ public class VersionTest {
         assertEquals("1.0-SNAPSHOT", Version.resolve(version, null, null));
         version = "(0.1,1.0-SNAPSHOT]";
         assertEquals("1.0-SNAPSHOT", Version.resolve(version, null, null));
-
+        // http://repo1.maven.org/maven2/io/grpc/grpc-netty-shaded/1.10.1/grpc-netty-shaded-1.10.1.pom
+        version = "[1.10.1]";
+        assertEquals("1.10.1", Version.resolve(version, null, null));
+        // variant
+        version = "(1.10.1)";
+        assertNull("1.10.1", Version.resolve(version, null, null));
 
         version = "[,1.4.3)";
         assertEquals("1.4.3-rc1", Version.resolve(version, "classpath:mock-mvn-repo/javax/mail/mail", null));
