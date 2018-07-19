@@ -39,22 +39,24 @@ public final class Submodules {
         Prop submodulesScopeProp = Props.get("submodules.scope", Context.named("project"), Props.getScope(), configDirectory);
         Scope submodulesScope = (submodulesScopeProp == null ? Scope.Default : Scope.named(submodulesScopeProp.value()));
         Map<String, Submodule> submodules = new HashMap<String, Submodule>();
-        getSubmodules(configDirectory, submodulesScope, "", submodules);
-        return sortSubmodules(submodules, configDirectory, submodulesScope);
+        List<String> ordering = new LinkedList<String>();
+        getSubmodules(configDirectory, submodulesScope, "", submodules, ordering);
+        return sortSubmodules(submodules, ordering, configDirectory, submodulesScope);
     }
 
     /**
      * Retrieves the {@literal submodules} from directory {@code configDirectory} for scope {@code scope}.
      * Note, for each submodule found, this method recurs and collects any of its submodules as well.
      * Any submodule whose {@link Prop#value} is equal to {@literal exclude} is ignored and not included in the given
-     * map.
+     * map or ordering.
      * @param configDirectory location from which to retrieve submodules
      * @param scope of the submodules to retrieve
      * @param parentName is the parent submodule name for the invocation (relative)
      * @param submodules all {@link Submodule} based on {@code localConfigDir} mapped by their dependency name.
+     * @param ordering to track the original user ordering
      */
     private static void getSubmodules(File configDirectory, Scope scope, String parentName,
-                                      Map<String, Submodule> submodules) {
+                                      Map<String, Submodule> submodules, List<String> ordering) {
         PropFileChain submodulesProps = Props.get(Context.named("submodules"), scope, configDirectory);
         if (submodulesProps == null) {
             return;
@@ -70,7 +72,8 @@ public final class Submodules {
                 String submoduleResolvedDepName = getSubmoduleResolvedDepName(submoduleConfigDir, scope);
                 Submodule submodule = new Submodule(submoduleName, submoduleResolvedDepName);
                 submodules.put(submoduleResolvedDepName, submodule);
-                getSubmodules(submoduleConfigDir, scope, key, submodules);
+                ordering.add(submoduleResolvedDepName);
+                getSubmodules(submoduleConfigDir, scope, key, submodules, ordering);
             }
         }
     }
@@ -80,14 +83,15 @@ public final class Submodules {
      * If submoduleA depends upon submoduleB then submoduleB goes first;
      * else if submoduleA is child of submoduleB then submoduleB goes first;
      * else if submoduleA is a child but submoduleB isn't then submoduleB goes first;
-     * else submoduleA is equal to submoduleB
+     * else the user specified ordering of submoduleA is compared to submoduleB
 
      * @param submodules which to sort; {@link Submodule} objects mapped by their dependency name.
+     * @param ordering defined by user
      * @param configDirectory the configuration directory of the project from which the {@code submodules} originated
      * @param scope of the retrieved {@code submodules}
      * @return the sorted list of {@code submodules}
      */
-    static List<Submodule> sortSubmodules(final Map<String, Submodule> submodules, File configDirectory, Scope scope) {
+    static List<Submodule> sortSubmodules(final Map<String, Submodule> submodules, final List<String> ordering, File configDirectory, Scope scope) {
         if ((submodules == null) || submodules.isEmpty()) {
             return Collections.emptyList();
         }
@@ -125,7 +129,9 @@ public final class Submodules {
                 } else if (submoduleB.name.contains(File.separator) && !submoduleA.name.contains(File.separator)) {
                     return -1;
                 }
-                return 0; // TODO - default to order specified by user
+                int submoduleAOrdering = ordering.indexOf(submoduleA.dependencyName);
+                int submoduleBOrdering = ordering.indexOf(submoduleB.dependencyName);
+                return Integer.valueOf(submoduleAOrdering).compareTo(submoduleBOrdering);
             }
         };
         Collections.sort(orderedSubmodules, comparator);
