@@ -522,3 +522,7 @@ OUTPUT=Downloading update to correctly resolve inclusion POM dependencies with o
 METHOD=download=https://raw.github.com/blangel/ply/7563617276dffe528f7b74465116f5626de24f2d/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/7563617276dffe528f7b74465116f5626de24f2d/dist/ply/version to version
 VERSION=1.0_99
+OUTPUT=Downloading update to use user order after initial logic when sorting submodule
+METHOD=download=https://raw.github.com/blangel/ply/c3af0a19c63e217abbbb2469d8c9f6c0d47cf0ac/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/c3af0a19c63e217abbbb2469d8c9f6c0d47cf0ac/dist/ply/version to version
+VERSION=1.0_100
