@@ -16,7 +16,7 @@ public final class PrivilegedOutput {
     }
 
     public static void print(Throwable t) {
-        print("^error^ Message: ^i^^red^%s^r^", (t == null ? "" : t.getMessage()));
+        print("^error^ Message from %s: ^i^^red^%s^r^", (t == null ? "" : t.getClass().getSimpleName()), (t == null ? "" : t.getMessage()));
     }
 
 }

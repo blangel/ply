@@ -195,7 +195,6 @@ public class JunitTester {
             }
             System.exit(1);
         }
-        String localRepoDirectoryPath = Repos.getDirectoryPathForRepo(localRepo);
         // TODO - how to resolve own namespace/name/version and dependencies
         if (!includesPlyUtil) {
             URL plyUtil = getUrl(FileUtil.fromParts(PlyUtil.INSTALL_DIRECTORY, "lib", "ply-util-1.0.jar"));
@@ -209,17 +208,17 @@ public class JunitTester {
             throw new AssertionError("Could not find ^b^ply-test-junit-1.0.jar^r^ in the installation scripts directory.");
         }
         urls.add(plyJunitTester);
-        URL hamcrest = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "org.hamcrest", "hamcrest-core", "1.1", "hamcrest-core-1.1.jar"));
+        URL hamcrest = getUrl(FileUtil.fromParts(PlyUtil.INSTALL_DIRECTORY, "repo", "org.hamcrest", "hamcrest-core", "1.1", "hamcrest-core-1.1.jar"));
         if (hamcrest == null) {
             throw new AssertionError("Could not find ^b^hamcrest-core-1.1.jar^r^ in local repository.");
         }
         urls.add(hamcrest);
-        URL commonsLang = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "commons-lang", "commons-lang", "2.6", "commons-lang-2.6.jar"));
+        URL commonsLang = getUrl(FileUtil.fromParts(PlyUtil.INSTALL_DIRECTORY, "repo", "commons-lang", "commons-lang", "2.6", "commons-lang-2.6.jar"));
         if (commonsLang == null) {
             throw new AssertionError("Could not find ^b^commons-lang-2.6.jar^r^ in local repository.");
         }
         urls.add(commonsLang);
-        URL junit = getUrl(FileUtil.fromParts(localRepoDirectoryPath, "junit", "junit", "4.10", "junit-4.10.jar"));
+        URL junit = getUrl(FileUtil.fromParts(PlyUtil.INSTALL_DIRECTORY, "repo", "junit", "junit", "4.10", "junit-4.10.jar"));
         if (junit == null) {
             throw new AssertionError("Could not find ^b^junit-4.10.jar^r^ in local repository.");
         }
