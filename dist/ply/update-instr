@@ -526,3 +526,7 @@ OUTPUT=Downloading update to use user order after initial logic when sorting sub
 METHOD=download=https://raw.github.com/blangel/ply/c3af0a19c63e217abbbb2469d8c9f6c0d47cf0ac/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/c3af0a19c63e217abbbb2469d8c9f6c0d47cf0ac/dist/ply/version to version
 VERSION=1.0_100
+OUTPUT=Downloading update to use install repo for test dependencies
+METHOD=download=https://raw.github.com/blangel/ply/b2531d261c666a2a9aee5da2431d7969ee4d3fc3/dist/ply/scripts/ply-test-junit-1.0.jar to scripts/ply-test-junit-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/b2531d261c666a2a9aee5da2431d7969ee4d3fc3/dist/ply/version to version
+VERSION=1.0_101
