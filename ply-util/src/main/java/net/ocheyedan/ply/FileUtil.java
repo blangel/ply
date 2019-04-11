@@ -1,10 +1,7 @@
 package net.ocheyedan.ply;
 
 import java.io.*;
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLEncoder;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -189,14 +186,7 @@ public final class FileUtil {
         }
         InputStream stream;
         try {
-            // TODO - proxy info (see http://download.oracle.com/javase/6/docs/technotes/guides/net/proxies.html)
-            URLConnection urlConnection = remoteUrl.openConnection();
-            if (headers != null) {
-                for (String key : headers.keySet()) {
-                    urlConnection.addRequestProperty(key, headers.get(key));
-                }
-            }
-            stream = urlConnection.getInputStream();
+            stream = downloadToStream(remoteUrl, headers);
         } catch (FileNotFoundException fnfe) {
             Output.print("^dbug^ Failed to download URL [ %s ] - FileNotFoundException - %s", remoteUrl.toString(), fnfe.getMessage());
             if (!ignoreFNF) {
@@ -214,6 +204,45 @@ public final class FileUtil {
         }
         Output.print("^info^ Downloading %s from %s...", name, intoName);
         return FileUtil.copy(stream, into);
+    }
+
+    public static URL getUrl(String path) {
+        try {
+            path = ensureProtocol(path);
+            return new URI(path.replaceAll("\\\\", "/")).toURL();
+        } catch (URISyntaxException urise) {
+            Output.print(urise);
+            Output.print("^error^ for %s", path);
+        } catch (MalformedURLException murle) {
+            Output.print(murle);
+            Output.print("^error^ for %s", path);
+        } catch (IllegalArgumentException iae) {
+            Output.print(iae);
+            Output.print("^error^ for %s", path);
+        }
+        return null;
+    }
+
+    private static String ensureProtocol(String localPath) {
+        if (FileUtil.isLocalPath(localPath) && !localPath.contains("file:")) {
+            if (!localPath.startsWith("/")) {
+                localPath = "/" + localPath;
+            }
+            // a file path without prefix, make absolute for URL handling
+            localPath = "file://" + localPath;
+        }
+        return localPath;
+    }
+
+    public static InputStream downloadToStream(URL remoteUrl, Map<String, String> headers) throws IOException {
+        // TODO - proxy info (see http://download.oracle.com/javase/6/docs/technotes/guides/net/proxies.html)
+        URLConnection urlConnection = remoteUrl.openConnection();
+        if (headers != null) {
+            for (String key : headers.keySet()) {
+                urlConnection.addRequestProperty(key, headers.get(key));
+            }
+        }
+        return urlConnection.getInputStream();
     }
 
     /**

@@ -1,5 +1,7 @@
 package net.ocheyedan.ply.dep;
 
+import java.io.File;
+import java.net.URL;
 import java.util.Map;
 
 /**
@@ -67,5 +69,19 @@ public interface Auth {
      * @param acquisition to be used to acquire access.
      */
     void acquireAccess(Acquisition acquisition);
+
+    /**
+     * Most implementations are meant to use {@linkplain net.ocheyedan.ply.FileUtil#download(URL, Map, File, String, String, boolean)}
+     * but some authenticated implementations need differing strategies to handle files (e.g. GitHub API restricts files over 1MB)
+     * @param remotePathDir path to directory containing the file
+     * @param remoteUrl to download
+     * @param headers to use when making a connection to {@code remoteUrl}
+     * @param into the location into which to download
+     * @param name of the file being downloaded
+     * @param intoName of the location into which the file is being downloaded
+     * @param ignoreFNF true to ignore printing exception messages when file is not found
+     * @return true if the file was successfully downloaded and saved {@code into}, false otherwise
+     */
+    boolean downloadFile(String remotePathDir, URL remoteUrl, Map<String, String> headers, File into, String name, String intoName, boolean ignoreFNF);
 
 }

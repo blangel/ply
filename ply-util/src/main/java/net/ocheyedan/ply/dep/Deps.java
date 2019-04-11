@@ -51,8 +51,7 @@ public final class Deps {
         static LocalPaths get(DependencyAtom dependencyAtom, RepositoryAtom localRepo) {
             String localDirUrlPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
             String localPath = getDependencyArtifactPathForRepo(dependencyAtom, localRepo);
-            localPath = ensureProtocol(localPath);
-            URL localUrl = getUrl(localPath);
+            URL localUrl = FileUtil.getUrl(localPath);
             if (localUrl == null) {
                 throw new AssertionError(String.format("The local path is not valid [ %s ]", localPath));
             }
@@ -506,8 +505,12 @@ public final class Deps {
         } else {
             remotePath = unauthRemotePath;
         }
-        URL remoteUrl = getUrl(remotePath);
-        if (!FileUtil.download(remoteUrl, headers, localDepFile, dependencyAtom.toString(), remoteRepo.toString(), true)) {
+        URL remoteUrl = FileUtil.getUrl(remotePath);
+        if (auth != null) {
+            if (!auth.downloadFile(remotePathDir, remoteUrl, headers, localDepFile, dependencyAtom.toString(), remoteRepo.toString(), true)) {
+                return false;
+            }
+        } else if (!FileUtil.download(remoteUrl, headers, localDepFile, dependencyAtom.toString(), remoteRepo.toString(), true)) {
             return false;
         }
         // TODO - verify checksum
@@ -818,23 +821,6 @@ public final class Deps {
                 + name + scope.getFileSuffix() + ".properties";
     }
 
-    private static URL getUrl(String path) {
-        try {
-            path = ensureProtocol(path);
-            return new URI(path.replaceAll("\\\\", "/")).toURL();
-        } catch (URISyntaxException urise) {
-            Output.print(urise);
-            Output.print("^error^ for %s", path);
-        } catch (MalformedURLException murle) {
-            Output.print(murle);
-            Output.print("^error^ for %s", path);
-        } catch (IllegalArgumentException iae) {
-            Output.print(iae);
-            Output.print("^error^ for %s", path);
-        }
-        return null;
-    }
-
     private static PropFile getDependenciesFile(DependencyAtom dependencyAtom, RepositoryAtom repositoryAtom,
                                                 String repoDepDir, AtomicReference<String> dependenciesFileName) {
         if (repositoryAtom.getResolvedType() == RepositoryAtom.Type.ply) {
@@ -874,7 +860,7 @@ public final class Deps {
     }
 
     private static PropFile getFileFromPlyRepo(String urlPath, Map<String, String> headers) {
-        URL url = getUrl(urlPath);
+        URL url = FileUtil.getUrl(urlPath);
         if (url == null) {
             return null;
         }
@@ -905,17 +891,6 @@ public final class Deps {
     private static void storeDependenciesFile(PropFile transitiveDependencies, String localRepoDepDirPath,
                                               String dependenciesFileName) {
         PropFiles.store(transitiveDependencies, FileUtil.pathFromParts(localRepoDepDirPath, dependenciesFileName).replaceAll("\\\\", "/"), true);
-    }
-
-    private static String ensureProtocol(String localPath) {
-        if (FileUtil.isLocalPath(localPath) && !localPath.contains("file:")) {
-            if (!localPath.startsWith("/")) {
-                localPath = "/" + localPath;
-            }
-            // a file path without prefix, make absolute for URL handling
-            localPath = "file://" + localPath;
-        }
-        return localPath;
     }
 
     private Deps() { }

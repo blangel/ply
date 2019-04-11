@@ -78,6 +78,11 @@ final class BasicAuth implements Auth {
         }
     }
 
+    @Override
+    public boolean downloadFile(String remotePathDir, URL remoteUrl, Map<String, String> headers, File into, String name, String intoName, boolean ignoreFNF) {
+        return FileUtil.download(remoteUrl, headers, into, name, intoName, ignoreFNF);
+    }
+
     private String getBasicAuthenticationProperty(String username, String pwd) {
         try {
             String urlEncodedUsername = URLEncoder.encode(username, "UTF-8");
