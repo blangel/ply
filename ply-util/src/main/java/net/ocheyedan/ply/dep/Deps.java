@@ -51,7 +51,6 @@ public final class Deps {
         static LocalPaths get(DependencyAtom dependencyAtom, RepositoryAtom localRepo) {
             String localDirUrlPath = getDependencyDirectoryPathForRepo(dependencyAtom, localRepo);
             String localPath = getDependencyArtifactPathForRepo(dependencyAtom, localRepo);
-            localPath = FileUtil.ensureProtocol(localPath);
             URL localUrl = FileUtil.getUrl(localPath);
             if (localUrl == null) {
                 throw new AssertionError(String.format("The local path is not valid [ %s ]", localPath));
