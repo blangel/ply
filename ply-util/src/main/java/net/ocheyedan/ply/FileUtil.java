@@ -223,7 +223,7 @@ public final class FileUtil {
         return null;
     }
 
-    private static String ensureProtocol(String localPath) {
+    public static String ensureProtocol(String localPath) {
         if (FileUtil.isLocalPath(localPath) && !localPath.contains("file:")) {
             if (!localPath.startsWith("/")) {
                 localPath = "/" + localPath;
