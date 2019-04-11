@@ -534,7 +534,3 @@ OUTPUT=Downloading update to use allow auth-repos to control download logic
 METHOD=download=https://raw.github.com/blangel/ply/d56ecc262654b8aee85de10816ffcc713813993f/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/d56ecc262654b8aee85de10816ffcc713813993f/dist/ply/version to version
 VERSION=1.0_102
-OUTPUT=Downloading update to correct protocol update for local paths (as before 102 updatE)
-METHOD=download=https://raw.github.com/blangel/ply/de85eaed4cc21b00616cb2c90141ed5aae2be5d5/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
-METHOD=download=https://raw.github.com/blangel/ply/de85eaed4cc21b00616cb2c90141ed5aae2be5d5/dist/ply/version to version
-VERSION=1.0_103
