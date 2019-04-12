@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 localrepo=${ply_depmngr_localRepo/\~/$HOME}
 artifactname=$ply_project_artifact_name
