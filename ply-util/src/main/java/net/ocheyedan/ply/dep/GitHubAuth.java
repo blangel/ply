@@ -121,6 +121,8 @@ final class GitHubAuth implements Auth {
             return FileUtil.download(blobUrl, headers, into, name, intoName, ignoreFNF);
         } catch (IOException ioe) {
             return false; // directory/file does not exist
+        } catch (IllegalArgumentException iae) {
+            return false; // likely a classifier does not exist (e.g. dep-sources.jar)
         }
     }
 
