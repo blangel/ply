@@ -242,6 +242,7 @@ public final class Repos {
             }
         }
         Collections.sort(repositoryAtoms, RepositoryAtom.LOCAL_COMPARATOR);
+        Output.print("^dbug^ Repos sorted in following order for dep resolution - %s", repositoryAtoms);
         Map<DependencyAtom, List<DependencyAtom>> synthetic = null;
         if (syntheticDependencyKey != null) {
             synthetic = new HashMap<DependencyAtom, List<DependencyAtom>>(1);

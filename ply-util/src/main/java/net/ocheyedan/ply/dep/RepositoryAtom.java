@@ -29,17 +29,21 @@ public class RepositoryAtom {
      */
     public static final Comparator<RepositoryAtom> LOCAL_COMPARATOR = new Comparator<RepositoryAtom>() {
         @Override public int compare(RepositoryAtom left, RepositoryAtom right) {
-            boolean leftLocal = "file".equals(left.repositoryUri.getScheme());
-            boolean rightLocal = "file".equals(right.repositoryUri.getScheme());
+            boolean leftLocal = "file".equals(left.repositoryUri.getScheme()) || (left.repositoryUri.getScheme() == null);
+            boolean rightLocal = "file".equals(right.repositoryUri.getScheme()) || (right.repositoryUri.getScheme() == null);
             if (leftLocal == rightLocal) {
-                boolean leftPly = left.getResolvedType() == Type.ply;
-                boolean rightPly = right.getResolvedType() == Type.maven;
-                return (leftPly && rightPly ? 0 : leftPly ? -1 : 1);
+                return compareViaType(left, right);
             } else if (leftLocal) {
                 return -1;
             } else {
                 return 1;
             }
+        }
+
+        private int compareViaType(RepositoryAtom left, RepositoryAtom right) {
+            boolean leftPly = left.getResolvedType() == Type.ply;
+            boolean rightPly = right.getResolvedType() == Type.ply;
+            return (leftPly == rightPly ? 0 : leftPly ? -1 : 1);
         }
     };
 
