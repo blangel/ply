@@ -24,15 +24,18 @@ import static net.ocheyedan.ply.props.PropFile.Prop;
 public class RepositoryAtom {
 
     /**
-     * {@link Comparator} implementation in which local repositories are considered before remote.
+     * {@link Comparator} implementation in which local repositories are considered before remote and
+     * {@linkplain Type#ply} are considered before {@linkplain Type#maven}.
      */
     public static final Comparator<RepositoryAtom> LOCAL_COMPARATOR = new Comparator<RepositoryAtom>() {
-        @Override public int compare(RepositoryAtom o1, RepositoryAtom o2) {
-            boolean local1 = "file".equals(o1.repositoryUri.getScheme());
-            boolean local2 = "file".equals(o2.repositoryUri.getScheme());
-            if (local1 == local2) {
-                return 0;
-            } else if (local1) {
+        @Override public int compare(RepositoryAtom left, RepositoryAtom right) {
+            boolean leftLocal = "file".equals(left.repositoryUri.getScheme());
+            boolean rightLocal = "file".equals(right.repositoryUri.getScheme());
+            if (leftLocal == rightLocal) {
+                boolean leftPly = left.getResolvedType() == Type.ply;
+                boolean rightPly = right.getResolvedType() == Type.maven;
+                return (leftPly && rightPly ? 0 : leftPly ? -1 : 1);
+            } else if (leftLocal) {
                 return -1;
             } else {
                 return 1;

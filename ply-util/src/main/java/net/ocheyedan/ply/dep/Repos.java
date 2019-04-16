@@ -5,10 +5,7 @@ import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.props.*;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.util.*;
 
 /**
