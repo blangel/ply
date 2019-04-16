@@ -542,3 +542,5 @@ OUTPUT=Downloading update to order repos locally and then by type
 METHOD=download=https://raw.github.com/blangel/ply/4f6113fa96feabaf000ee93dba74b6011d270f71/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/0f3292fc21eb935ae2b2dea92275fb027bba8d18/dist/ply/version to version
 VERSION=1.0_104
+METHOD=download=https://raw.github.com/blangel/ply/0f3292fc21eb935ae2b2dea92275fb027bba8d18/dist/ply/version to version
+VERSION=1.0_105

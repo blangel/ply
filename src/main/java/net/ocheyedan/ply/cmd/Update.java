@@ -345,7 +345,7 @@ public final class Update extends Command.SystemReliant {
             List<String> instructions = null;
             while ((line = in.readLine()) != null) {
                 line = line.trim();
-                if (line.isEmpty() ||   line.startsWith("#")) {
+                if (line.isEmpty() || line.startsWith("#")) {
                     continue; // ignore comments and empty lines
                 }
                 if (line.startsWith("VERSION=")) {
