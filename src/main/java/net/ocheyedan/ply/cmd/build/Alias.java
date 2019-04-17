@@ -68,7 +68,7 @@ public final class Alias extends Script {
             for (Prop prop : unparsedAliases.values()) {
                 try {
                     Script parsed = Script.parse(prop.name, scope);
-                    parseAlias(scope, parsed, prop.value(), unparsedAliases, new DirectedAcyclicGraph<String>(), map, Collections.<String>emptyList());
+                    parseAlias(scope, parsed, prop.unfilteredValue, unparsedAliases, new DirectedAcyclicGraph<String>(), map, Collections.<String>emptyList());
                 } catch (CircularReference cr) {
                     Output.print("^error^ Alias (^b^%s^r^) contains a circular reference (run '^b^ply get %s from aliases^r^' to analyze).", cr.alias, cr.alias);
                     throw new SystemExit(1);
@@ -211,6 +211,14 @@ public final class Alias extends Script {
             executions.set(executions.size() - 1, last);
         }
         return executions;
+    }
+
+    @Override Script filter() {
+        List<Script> filteredScripts = new ArrayList<Script>(scripts.size());
+        for (Script script : scripts) {
+            filteredScripts.add(script.filter());
+        }
+        return new Alias(name, scope, filteredScripts, arguments, adHocProps, unparsedName);
     }
 
     /**

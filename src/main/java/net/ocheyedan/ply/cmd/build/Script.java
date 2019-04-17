@@ -4,6 +4,9 @@ import net.ocheyedan.ply.FileUtil;
 import net.ocheyedan.ply.Output;
 import net.ocheyedan.ply.SystemExit;
 import net.ocheyedan.ply.exec.Execution;
+import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.Filter;
+import net.ocheyedan.ply.props.Props;
 import net.ocheyedan.ply.props.Scope;
 
 import java.io.File;
@@ -174,6 +177,11 @@ public class Script {
         this.arguments = new ArrayList<String>(arguments); // copy, so as to allow append
         this.unparsedName = unparsedName;
         this.location = location;
+    }
+
+    Script filter() {
+        return new Script(Filter.filter(name, Context.named("alias"), String.valueOf(System.identityHashCode(this)), Props.get()),
+                scope, arguments, unparsedName, location);
     }
 
     Script with(File location) {

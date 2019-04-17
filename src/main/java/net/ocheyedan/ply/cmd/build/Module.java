@@ -52,8 +52,13 @@ final class Module {
         if (handleAdHoc(scripts)) {
             PropsExt.invalidateFilteredCaches(configDirectory);
         }
-        // now that all ad-hoc props are accounted for, convert scripts to executions
-        return convertScriptsToExecutions(scripts);
+        // now apply resolved ad-hoc properties to scripts themselves
+        List<Script> filtered = new ArrayList<Script>(scripts.size());
+        for (Script script : scripts) {
+            filtered.add(script.filter());
+        }
+        // now that all ad-hoc props are accounted for and filtered, convert scripts to executions
+        return convertScriptsToExecutions(filtered);
     }
     
     private boolean handleAdHoc(List<Script> scripts) {

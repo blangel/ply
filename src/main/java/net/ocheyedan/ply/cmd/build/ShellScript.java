@@ -1,6 +1,10 @@
 package net.ocheyedan.ply.cmd.build;
 
 import net.ocheyedan.ply.exec.Execution;
+import net.ocheyedan.ply.props.Context;
+import net.ocheyedan.ply.props.Filter;
+import net.ocheyedan.ply.props.Props;
+import net.ocheyedan.ply.props.Scope;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +20,15 @@ import java.util.List;
 public final class ShellScript extends Script {
 
     ShellScript(Script script) {
-        super(script.name, script.scope, script.arguments, script.unparsedName);
+        this(script.name, script.scope, script.arguments, script.unparsedName);
+    }
+
+    private ShellScript(String name, Scope scope, List<String> arguments, String unparsedName) {
+        super(name, scope, arguments, unparsedName);
+    }
+
+    @Override Script filter() {
+        return new ShellScript(Filter.filter(name, Context.named("alias"), String.valueOf(System.identityHashCode(this)), Props.get()), scope, arguments, unparsedName);
     }
 
     /**
