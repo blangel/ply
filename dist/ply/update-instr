@@ -556,3 +556,7 @@ OUTPUT=Downloading update to ignore classifier not found for GitHubAuth repos
 METHOD=download=https://raw.github.com/blangel/ply/c617bedd088a22cd984ed945df2c4259e2694a8f/dist/ply/lib/ply-util-1.0.jar to lib/ply-util-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/c617bedd088a22cd984ed945df2c4259e2694a8f/dist/ply/version to version
 VERSION=1.0_108
+OUTPUT=Downloading update to allow aliases to resolve adhoc properties defined within themselves
+METHOD=download=https://raw.github.com/blangel/ply/45f2dc508859e6fe0c5a18ea5391883ae2ed7ef7/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/45f2dc508859e6fe0c5a18ea5391883ae2ed7ef7/dist/ply/version to version
+VERSION=1.0_109
