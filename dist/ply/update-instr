@@ -560,3 +560,7 @@ OUTPUT=Downloading update to allow aliases to resolve adhoc properties defined w
 METHOD=download=https://raw.github.com/blangel/ply/45f2dc508859e6fe0c5a18ea5391883ae2ed7ef7/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
 METHOD=download=https://raw.github.com/blangel/ply/45f2dc508859e6fe0c5a18ea5391883ae2ed7ef7/dist/ply/version to version
 VERSION=1.0_109
+OUTPUT=Downloading update to ensure prior update changes take scope into account
+METHOD=download=https://raw.github.com/blangel/ply/aedcdf09d2509b16a19859dbc839139970697f05/dist/ply/lib/ply-1.0.jar to lib/ply-1.0.jar
+METHOD=download=https://raw.github.com/blangel/ply/aedcdf09d2509b16a19859dbc839139970697f05/dist/ply/version to version
+VERSION=1.0_110
