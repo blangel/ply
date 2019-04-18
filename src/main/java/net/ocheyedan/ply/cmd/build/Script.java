@@ -180,7 +180,7 @@ public class Script {
     }
 
     Script filter() {
-        return new Script(Filter.filter(name, Context.named("alias"), String.valueOf(System.identityHashCode(this)), Props.get()),
+        return new Script(Filter.filter(name, Context.named("alias"), String.valueOf(System.identityHashCode(this)), Props.get(scope)),
                 scope, arguments, unparsedName, location);
     }
 

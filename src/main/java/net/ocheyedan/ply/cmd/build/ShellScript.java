@@ -28,7 +28,7 @@ public final class ShellScript extends Script {
     }
 
     @Override Script filter() {
-        return new ShellScript(Filter.filter(name, Context.named("alias"), String.valueOf(System.identityHashCode(this)), Props.get()), scope, arguments, unparsedName);
+        return new ShellScript(Filter.filter(name, Context.named("alias"), String.valueOf(System.identityHashCode(this)), Props.get(scope)), scope, arguments, unparsedName);
     }
 
     /**
