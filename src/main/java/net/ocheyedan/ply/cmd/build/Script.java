@@ -181,7 +181,18 @@ public class Script {
 
     Script filter() {
         return new Script(Filter.filter(name, Context.named("alias"), String.valueOf(System.identityHashCode(this)), Props.get(scope)),
-                scope, arguments, unparsedName, location);
+                scope, filterArguments(), unparsedName, location);
+    }
+
+    protected List<String> filterArguments() {
+        if (arguments == null) {
+            return arguments;
+        }
+        List<String> filteredArguments = new ArrayList<String>(arguments.size());
+        for (String argument : arguments) {
+            filteredArguments.add(Filter.filter(argument, Context.named("alias"), String.valueOf(System.identityHashCode(this)), Props.get(scope)));
+        }
+        return filteredArguments;
     }
 
     Script with(File location) {

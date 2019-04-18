@@ -218,7 +218,7 @@ public final class Alias extends Script {
         for (Script script : scripts) {
             filteredScripts.add(script.filter());
         }
-        return new Alias(name, scope, filteredScripts, arguments, adHocProps, unparsedName);
+        return new Alias(name, scope, filteredScripts, filterArguments(), adHocProps, unparsedName);
     }
 
     /**
